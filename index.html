@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="description" content="A Rogue like game called Apple Hunter">
+    <title>Apple Hunter</title>
+    <link rel="preload stylesheet" href="./css/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="./css/style.css"></noscript>
+    <link rel="shortcut icon" href="./images/logo.png" type="image/png">
+    <script src="./js/index.js" defer></script>
+</head>
+
+<body>
+    <div class="wrapper">
+        <header>
+            <h1>Apple Hunter</h1>
+        </header>
+        <main>
+            <div class="game-board">
+                <div id="grid" class="grid" style="grid-template-columns: repeat(8, 64px);">
+
+                </div>
+            </div>
+        </main>
+        <footer class="inventory">
+            <div class="inventory__item apples">
+                <h2 class="inventory__item-title">Apples:</h2>
+                <p id="apple-count" class="inventory__item-count">0</p>
+            </div>
+            <div class="inventory__item keys">
+                <h2 class="inventory__item-title">Keys:</h2>
+                <p id="key-count" class="inventory__item-count">0</p>
+            </div>
+        </footer>
+    </div>
+</body>
+
+</html>

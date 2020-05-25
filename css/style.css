@@ -1,0 +1,159 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", "Helvetica Neue", "Helvetica", Arial, sans-serif;
+}
+
+:root {
+    --theme-background: #fff;
+    --theme-text: #000;
+    --theme-link: indigo;
+    --theme-link-hover: crimson;
+}
+
+body {
+    color: var(--theme-text);
+    background-color: var(--theme-background);
+}
+
+a {
+    text-decoration: none;
+    color: var(--theme-link);
+    transition: color 300ms;
+}
+
+a:hover {
+    color: var(--theme-link-hover);
+}
+
+
+/* #region GAME */
+
+.game-board {
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+}
+
+.grid {
+    display: grid;
+    gap: 2px;
+    background-color: black;
+    padding: 10px;
+}
+
+.grid__tile {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    transition: opacity 150ms;
+}
+
+.grid__tile:hover {
+    border: 2px solid yellow;
+}
+
+.forest .grid__empty {
+    background-color: #b0d1a7;
+}
+
+.forest .grid__tree {
+    background-color: green;
+}
+
+.forest .grid__rock {
+    background-color: gray;
+}
+
+.desert .grid__empty {
+    background-color: #ced1a8;
+}
+
+.desert .grid__tree {
+    background-color: green;
+}
+
+.desert .grid__rock {
+    background-color: gray;
+}
+
+.snow .grid__empty {
+    background-color: #ebebeb;
+}
+
+.snow .grid__tree {
+    background-color: rgb(111, 170, 111);
+}
+
+.snow .grid__rock {
+    background-color: rgb(190, 190, 190);
+}
+
+.grid__apple {
+    background-color: crimson;
+}
+
+.grid__key {
+    background-color: gold;
+}
+
+.player {
+    width: 100%;
+    height: 100%;
+}
+
+.player__one {
+    background-color: steelblue;
+}
+
+
+/* #region INVENTORY */
+
+.inventory {
+    display: flex;
+    justify-content: space-evenly;
+}
+
+.inventory__item {
+    display: flex;
+    align-items: center;
+}
+
+.inventory__item-title {
+    font-size: 2rem;
+    margin-right: 1rem;
+}
+
+.inventory__item-count {
+    font-size: 1.8rem;
+}
+
+
+/* #endregion INVENTORY */
+
+
+/* #region TOOLTIP */
+
+.tooltip {
+    position: absolute;
+    top: -100%;
+    left: -50%;
+    width: 200%;
+    display: flex;
+    align-items: center;
+    background-color: #fafafa;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    display: none;
+}
+
+.grid__tile:hover .tooltip {
+    display: block;
+}
+
+
+/* #endregion TOOLTIP */
+
+
+/* #endregion GAME */
