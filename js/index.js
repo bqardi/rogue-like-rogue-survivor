@@ -54,12 +54,15 @@ document.addEventListener("DOMContentLoaded", event => {
                     if (rnd < 10) {
                         tileObj.type = "collectable";
                         tileObj.class = "apple";
+                        tileObj.tooltip = "Apple - Use to gain health";
                     } else if (rnd < 100) {
                         tileObj.type = "obstacle";
                         tileObj.class = "tree";
+                        tileObj.tooltip = "Tree - Steer around!";
                     } else if (rnd < 200) {
                         tileObj.type = "obstacle";
                         tileObj.class = "rock";
+                        tileObj.tooltip = "Rock - Don't bump into these!";
                     }
                 }
                 currentGridArea.tiles.push(tileObj);
@@ -95,8 +98,8 @@ document.addEventListener("DOMContentLoaded", event => {
         for (let i = 0; i < currentGridArea.tiles.length; i++) {
             const tileObj = currentGridArea.tiles[i];
             const tileElm = buildTile(tileObj);
-            if (tileObj.type == "obstacle") {
-                tileElm.innerHTML = `<div class="tooltip">Hello</div>`;
+            if (tileObj.tooltip != "") {
+                tileElm.innerHTML = `<div class="tooltip">${tileObj.tooltip}</div>`;
             }
         }
     }
@@ -105,6 +108,7 @@ document.addEventListener("DOMContentLoaded", event => {
         let tileObj = new Object();
         tileObj.id = `${x}_${y}`;
         tileObj.type = "empty";
+        tileObj.tooltip = "";
         tileObj.class = "";
         tileObj.required = false;
         return tileObj;
@@ -144,6 +148,7 @@ document.addEventListener("DOMContentLoaded", event => {
         player.element = document.createElement("DIV");
         player.element.classList.add("player");
         player.element.classList.add("player__one");
+        player.element.innerHTML = `<div class="tooltip">Player 1</div>`;
         tileObj.object = player;
         tileObj.element.append(tileObj.object.element);
         playerTileObj = tileObj;

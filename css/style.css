@@ -27,6 +27,13 @@ a:hover {
     color: var(--theme-link-hover);
 }
 
+.header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
 
 /* #region GAME */
 
@@ -113,6 +120,7 @@ a:hover {
 .inventory {
     display: flex;
     justify-content: space-evenly;
+    padding: 1rem;
 }
 
 .inventory__item {
@@ -138,14 +146,15 @@ a:hover {
 .tooltip {
     position: absolute;
     top: -100%;
-    left: -50%;
-    width: 200%;
+    left: -200%;
+    width: 500%;
     display: flex;
     align-items: center;
     background-color: #fafafa;
     padding: 1rem;
     border-radius: 0.25rem;
     display: none;
+    z-index: 1;
 }
 
 .grid__tile:hover .tooltip {
