@@ -29,19 +29,82 @@ a:hover {
 
 .header {
     display: flex;
-    justify-content: center;
     align-items: center;
-    padding: 2rem;
+    padding: 2rem 0;
+    width: 100%;
+}
+
+.main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 
 
 /* #region GAME */
 
-.game-board {
-    width: 100vw;
+.main-game {
     display: flex;
     justify-content: center;
 }
+
+.game-board {
+    display: flex;
+    justify-content: center;
+}
+
+
+/* #region UI */
+
+.ui {
+    min-width: 200px;
+}
+
+.ui__title {
+    margin-bottom: 0.5rem;
+}
+
+.ui__title.margin-top {
+    margin-top: 1rem;
+}
+
+.ui-icon {
+    width: 40px;
+    height: 40px;
+}
+
+.life .ui-icon {
+    fill: crimson;
+}
+
+.strength .ui-icon {
+    fill: darksalmon;
+}
+
+.armor .ui-icon {
+    fill: royalblue;
+}
+
+.apples .ui-icon {
+    fill: crimson;
+}
+
+.keys .ui-icon {
+    fill: gold;
+}
+
+.map .ui-icon {
+    fill: orange;
+}
+
+
+/* #endregion UI */
+
+
+/* #region GRID */
 
 .grid {
     display: grid;
@@ -58,7 +121,7 @@ a:hover {
 }
 
 .grid__tile:hover {
-    border: 2px solid yellow;
+    background-color: khaki !important;
 }
 
 .forest .grid__empty {
@@ -66,23 +129,27 @@ a:hover {
 }
 
 .forest .grid__tree {
-    background-color: green;
+    background-color: #b0d1a7;
+    background-image: url(../images/tree-forest.png);
 }
 
 .forest .grid__rock {
-    background-color: gray;
+    background-color: #b0d1a7;
+    background-image: url(../images/rock.png);
 }
 
 .desert .grid__empty {
-    background-color: #ced1a8;
+    background-color: #d1c395;
 }
 
 .desert .grid__tree {
-    background-color: green;
+    background-color: #d1c395;
+    background-image: url(../images/tree-desert.png);
 }
 
 .desert .grid__rock {
-    background-color: gray;
+    background-color: #d1c395;
+    background-image: url(../images/rock.png);
 }
 
 .snow .grid__empty {
@@ -90,11 +157,13 @@ a:hover {
 }
 
 .snow .grid__tree {
-    background-color: rgb(111, 170, 111);
+    background-color: #ebebeb;
+    background-image: url(../images/tree-snow.png);
 }
 
 .snow .grid__rock {
-    background-color: rgb(190, 190, 190);
+    background-color: #ebebeb;
+    background-image: url(../images/rock.png);
 }
 
 .grid__apple {
@@ -105,21 +174,91 @@ a:hover {
     background-color: gold;
 }
 
+
+/* #endregion GRID */
+
+
+/* #region PLAYER */
+
 .player {
     width: 100%;
     height: 100%;
+    position: absolute;
+    z-index: 1;
 }
 
 .player__one {
-    background-color: steelblue;
+    background-image: url(../images/player-spritesheet.png);
+    background-position: 0 0;
 }
+
+.player__animation-up {
+    animation-name: move-up;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+}
+
+@keyframes move-up {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-100%);
+    }
+}
+
+.player__animation-down {
+    animation-name: move-down;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+}
+
+@keyframes move-down {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+.player__animation-left {
+    animation-name: move-left;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+}
+
+@keyframes move-left {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+.player__animation-right {
+    animation-name: move-right;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+}
+
+@keyframes move-right {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+
+/* #endregion PLAYER */
 
 
 /* #region INVENTORY */
 
-.inventory {
-    display: flex;
-    justify-content: space-evenly;
+.ui {
     padding: 1rem;
 }
 
@@ -135,6 +274,14 @@ a:hover {
 
 .inventory__item-count {
     font-size: 1.8rem;
+}
+
+.inventory__item-single {
+    font-size: 1.2rem;
+}
+
+.inventory__item.hidden {
+    display: none;
 }
 
 

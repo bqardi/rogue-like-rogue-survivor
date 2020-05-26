@@ -15,21 +15,47 @@ document.addEventListener("DOMContentLoaded", event => {
         "snow",
     ]
 
-    let playerTileObj;
+    let stats = {
+        life: {
+            count: 10,
+            element: document.getElementById("life-count"),
+        },
+        strength: {
+            count: 10,
+            element: document.getElementById("strength-count"),
+        },
+        armor: {
+            count: 10,
+            element: document.getElementById("armor-count"),
+        },
+    };
     let inventory = {
         apple: {
             count: 0,
+            stackable: true,
             element: document.getElementById("apple-count"),
         },
         key: {
             count: 0,
+            stackable: true,
             element: document.getElementById("key-count"),
         },
+        map: {
+            count: 0,
+            stackable: false,
+            element: document.getElementById("map"),
+        },
     };
+
+    let player;
+    let playerTileObj;
+    let playerAnimationTime = 100;
+    let playerIsMoving = false;
 
     const gridWidth = 7;
     const gridHeight = 7;
     const tileSize = 64;
+    let worldKeys = 4;
 
     newGame();
 
@@ -37,6 +63,8 @@ document.addEventListener("DOMContentLoaded", event => {
         grid.style.gridTemplateColumns = `repeat(${gridWidth}, ${tileSize}px)`;
         // createCollectable("apple", true);
         // createCollectable("key", true);
+        displayStats();
+        // addStat(stats.life, -1);
         buildGrid("0_0");
         createPlayer(getCenterTileIndex());
         addPlayerControls();
@@ -50,16 +78,23 @@ document.addEventListener("DOMContentLoaded", event => {
             for (let x = 0; x < gridWidth; x++) {
                 let tileObj = newTile(x, y);
                 if (x > 0 && x < gridWidth - 2 && y > 0 && y < gridHeight - 2) {
-                    const rnd = randomInteger(0, 1000);
-                    if (rnd < 10) {
+                    const rnd = Math.random() * 100;
+                    if (rnd < 1) {
+                        if (worldKeys > 0) {
+                            tileObj.type = "collectable";
+                            tileObj.class = "key";
+                            tileObj.tooltip = "Key - Use to gain access to Dungeons!";
+                            worldKeys--;
+                        }
+                    } else if (rnd < 3) {
                         tileObj.type = "collectable";
                         tileObj.class = "apple";
                         tileObj.tooltip = "Apple - Use to gain health";
-                    } else if (rnd < 100) {
+                    } else if (rnd < 10) {
                         tileObj.type = "obstacle";
                         tileObj.class = "tree";
                         tileObj.tooltip = "Tree - Steer around!";
-                    } else if (rnd < 200) {
+                    } else if (rnd < 20) {
                         tileObj.type = "obstacle";
                         tileObj.class = "rock";
                         tileObj.tooltip = "Rock - Don't bump into these!";
@@ -68,9 +103,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 currentGridArea.tiles.push(tileObj);
             }
         }
-        const biom = bioms[randomInteger(0, bioms.length)];
-        setBiom(biom);
-        currentGridArea.biom = biom;
+        setBiom(bioms[randomInteger(0, bioms.length)]);
         gridAreas.push(currentGridArea);
     }
 
@@ -80,6 +113,7 @@ document.addEventListener("DOMContentLoaded", event => {
             grid.classList.remove(biom);
         }
         grid.classList.add(biomClass);
+        currentGridArea.biom = biomClass;
     }
 
     function buildGrid(id) {
@@ -107,10 +141,7 @@ document.addEventListener("DOMContentLoaded", event => {
     function newTile(x, y) {
         let tileObj = new Object();
         tileObj.id = `${x}_${y}`;
-        tileObj.type = "empty";
-        tileObj.tooltip = "";
-        tileObj.class = "";
-        tileObj.required = false;
+        setTileEmpty(tileObj)
         return tileObj;
     }
 
@@ -143,11 +174,12 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         setTileEmpty(tileObj);
         tileObj.element.innerHTML = "";
-        let player = new Object();
+        player = new Object();
         player.name = "Player One";
         player.element = document.createElement("DIV");
         player.element.classList.add("player");
         player.element.classList.add("player__one");
+        player.element.style.animationDuration = `${playerAnimationTime}ms`;
         player.element.innerHTML = `<div class="tooltip">Player 1</div>`;
         tileObj.object = player;
         tileObj.element.append(tileObj.object.element);
@@ -156,31 +188,39 @@ document.addEventListener("DOMContentLoaded", event => {
 
     function setTileEmpty(tileObj) {
         tileObj.type = "empty";
+        tileObj.tooltip = "";
         tileObj.class = "";
         tileObj.required = false;
+        if (tileObj.element) {
+            tileObj.element.className = "grid__tile grid__empty";
+        }
     }
 
     function addPlayerControls() {
         document.addEventListener("keydown", function(evt) {
-            if (evt.repeat) {
+            if (evt.repeat || playerIsMoving) {
                 return
             }
-            if (evt.key == "w") {
-                move(currentGridArea, 0, -1);
+            if (evt.key == "w" || evt.key == "ArrowUp") {
+                move(currentGridArea, 0, -1, "0 -192px", "up");
             }
-            if (evt.key == "s") {
-                move(currentGridArea, 0, 1);
+            if (evt.key == "s" || evt.key == "ArrowDown") {
+                move(currentGridArea, 0, 1, "0 0", "down");
             }
-            if (evt.key == "a") {
-                move(currentGridArea, -1, 0);
+            if (evt.key == "a" || evt.key == "ArrowLeft") {
+                move(currentGridArea, -1, 0, "0 -64px", "left");
             }
-            if (evt.key == "d") {
-                move(currentGridArea, 1, 0);
+            if (evt.key == "d" || evt.key == "ArrowRight") {
+                move(currentGridArea, 1, 0, "0 -128px", "right");
             }
         })
     }
 
-    function move(gridObj, moveX, moveY) {
+    function playerMove() {
+
+    }
+
+    function move(gridObj, moveX, moveY, spritePos, direction) {
         let coordinate = splitId(playerTileObj.id);
         coordinate.x += moveX;
         coordinate.y += moveY;
@@ -216,12 +256,19 @@ document.addEventListener("DOMContentLoaded", event => {
         if (destinationTileObj.type == "obstacle") {
             return;
         }
-        destinationTileObj.object = playerTileObj.object;
-        playerTileObj = destinationTileObj;
-        if (playerTileObj.type == "collectable") {
-            collect(playerTileObj);
-        }
-        playerTileObj.element.append(playerTileObj.object.element);
+        playerIsMoving = true;
+        player.element.style.backgroundPosition = spritePos;
+        player.element.classList.add("player__animation-" + direction);
+        setTimeout(() => {
+            destinationTileObj.object = playerTileObj.object;
+            playerTileObj = destinationTileObj;
+            if (playerTileObj.type == "collectable") {
+                collect(playerTileObj);
+            }
+            playerTileObj.element.append(playerTileObj.object.element);
+            player.element.classList.remove("player__animation-" + direction);
+            playerIsMoving = false;
+        }, playerAnimationTime);
     }
 
     function splitId(id) {
@@ -233,10 +280,9 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function collect(tileObj) {
-        const elm = inventory[tileObj.class];
-        elm.count++;
-        elm.element.textContent = elm.count;
-        tileObj.element.className = "grid__tile grid__empty";
+        const collectableObj = inventory[tileObj.class];
+        collectableObj.count++;
+        collectableObj.element.textContent = collectableObj.count;
         setTileEmpty(tileObj);
     }
 
@@ -269,6 +315,17 @@ document.addEventListener("DOMContentLoaded", event => {
         return tileObj;
     }
     //#endregion GRID
+
+    function displayStats() {
+        stats.life.element.textContent = stats.life.count;
+        stats.strength.element.textContent = stats.strength.count;
+        stats.armor.element.textContent = stats.armor.count;
+    }
+
+    function addStat(statObj, amount) {
+        statObj.count += amount;
+        statObj.element.textContent = statObj.count;
+    }
 
     function randomInteger(min, max) {
         return Math.floor(Math.random() * (max - min)) + min;
