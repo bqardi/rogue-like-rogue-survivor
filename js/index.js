@@ -2,6 +2,16 @@ document.addEventListener("DOMContentLoaded", event => {
     //#region GRID
     const grid = document.getElementById("grid");
 
+    let player;
+    let playerTileObj;
+    let playerAnimationTime = 100;
+    let playerIsMoving = false;
+
+    const gridWidth = 7;
+    const gridHeight = 7;
+    const tileSize = 64;
+    let worldKeys = 4;
+
     let gridAreas = [];
 
     let currentGridArea = {
@@ -18,32 +28,52 @@ document.addEventListener("DOMContentLoaded", event => {
     let enemyType = {
         skeleton: {
             name: "Skeleton",
+            class: "skeleton",
             propability: 5,
             min: 0,
             max: 3,
+            createHTML: function() {
+                let element = document.createElement("DIV");
+                element.classList.add("enemy");
+                element.classList.add(this.class);
+                element.classList.add("animation");
+                element.style.animationDuration = `${playerAnimationTime}ms`;
+                element.innerHTML = `<div class="tooltip">${this.name}</div>`;
+                return element;
+            }
         },
-        createHTML: function(enemyObj, animationTime) {
-            let element = document.createElement("DIV");
-            element.classList.add("enemy");
-            element.classList.add(enemyObj.name);
-            element.style.animationDuration = `${animationTime}ms`;
-            element.innerHTML = `<div class="tooltip">${enemyObj.name}</div>`;
-            return element;
+    }
+
+    let effect = {
+        explosion: {
+
         }
     }
 
     let stats = {
         life: {
-            count: 10,
+            count: 100,
             element: document.getElementById("life-count"),
+            add: function(amount) {
+                this.count += amount;
+                this.element.textContent = this.count;
+            }
         },
         strength: {
             count: 10,
             element: document.getElementById("strength-count"),
+            add: function(amount) {
+                this.count += amount;
+                this.element.textContent = this.count;
+            }
         },
         armor: {
             count: 10,
             element: document.getElementById("armor-count"),
+            add: function(amount) {
+                this.count += amount;
+                this.element.textContent = this.count;
+            }
         },
     };
     let inventory = {
@@ -64,27 +94,19 @@ document.addEventListener("DOMContentLoaded", event => {
         },
     };
 
-    let player;
-    let playerTileObj;
-    let playerAnimationTime = 100;
-    let playerIsMoving = false;
-
-    const gridWidth = 7;
-    const gridHeight = 7;
-    const tileSize = 64;
-    let worldKeys = 4;
-
     newGame();
 
     function newGame() {
         grid.style.gridTemplateColumns = `repeat(${gridWidth}, ${tileSize}px)`;
         // createCollectable("apple", true);
         // createCollectable("key", true);
-        displayStats();
-        // addStat(stats.life, -1);
+        stats.life.add(0);
+        stats.strength.add(0);
+        stats.armor.add(0);
         buildGrid("0_0");
         createPlayer(getCenterTileIndex());
         addPlayerControls();
+        placeEnemies(enemyType.skeleton);
     }
 
     function newGrid(id) {
@@ -200,6 +222,7 @@ document.addEventListener("DOMContentLoaded", event => {
         player.element = document.createElement("DIV");
         player.element.classList.add("player");
         player.element.classList.add("player__one");
+        player.element.classList.add("animation");
         player.element.style.animationDuration = `${playerAnimationTime}ms`;
         player.element.innerHTML = `<div class="tooltip">Player 1</div>`;
         tileObj.object = player;
@@ -208,21 +231,28 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function placeEnemies(enemy) {
-        if (currentGridArea.id != "0_0") {
-            const propability = getPropability(enemy.propability);
-            let tileObj = positionObject(currentGridArea);
-            if (tileObj.element == undefined) {
-                console.log("No element attached to tileObj!");
-                return;
-            }
-            placeEnemy(tileObj, enemy);
+        // if (currentGridArea.id != "0_0") {
+        //     const propability = isPropable(enemy.propability);
+        //     let tileObj = positionObject(currentGridArea);
+        //     if (tileObj.element == undefined) {
+        //         console.log("No element attached to tileObj!");
+        //         return;
+        //     }
+        //     placeEnemy(tileObj, enemy);
+        // }
+        let tileObj = positionObject(currentGridArea);
+        if (tileObj.element == undefined) {
+            console.log("No element attached to tileObj!");
+            return;
         }
+        placeEnemy(tileObj, enemy);
     }
 
     function placeEnemy(tileObj, enemyObj) {
         let element = enemyObj.createHTML();
         tileObj.element.append(element);
         tileObj.object = enemyObj;
+        tileObj.type = "enemy";
         tileObj.occupied = true;
     }
 
@@ -298,9 +328,18 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         playerIsMoving = true;
         player.element.style.backgroundPosition = spritePos;
-        player.element.classList.add("player__animation-" + direction);
+        player.element.classList.add("animation-" + direction);
         if (destinationTileObj.type == "enemy") {
-            console.log("ATTACK!");
+            setTimeout(() => {
+                player.element.classList.add("attack");
+                spawnEffect(effect.explosion, destinationTileObj);
+                setTimeout(() => {
+                    player.element.classList.remove("attack");
+                    player.element.classList.remove("animation-" + direction);
+                    playerIsMoving = false;
+                }, playerAnimationTime / 2);
+            }, playerAnimationTime / 2);
+            return;
         }
         setTimeout(() => {
             destinationTileObj.object = playerTileObj.object;
@@ -309,9 +348,13 @@ document.addEventListener("DOMContentLoaded", event => {
                 collect(playerTileObj);
             }
             playerTileObj.element.append(playerTileObj.object.element);
-            player.element.classList.remove("player__animation-" + direction);
+            player.element.classList.remove("animation-" + direction);
             playerIsMoving = false;
         }, playerAnimationTime);
+    }
+
+    function spawnEffect(effect, tileObj) {
+
     }
 
     function splitId(id) {
@@ -359,22 +402,11 @@ document.addEventListener("DOMContentLoaded", event => {
     }
     //#endregion GRID
 
-    function displayStats() {
-        stats.life.element.textContent = stats.life.count;
-        stats.strength.element.textContent = stats.strength.count;
-        stats.armor.element.textContent = stats.armor.count;
-    }
-
-    function addStat(statObj, amount) {
-        statObj.count += amount;
-        statObj.element.textContent = statObj.count;
-    }
-
     function randomInteger(min, max) {
         return Math.floor(Math.random() * (max - min)) + min;
     }
 
-    function getPropability(propabilityPercentage) {
-        return propability > randomInteger(0, 100);
+    function isPropable(propabilityPercentage) {
+        return propabilityPercentage > randomInteger(0, 100);
     }
 });
