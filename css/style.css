@@ -124,6 +124,14 @@ a:hover {
     background-color: khaki !important;
 }
 
+.grid__enemy {
+    background-color: red;
+}
+
+.grid__skeleton {
+    background-image: url(../images/enemy-skeleton.png);
+}
+
 .forest .grid__empty {
     background-color: #b0d1a7;
 }

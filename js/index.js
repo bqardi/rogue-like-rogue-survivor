@@ -15,6 +15,23 @@ document.addEventListener("DOMContentLoaded", event => {
         "snow",
     ]
 
+    let enemyType = {
+        skeleton: {
+            name: "Skeleton",
+            propability: 5,
+            min: 0,
+            max: 3,
+        },
+        createHTML: function(enemyObj, animationTime) {
+            let element = document.createElement("DIV");
+            element.classList.add("enemy");
+            element.classList.add(enemyObj.name);
+            element.style.animationDuration = `${animationTime}ms`;
+            element.innerHTML = `<div class="tooltip">${enemyObj.name}</div>`;
+            return element;
+        }
+    }
+
     let stats = {
         life: {
             count: 10,
@@ -83,20 +100,24 @@ document.addEventListener("DOMContentLoaded", event => {
                         if (worldKeys > 0) {
                             tileObj.type = "collectable";
                             tileObj.class = "key";
+                            tileObj.occupied = true;
                             tileObj.tooltip = "Key - Use to gain access to Dungeons!";
                             worldKeys--;
                         }
-                    } else if (rnd < 3) {
+                    } else if (rnd < 2) {
                         tileObj.type = "collectable";
                         tileObj.class = "apple";
+                        tileObj.occupied = true;
                         tileObj.tooltip = "Apple - Use to gain health";
-                    } else if (rnd < 10) {
+                    } else if (rnd < 18) {
                         tileObj.type = "obstacle";
                         tileObj.class = "tree";
+                        tileObj.occupied = true;
                         tileObj.tooltip = "Tree - Steer around!";
-                    } else if (rnd < 20) {
+                    } else if (rnd < 28) {
                         tileObj.type = "obstacle";
                         tileObj.class = "rock";
+                        tileObj.occupied = true;
                         tileObj.tooltip = "Rock - Don't bump into these!";
                     }
                 }
@@ -186,11 +207,30 @@ document.addEventListener("DOMContentLoaded", event => {
         playerTileObj = tileObj;
     }
 
+    function placeEnemies(enemy) {
+        if (currentGridArea.id != "0_0") {
+            const propability = getPropability(enemy.propability);
+            let tileObj = positionObject(currentGridArea);
+            if (tileObj.element == undefined) {
+                console.log("No element attached to tileObj!");
+                return;
+            }
+            placeEnemy(tileObj, enemy);
+        }
+    }
+
+    function placeEnemy(tileObj, enemyObj) {
+        let element = enemyObj.createHTML();
+        tileObj.element.append(element);
+        tileObj.object = enemyObj;
+        tileObj.occupied = true;
+    }
+
     function setTileEmpty(tileObj) {
         tileObj.type = "empty";
         tileObj.tooltip = "";
         tileObj.class = "";
-        tileObj.required = false;
+        tileObj.occupied = false;
         if (tileObj.element) {
             tileObj.element.className = "grid__tile grid__empty";
         }
@@ -259,6 +299,9 @@ document.addEventListener("DOMContentLoaded", event => {
         playerIsMoving = true;
         player.element.style.backgroundPosition = spritePos;
         player.element.classList.add("player__animation-" + direction);
+        if (destinationTileObj.type == "enemy") {
+            console.log("ATTACK!");
+        }
         setTimeout(() => {
             destinationTileObj.object = playerTileObj.object;
             playerTileObj = destinationTileObj;
@@ -295,19 +338,19 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    function createCollectable(collectableClass, required) {
-        let tileObj = positionObject(currentGridArea, -1);
+    function createCollectable(collectableClass, occupied) {
+        let tileObj = positionObject(currentGridArea);
         tileObj.type = "collectable";
         tileObj.class = collectableClass;
-        tileObj.required = required;
+        tileObj.occupied = occupied;
     }
 
-    function positionObject(gridObj, tileIndex) {
+    function positionObject(gridObj, tileIndex = -1) {
         let index = tileIndex;
         const tilesLength = gridObj.tiles.length;
         if (index < 0 || index >= tilesLength) {
             index = randomInteger(0, tilesLength);
-            while (gridObj.tiles[index].required || gridObj.tiles[index].object != undefined) {
+            while (gridObj.tiles[index].occupied || gridObj.tiles[index].object != undefined) {
                 index = randomInteger(0, tilesLength);
             }
         }
@@ -329,5 +372,9 @@ document.addEventListener("DOMContentLoaded", event => {
 
     function randomInteger(min, max) {
         return Math.floor(Math.random() * (max - min)) + min;
+    }
+
+    function getPropability(propabilityPercentage) {
+        return propability > randomInteger(0, 100);
     }
 });
