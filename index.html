@@ -22,47 +22,86 @@
             <div class="main-game">
                 <div class="ui">
                     <h2 class="ui__title">Stats</h2>
-                    <div class="inventory__item life">
-                        <h2 class="inventory__item-title">
-                            <svg class="ui-icon" viewBox="0 0 24 24"><path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"></path></svg>
-                        </h2>
-                        <p id="life-count" class="inventory__item-count">0</p>
+                    <div class="list__item">
+                        <div class="list__item-icon">
+                            <svg class="ui-icon life" viewBox="0 0 24 24"><path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"></path></svg>
+                        </div>
+                        <p id="life-count" class="list__item-count">0</p>
                     </div>
-                    <div class="inventory__item strength">
-                        <h2 class="inventory__item-title">
-                            <svg class="ui-icon" viewBox="0 0 24 24"><path d="M3 18.34C3 18.34 4 7.09 7 3L12 4L11 7.09H9V14.25H10C12 11.18 16.14 10.06 18.64 11.18C21.94 12.71 21.64 17.32 18.64 19.36C16.24 21 9 22.43 3 18.34Z"></path></svg>
-                        </h2>
-                        <p id="strength-count" class="inventory__item-count">0</p>
+                    <div class="list__item">
+                        <div class="list__item-icon">
+                            <svg class="ui-icon strength" viewBox="0 0 24 24"><path d="M3 18.34C3 18.34 4 7.09 7 3L12 4L11 7.09H9V14.25H10C12 11.18 16.14 10.06 18.64 11.18C21.94 12.71 21.64 17.32 18.64 19.36C16.24 21 9 22.43 3 18.34Z"></path></svg>
+                        </div>
+                        <p id="strength-count" class="list__item-count">0</p>
                     </div>
-                    <div class="inventory__item armor">
-                        <h2 class="inventory__item-title">
-                            <svg class="ui-icon" viewBox="0 0 24 24"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1Z"></path></svg>
-                        </h2>
-                        <p id="armor-count" class="inventory__item-count">0</p>
+                    <div class="list__item">
+                        <div class="list__item-icon">
+                            <svg class="ui-icon armor" viewBox="0 0 24 24"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1Z"></path></svg>
+                        </div>
+                        <p id="armor-count" class="list__item-count">0</p>
                     </div>
                     <h2 class="ui__title margin-top">Inventory</h2>
-                    <div class="inventory__item apples">
-                        <h2 class="inventory__item-title">
-                            <svg class="ui-icon" viewBox="0 0 24 24"><path d="M20,10C22,13 17,22 15,22C13,22 13,21 12,21C11,21 11,22 9,22C7,22 2,13 4,10C6,7 9,7 11,8V5C5.38,8.07 4.11,3.78 4.11,3.78C4.11,3.78 6.77,0.19 11,5V3H13V8C15,7 18,7 20,10Z"></path></svg>
-                        </h2>
-                        <p id="apple-count" class="inventory__item-count">0</p>
+                    <div class="list__item">
+                        <div class="list__item-icon">
+                            <svg class="ui-icon coins" viewBox="0 0 24 24"><path d="M2,5H22V20H2V5M20,18V7H4V18H20M17,8A2,2 0 0,0 19,10V15A2,2 0 0,0 17,17H7A2,2 0 0,0 5,15V10A2,2 0 0,0 7,8H17M17,13V12C17,10.9 16.33,10 15.5,10C14.67,10 14,10.9 14,12V13C14,14.1 14.67,15 15.5,15C16.33,15 17,14.1 17,13M15.5,11A0.5,0.5 0 0,1 16,11.5V13.5A0.5,0.5 0 0,1 15.5,14A0.5,0.5 0 0,1 15,13.5V11.5A0.5,0.5 0 0,1 15.5,11M13,13V12C13,10.9 12.33,10 11.5,10C10.67,10 10,10.9 10,12V13C10,14.1 10.67,15 11.5,15C12.33,15 13,14.1 13,13M11.5,11A0.5,0.5 0 0,1 12,11.5V13.5A0.5,0.5 0 0,1 11.5,14A0.5,0.5 0 0,1 11,13.5V11.5A0.5,0.5 0 0,1 11.5,11M8,15H9V10H8L7,10.5V11.5L8,11V15Z"></path></svg>
+                        </div>
+                        <p id="coin-count" class="list__item-count">0</p>
                     </div>
-                    <div class="inventory__item keys">
-                        <h2 class="inventory__item-title">
-                            <svg class="ui-icon" viewBox="0 0 24 24"><path d="M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z"></path></svg>
-                        </h2>
-                        <p id="key-count" class="inventory__item-count">0</p>
+                    <div class="list__item">
+                        <div class="list__item-icon">
+                            <svg class="ui-icon keys" viewBox="0 0 24 24"><path d="M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z"></path></svg>
+                        </div>
+                        <p id="key-count" class="list__item-count">0</p>
                     </div>
-                    <div id="map" class="inventory__item map hidden">
-                        <h2 class="inventory__item-title">
-                            <svg class="ui-icon" viewBox="0 0 24 24"><path d="M15,19L9,16.89V5L15,7.11M20.5,3C20.44,3 20.39,3 20.34,3L15,5.1L9,3L3.36,4.9C3.15,4.97 3,5.15 3,5.38V20.5A0.5,0.5 0 0,0 3.5,21C3.55,21 3.61,21 3.66,20.97L9,18.9L15,21L20.64,19.1C20.85,19 21,18.85 21,18.62V3.5A0.5,0.5 0 0,0 20.5,3Z"></path></svg>
-                        </h2>
-                        <p id="map" class="inventory__item-single">Map [m]</p>
-                    </div>
+                    <!-- <div id="map" class="list__item hidden">
+                        <div class="list__item-icon">
+                            <svg class="ui-icon map" viewBox="0 0 24 24"><path d="M15,19L9,16.89V5L15,7.11M20.5,3C20.44,3 20.39,3 20.34,3L15,5.1L9,3L3.36,4.9C3.15,4.97 3,5.15 3,5.38V20.5A0.5,0.5 0 0,0 3.5,21C3.55,21 3.61,21 3.66,20.97L9,18.9L15,21L20.64,19.1C20.85,19 21,18.85 21,18.62V3.5A0.5,0.5 0 0,0 20.5,3Z"></path></svg>
+                        </div>
+                        <p id="map-count" class="list__item-single">Map [m]</p>
+                    </div> -->
                 </div>
                 <div class="game-board">
-                    <div id="grid" class="grid" style="grid-template-columns: repeat(8, 64px);">
+                    <div id="grid-container" class="grid" style="grid-template-columns: repeat(8, 64px);">
 
+                    </div>
+                </div>
+                <div class="mini-map">
+                    <div id="mini-map-enlarger" class="mini-map-enlarger">
+                        <h2 class="mini-map__title">Mini map</h2>
+                        <div class="mini-map__container">
+                            <div class="mini-map__information">
+                                <h2>Mini map</h2>
+                                <div class="mini-map__information-stats">
+                                    <p>Current location: forest</p>
+                                </div>
+                            </div>
+                            <div class="mini-map__legends">
+                                <h2 class="ui__title">Icons</h2>
+                                <div class="list__item">
+                                    <div class="list__item-icon legend location"></div>
+                                    <p class="list__item-single">Current location</p>
+                                </div>
+                                <div class="list__item">
+                                    <div class="list__item-icon legend dungeon"></div>
+                                    <p class="list__item-single">Dungeon entrance</p>
+                                </div>
+                                <h2 class="ui__title margin-top">Bioms</h2>
+                                <div class="list__item">
+                                    <div class="list__item-icon legend forest"></div>
+                                    <p class="list__item-single">Forest</p>
+                                </div>
+                                <div class="list__item">
+                                    <div class="list__item-icon legend desert"></div>
+                                    <p class="list__item-single">Desert</p>
+                                </div>
+                                <div class="list__item">
+                                    <div class="list__item-icon legend snow"></div>
+                                    <p class="list__item-single">Snow</p>
+                                </div>
+                            </div>
+                            <div id="mini-map" class="mini-map__map"></div>
+                        </div>
+                        <p class="mini-map__text">Press [M] to enlarge</p>
                     </div>
                 </div>
             </div>

@@ -10,6 +10,10 @@
     --theme-text: #000;
     --theme-link: indigo;
     --theme-link-hover: crimson;
+    /* GAME RELATED */
+    --forest: #b0d1a7;
+    --desert: #d1c395;
+    --snow: #ebebeb;
 }
 
 body {
@@ -35,12 +39,16 @@ a:hover {
 }
 
 .main {
-    max-width: 900px;
+    max-width: 1000px;
     margin: 0 auto;
     padding: 0 1rem;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+}
+
+.margin-top {
+    margin-top: 1rem;
 }
 
 
@@ -61,14 +69,11 @@ a:hover {
 
 .ui {
     min-width: 200px;
+    padding: 1rem;
 }
 
 .ui__title {
     margin-bottom: 0.5rem;
-}
-
-.ui__title.margin-top {
-    margin-top: 1rem;
 }
 
 .ui-icon {
@@ -76,29 +81,74 @@ a:hover {
     height: 40px;
 }
 
-.life .ui-icon {
+.ui-icon.location {
     fill: crimson;
 }
 
-.strength .ui-icon {
+.ui-icon.forest {
+    fill: var(--forest);
+}
+
+.ui-icon.desert {
+    fill: var(--desert);
+}
+
+.ui-icon.snow {
+    fill: var(--snow);
+}
+
+.ui-icon.life {
+    fill: crimson;
+}
+
+.ui-icon.strength {
     fill: darksalmon;
 }
 
-.armor .ui-icon {
+.ui-icon.armor {
     fill: royalblue;
 }
 
-.apples .ui-icon {
-    fill: crimson;
+.ui-icon.coins {
+    fill: green;
 }
 
-.keys .ui-icon {
+.ui-icon.keys {
     fill: gold;
 }
 
-.map .ui-icon {
+.ui-icon.map {
     fill: orange;
 }
+
+
+/* #region INVENTORY */
+
+.list__item {
+    display: flex;
+    align-items: center;
+}
+
+.list__item-icon {
+    margin-right: 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.list__item-count {
+    font-size: 1.8rem;
+}
+
+.list__item-single {
+    font-size: 1.2rem;
+}
+
+.list__item.hidden {
+    display: none;
+}
+
+
+/* #endregion INVENTORY */
 
 
 /* #endregion UI */
@@ -118,89 +168,272 @@ a:hover {
     width: 64px;
     height: 64px;
     transition: opacity 150ms;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.tile__object {
+    width: 100%;
+    height: 100%;
+    position: absolute;
 }
 
 .grid__tile:hover {
     background-color: khaki !important;
 }
 
-.grid__enemy {
-    background-color: red;
+.forest .grid__tile {
+    background-color: var(--forest);
 }
 
-.grid__skeleton {
-    background-image: url(../images/enemy-skeleton.png);
+.desert .grid__tile {
+    background-color: var(--desert);
 }
 
-.forest .grid__empty {
-    background-color: #b0d1a7;
+.snow .grid__tile {
+    background-color: var(--snow);
 }
 
 .forest .grid__tree {
-    background-color: #b0d1a7;
     background-image: url(../images/tree-forest.png);
 }
 
-.forest .grid__rock {
-    background-color: #b0d1a7;
-    background-image: url(../images/rock.png);
-}
-
-.desert .grid__empty {
-    background-color: #d1c395;
-}
-
 .desert .grid__tree {
-    background-color: #d1c395;
     background-image: url(../images/tree-desert.png);
 }
 
-.desert .grid__rock {
-    background-color: #d1c395;
-    background-image: url(../images/rock.png);
-}
-
-.snow .grid__empty {
-    background-color: #ebebeb;
-}
-
 .snow .grid__tree {
-    background-color: #ebebeb;
     background-image: url(../images/tree-snow.png);
 }
 
-.snow .grid__rock {
-    background-color: #ebebeb;
+.forest .grid__rock {
     background-image: url(../images/rock.png);
 }
 
-.grid__apple {
-    background-color: crimson;
+.desert .grid__rock {
+    background-image: url(../images/rock.png);
 }
 
-.grid__key {
-    background-color: gold;
+.snow .grid__rock {
+    background-image: url(../images/rock.png);
 }
+
+.item {
+    width: 48px;
+    height: 48px;
+    background-image: url(../images/items.png);
+}
+
+
+/* .apple {
+    background-position: -480px -528px;
+}
+
+.key {
+    background-position: -528px -144px;
+}
+
+.map {
+    background-position: -432px -144px;
+} */
+
+
+/* #region AREAs */
+
+.gate {
+    position: relative;
+}
+
+.gate.dungeon {
+    background-image: url(../images/dungeon-entrance.png);
+}
+
+.gate.dungeon.locked {
+    background-image: url(../images/dungeon-entrance-gate.png);
+    background-size: 100%;
+}
+
+
+/* #endregion AREAs */
 
 
 /* #endregion GRID */
 
 
+/* #region MINI MAP */
+
+.mini-map {
+    margin-left: 1rem;
+    padding: 1rem;
+    border: 10px solid black;
+}
+
+.mini-map__title {
+    margin-bottom: 0.5rem;
+}
+
+.mini-map__map {
+    display: grid;
+    margin-bottom: 0.25rem;
+}
+
+.mini-map__tile {
+    width: 100%;
+}
+
+.mini-map__tile.forest {
+    background-color: var(--forest);
+}
+
+.mini-map__tile.desert {
+    background-color: var(--desert);
+}
+
+.mini-map__tile.snow {
+    background-color: var(--snow);
+}
+
+.list__item-icon.legend {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 0.25rem;
+}
+
+.list__item-icon.forest {
+    background-color: var(--forest);
+}
+
+.list__item-icon.desert {
+    background-color: var(--desert);
+}
+
+.list__item-icon.snow {
+    background-color: var(--snow);
+}
+
+.list__item-icon.dungeon {
+    background-image: url(../images/dungeon-entrance.png);
+    background-repeat: no-repeat;
+    background-size: 100%;
+}
+
+.list__item-icon.location,
+.mini-map__tile.active.transparent {
+    background-image: url(../images/player-spritesheet.png);
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-size: 100%;
+}
+
+.mini-map__tile.active {
+    background-color: crimson;
+}
+
+.mini-map__tile.dungeon {
+    background-image: url(../images/dungeon-entrance.png);
+    background-size: 100%;
+}
+
+.mini-map__tile.fog-of-war.dungeon {
+    background-image: none;
+}
+
+.mini-map__tile.forest.active.transparent {
+    background-color: var(--forest);
+}
+
+.mini-map__tile.desert.active.transparent {
+    background-color: var(--desert);
+}
+
+.mini-map__tile.snow.active.transparent {
+    background-color: var(--snow);
+}
+
+.mini-map__tile.fog-of-war {
+    background-color: black;
+}
+
+.grid-icon {
+    width: 100%;
+    height: 100%;
+}
+
+.grid-icon.location {
+    fill: black;
+}
+
+
+/* #region MINI MAP LARGE */
+
+.mini-map-enlarger.enlarged {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    /* justify-content: center; */
+    align-items: center;
+    background-color: white;
+}
+
+.mini-map-enlarger.enlarged .mini-map__text,
+.mini-map-enlarger.enlarged .mini-map__title {
+    display: none;
+}
+
+.mini-map__container {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.mini-map__legends,
+.mini-map__information {
+    display: none;
+}
+
+.mini-map__information {
+    width: 100%;
+    padding: 1rem 0;
+}
+
+.mini-map-enlarger.enlarged .mini-map__information,
+.mini-map-enlarger.enlarged .mini-map__legends {
+    display: unset;
+}
+
+.mini-map-enlarger.enlarged .mini-map__map {
+    margin-left: 1rem;
+}
+
+
+/* #endregion MINI MAP LARGE */
+
+
+/* #endregion MINI MAP */
+
+
 /* #region PLAYER */
 
 .player {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    z-index: 1;
-}
-
-.player__one {
     background-image: url(../images/player-spritesheet.png);
     background-position: 0 0;
+    z-index: 10;
 }
 
-.player.attack {
+
+/* #endregion PLAYER */
+
+
+/* #region ANIMATIONS */
+
+.attack {
     animation-fill-mode: backwards !important;
 }
 
@@ -262,52 +495,84 @@ a:hover {
 }
 
 
-/* #endregion PLAYER */
+/* #endregion ANIMATIONS */
 
 
 /* #region ENEMIES */
 
 .enemy {
-    background-image: url(../images/enemy-skeleton.png);
     background-position: 0 0;
-    width: 100%;
+    z-index: 5;
+    display: flex;
+    justify-content: center;
+}
+
+.enemy.skeleton {
+    background-image: url(../images/enemy-skeleton.png);
+}
+
+.enemy.orc {
+    background-image: url(../images/enemy-orc.png);
+}
+
+.healthbar {
+    position: absolute;
+    top: 70%;
+    width: 90%;
+    height: 1rem;
+    background-color: black;
+    display: flex;
+    align-items: center;
+    padding: 2px;
+}
+
+.healthbar .bar {
     height: 100%;
+    background-color: red;
+}
+
+.healthbar .bar__text {
+    position: absolute;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    color: white;
+    font-size: 0.6rem;
 }
 
 
 /* #endregion ENEMIES */
 
 
-/* #region INVENTORY */
+/* #region EFECT */
 
-.ui {
-    padding: 1rem;
+.effect {
+    opacity: 0;
+    z-index: 9;
 }
 
-.inventory__item {
-    display: flex;
-    align-items: center;
+.effect.explosion {
+    background-image: url(../images/explosion.png);
+    background-size: contain;
+    animation-name: explosion;
 }
 
-.inventory__item-title {
-    font-size: 2rem;
-    margin-right: 1rem;
-}
-
-.inventory__item-count {
-    font-size: 1.8rem;
-}
-
-.inventory__item-single {
-    font-size: 1.2rem;
-}
-
-.inventory__item.hidden {
-    display: none;
+@keyframes explosion {
+    0% {
+        transform: scale(0.1);
+        opacity: 0;
+    }
+    40% {
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
 }
 
 
-/* #endregion INVENTORY */
+/* #endregion EFECT */
 
 
 /* #region TOOLTIP */
