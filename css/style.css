@@ -2,7 +2,8 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: "Segoe UI", "Helvetica Neue", "Helvetica", Arial, sans-serif;
+    /* font-family: "Segoe UI", "Helvetica Neue", "Helvetica", Arial, sans-serif; */
+    font-family: 'IM Fell English SC', serif;
 }
 
 :root {
@@ -91,6 +92,132 @@ a:hover {
     margin-top: 1rem;
 }
 
+form>input,
+form>button {
+    padding: 0.5rem;
+    background-image: url(../images/paper-background.png);
+    border: 4px double gold;
+    border-radius: 0.25rem;
+    color: #fff5e7;
+    text-shadow: 1px 1px 3px black;
+    box-shadow: 2px 2px 10px 0 black;
+}
+
+form>input.js-disabled,
+form>button.js-disabled,
+form>input.js-disabled:hover,
+form>button.js-disabled:hover {
+    filter: grayscale(80%) contrast(70%);
+    box-shadow: 0 0 10px 0 black;
+    cursor: default;
+}
+
+form>button {
+    cursor: pointer;
+    transition: filter 300ms, box-shadow 300ms;
+}
+
+form>button:hover {
+    filter: contrast(150%);
+    box-shadow: 5px 5px 15px 0 black;
+}
+
+
+/* #region MENU SCREENs */
+
+.start-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: black;
+    z-index: 99;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-image: url(../images/start-screen-background.jpg);
+    background-size: cover;
+    transition: opacity 800ms, visibility 800ms;
+}
+
+.start-screen.js-hidden {
+    visibility: hidden;
+    opacity: 0;
+}
+
+.start-content {
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.start-title {
+    color: white;
+    margin-bottom: 2rem;
+}
+
+.start-title h1 {
+    font-size: 5rem;
+    text-shadow: 2px 2px 5px black;
+}
+
+.start-form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 240px;
+}
+
+.start-form__element {
+    margin: 0.5rem;
+}
+
+.start-form__label {
+    color: white;
+    text-shadow: 2px 2px 5px black;
+}
+
+.start-form__label.js-invalid {
+    color: yellow;
+    font-weight: 700;
+    text-shadow: 0 0 8px white;
+}
+
+.start-form__name {
+    margin-bottom: 3rem;
+}
+
+.game-over-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 800ms, visibility 800ms, transform 800ms;
+}
+
+.game-over-screen.js-hidden {
+    transform: scale(0);
+    visibility: hidden;
+    opacity: 0;
+}
+
+.game-over-title {
+    color: crimson;
+    font-size: 5rem;
+    text-shadow: 2px 2px 5px black;
+}
+
+
+/* #endregion MENU SCREENs */
+
 
 /* #region GAME */
 
@@ -113,13 +240,21 @@ a:hover {
     padding: 1rem;
 }
 
+.ui__item {
+    display: flex;
+    align-items: center;
+    margin-bottom: -1rem;
+}
+
 .ui__title {
     margin-bottom: 0.5rem;
 }
 
 .ui-icon {
-    width: 40px;
-    height: 40px;
+    width: 64px;
+    height: 64px;
+    background-image: url(../images/collectables.png);
+    /* transform: scale(0.75); */
 }
 
 .ui-icon.location {
@@ -136,30 +271,6 @@ a:hover {
 
 .ui-icon.snow {
     fill: var(--snow);
-}
-
-.ui-icon.life {
-    fill: crimson;
-}
-
-.ui-icon.strength {
-    fill: darksalmon;
-}
-
-.ui-icon.armor {
-    fill: royalblue;
-}
-
-.ui-icon.coins {
-    fill: green;
-}
-
-.ui-icon.keys {
-    fill: gold;
-}
-
-.ui-icon.map {
-    fill: orange;
 }
 
 
@@ -261,9 +372,9 @@ a:hover {
 }
 
 .item {
-    width: 48px;
-    height: 48px;
-    background-image: url(../images/items.png);
+    width: 64px;
+    height: 64px;
+    background-image: url(../images/collectables.png);
 }
 
 
@@ -481,6 +592,10 @@ a:hover {
 
 /* #region ANIMATIONS */
 
+.attacking {
+    z-index: 20;
+}
+
 .animation {
     animation-timing-function: linear;
     animation-fill-mode: forwards;
@@ -596,7 +711,7 @@ a:hover {
 
 .effect {
     opacity: 0;
-    z-index: 9;
+    z-index: 29;
 }
 
 .effect.explosion {

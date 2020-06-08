@@ -7,6 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="description" content="A Rogue like game called Rogue Survivor">
     <title>Rogue Survivor</title>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
     <link rel="preload stylesheet" href="./css/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="./css/style.css"></noscript>
     <link rel="shortcut icon" href="./images/logo.png" type="image/png">
@@ -15,57 +16,58 @@
 
 <body>
     <div id="background" class="game forest battle">
+        <div id="start-screen" class="start-screen">
+            <div class="start-content">
+                <header class="start-title">
+                    <h1>Rogue Survivor</h1>
+                </header>
+                <form id="start-form" class="start-form">
+                    <label id="start-form-label" for="start-form-name" class="start-form__label">Player name</label>
+                    <input id="start-form-name" class="start-form__element start-form__input start-form__name" type="text" value="Player 1">
+                    <button id="start-form-continue" class="start-form__element start-form__button js-disabled">Continue</button>
+                    <button id="start-form-options" class="start-form__element start-form__button js-disabled">Options</button>
+                    <button class="start-form__element start-form__button" type="submit">New game</button>
+                </form>
+            </div>
+        </div>
+        <div id="game-over-screen" class="game-over-screen js-hidden">
+            <h2 class="game-over-title">G&nbsp;A&nbsp;M&nbsp;E&nbsp;&nbsp;&nbsp;O&nbsp;V&nbsp;E&nbsp;R</h2>
+        </div>
         <img src="./images/forest.jpg" class="biom biom-forest" alt="Forest">
         <img src="./images/desert.jpg" class="biom biom-desert" alt="Desert">
         <img src="./images/snow.jpg" class="biom biom-snow" alt="Snow">
         <main class="main">
             <header class="header">
-                <h1 class="game-title">Rogue Survivor</h1>
+                <h2 class="game-title">Rogue Survivor</h2>
             </header>
             <div class="main-game">
                 <div class="ui">
                     <h2 class="ui__title">Stats</h2>
-                    <div class="list__item">
-                        <div class="list__item-icon">
-                            <svg class="ui-icon life" viewBox="0 0 24 24"><path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"></path></svg>
-                        </div>
+                    <div class="ui__item">
+                        <div id="life-icon" class="ui-icon life"></div>
                         <p id="life-count" class="list__item-count">0</p>
                     </div>
-                    <div class="list__item">
-                        <div class="list__item-icon">
-                            <svg class="ui-icon strength" viewBox="0 0 24 24"><path d="M3 18.34C3 18.34 4 7.09 7 3L12 4L11 7.09H9V14.25H10C12 11.18 16.14 10.06 18.64 11.18C21.94 12.71 21.64 17.32 18.64 19.36C16.24 21 9 22.43 3 18.34Z"></path></svg>
-                        </div>
+                    <div class="ui__item">
+                        <div id="strength-icon" class="ui-icon strength"></div>
                         <p id="strength-count" class="list__item-count">0</p>
                     </div>
-                    <div class="list__item">
-                        <div class="list__item-icon">
-                            <svg class="ui-icon armor" viewBox="0 0 24 24"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1Z"></path></svg>
-                        </div>
+                    <div class="ui__item">
+                        <div id="armor-icon" class="ui-icon armor"></div>
                         <p id="armor-count" class="list__item-count">0</p>
                     </div>
                     <h2 class="ui__title margin-top">Inventory</h2>
-                    <div class="list__item">
-                        <div class="list__item-icon">
-                            <svg class="ui-icon coins" viewBox="0 0 24 24"><path d="M2,5H22V20H2V5M20,18V7H4V18H20M17,8A2,2 0 0,0 19,10V15A2,2 0 0,0 17,17H7A2,2 0 0,0 5,15V10A2,2 0 0,0 7,8H17M17,13V12C17,10.9 16.33,10 15.5,10C14.67,10 14,10.9 14,12V13C14,14.1 14.67,15 15.5,15C16.33,15 17,14.1 17,13M15.5,11A0.5,0.5 0 0,1 16,11.5V13.5A0.5,0.5 0 0,1 15.5,14A0.5,0.5 0 0,1 15,13.5V11.5A0.5,0.5 0 0,1 15.5,11M13,13V12C13,10.9 12.33,10 11.5,10C10.67,10 10,10.9 10,12V13C10,14.1 10.67,15 11.5,15C12.33,15 13,14.1 13,13M11.5,11A0.5,0.5 0 0,1 12,11.5V13.5A0.5,0.5 0 0,1 11.5,14A0.5,0.5 0 0,1 11,13.5V11.5A0.5,0.5 0 0,1 11.5,11M8,15H9V10H8L7,10.5V11.5L8,11V15Z"></path></svg>
-                        </div>
+                    <div class="ui__item">
+                        <div id="coin-icon" class="ui-icon coin"></div>
                         <p id="coin-count" class="list__item-count">0</p>
                     </div>
-                    <div class="list__item">
-                        <div class="list__item-icon">
-                            <svg class="ui-icon keys" viewBox="0 0 24 24"><path d="M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z"></path></svg>
-                        </div>
+                    <div class="ui__item">
+                        <div id="key-icon" class="ui-icon key"></div>
                         <p id="key-count" class="list__item-count">0</p>
                     </div>
-                    <!-- <div id="map" class="list__item hidden">
-                        <div class="list__item-icon">
-                            <svg class="ui-icon map" viewBox="0 0 24 24"><path d="M15,19L9,16.89V5L15,7.11M20.5,3C20.44,3 20.39,3 20.34,3L15,5.1L9,3L3.36,4.9C3.15,4.97 3,5.15 3,5.38V20.5A0.5,0.5 0 0,0 3.5,21C3.55,21 3.61,21 3.66,20.97L9,18.9L15,21L20.64,19.1C20.85,19 21,18.85 21,18.62V3.5A0.5,0.5 0 0,0 20.5,3Z"></path></svg>
-                        </div>
-                        <p id="map-count" class="list__item-single">Map [m]</p>
-                    </div> -->
                 </div>
                 <div class="game-board">
                     <div id="zone-container" class="zone" style="grid-template-columns: repeat(8, 64px);">
-
+                        <!-- Dynamic content -->
                     </div>
                 </div>
                 <div class="mini-map">

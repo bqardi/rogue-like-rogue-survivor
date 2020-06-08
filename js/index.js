@@ -5,6 +5,15 @@ document.addEventListener("DOMContentLoaded", event => {
     const miniMapContainer = document.getElementById("mini-map");
     const miniMapZoom = document.getElementById("mini-map-enlarger");
 
+    // Start screen elements
+    const startScreen = document.getElementById("start-screen");
+    const startForm = document.getElementById("start-form");
+
+    // GAME OVER screen
+    const gameOverScreen = document.getElementById("game-over-screen");
+
+    gameStarted = false;
+
     let player;
     let playerIsMoving = false;
     let playersTurn = true;
@@ -17,8 +26,6 @@ document.addEventListener("DOMContentLoaded", event => {
 
     let enemiesInZone = 0;
     let zoneLocked = false;
-
-    const worldKeys = 4;
 
     class Region {
         constructor(name, type, element, size, zoneSize, tileSize, bioms) {
@@ -292,7 +299,7 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Character {
-        constructor(name, moveTime, attackTime, life, strength, currentTile) {
+        constructor(name, moveTime, attackTime, life, strength, currentTile, onDeath) {
             this.name = name;
             this.moveTime = moveTime;
             this.attackTime = attackTime;
@@ -302,6 +309,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.currentTile = currentTile;
             this.element = null;
             this.isDead = false;
+            this.onDeath = onDeath;
         }
         setMoveTime() {
             this.element.style.animationDuration = `${this.moveTime}ms`;
@@ -313,7 +321,8 @@ document.addEventListener("DOMContentLoaded", event => {
             this.life += amount;
             if (this.life <= 0) {
                 this.life = 0;
-                this.die();
+                this.isDead = true;
+                this.onDeath(this);
             }
             if (this.life > this.totalLife) {
                 this.life = this.totalLife;
@@ -325,21 +334,16 @@ document.addEventListener("DOMContentLoaded", event => {
             }
             this.addLife(-damage);
         }
-        die() {
-            this.isDead = true;
-            console.log(this.name + " died!");
-        }
     }
 
     class Player extends Character {
-        constructor(name, moveTime, attackTime, interactTime, life, strength, armor, lifeElm, strengthElm, armorElm, currentTile) {
-            super(name, moveTime, attackTime, life, strength, currentTile);
+        constructor(name, moveTime, attackTime, life, strength, armor, lifeElm, strengthElm, armorElm, currentTile, onDeath) {
+            super(name, moveTime, attackTime, life, strength, currentTile, onDeath);
             this.armor = armor;
             this.lifeElm = lifeElm;
             this.strengthElm = strengthElm;
             this.armorElm = armorElm;
             this.killCount = 0;
-            this.interactTime = interactTime;
             this.initialize();
         }
         initialize() {
@@ -350,7 +354,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.element.classList.add("player");
             this.element.classList.add("animation");
             this.element.classList.add("tile__object");
-            this.element.innerHTML = `<div class="tooltip">Player</div>`;
+            this.element.innerHTML = `<div class="tooltip">${this.name}</div>`;
         }
         setInteractTime() {
             this.element.style.animationDuration = `${this.interactTime}ms`;
@@ -376,8 +380,8 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Enemy extends Character {
-        constructor(name, moveTime, attackTime, life, strength, cls, currentTile) {
-            super(name, moveTime, attackTime, life, strength, currentTile);
+        constructor(name, moveTime, attackTime, life, strength, cls, currentTile, onDeath) {
+            super(name, moveTime, attackTime, life, strength, currentTile, onDeath);
             this.totalLife = life;
             this.cls = cls;
             this.elmBar;
@@ -425,8 +429,8 @@ document.addEventListener("DOMContentLoaded", event => {
         constructor(amount, cls, posX, posY, callback) {
             this.amount = amount;
             this.cls = cls;
-            this.posX = posX * 48;
-            this.posY = posY * 48;
+            this.posX = posX * 64;
+            this.posY = posY * 64;
             this.callback = callback;
         }
         createHTML() {
@@ -549,7 +553,7 @@ document.addEventListener("DOMContentLoaded", event => {
             name: "Skeleton",
             cls: "skeleton",
             life: 20,
-            strength: 8,
+            strength: 5,
             totalCount: 0,
             moveTime: 500,
             attackTime: 300,
@@ -558,7 +562,7 @@ document.addEventListener("DOMContentLoaded", event => {
             name: "Orc",
             cls: "orc",
             life: 50,
-            strength: 18,
+            strength: 8,
             totalCount: 0,
             moveTime: 1000,
             attackTime: 400,
@@ -593,113 +597,151 @@ document.addEventListener("DOMContentLoaded", event => {
     let collectables = {
         coins: {
             name: "coin",
-            spriteCoordinates: { x: 7, y: 3 },
+            count: 0,
+            spriteCoordinates: { x: 3, y: 3 },
             includeInStartZone: true,
             stacks: 100,
             maxStackAmount: 30,
             totalStackAmount: 0,
+            iconElement: document.getElementById("coin-icon"),
+            element: document.getElementById("coin-count"),
             onCollect: function(item) {
-                ui.coin.count += item.amount;
-                ui.coin.element.textContent = ui.coin.count;
+                console.log(this);
+                collectables.coins.count += item.amount;
+                collectables.coins.element.textContent = collectables.coins.count;
             }
         },
         keys: {
             name: "key",
-            spriteCoordinates: { x: 11, y: 3 },
+            count: 0,
+            spriteCoordinates: { x: 6, y: 0 },
             includeInStartZone: false,
             stacks: 6,
             maxStackAmount: 1,
+            iconElement: document.getElementById("key-icon"),
+            element: document.getElementById("key-count"),
             onCollect: function(item) {
-                ui.key.count += item.amount;
-                ui.key.element.textContent = ui.key.count;
+                collectables.keys.count += item.amount;
+                collectables.keys.element.textContent = collectables.keys.count;
             }
         },
         weapons: {
             name: "strength",
-            spriteCoordinates: { x: 3, y: 7 },
+            count: 0,
+            spriteCoordinates: { x: 1, y: 2 },
             includeInStartZone: false,
             stacks: 40,
             maxStackAmount: 3,
+            iconElement: document.getElementById("strength-icon"),
+            element: document.getElementById("strength-count"),
             onCollect: function(item) {
                 player.addStrength(item.amount);
             }
         },
         armors: {
             name: "armor",
-            spriteCoordinates: { x: 9, y: 9 },
+            count: 0,
+            spriteCoordinates: { x: 5, y: 0 },
             includeInStartZone: false,
             stacks: 40,
             maxStackAmount: 3,
+            iconElement: document.getElementById("armor-icon"),
+            element: document.getElementById("armor-count"),
             onCollect: function(item) {
                 player.addArmor(item.amount);
             }
         },
         potions: {
             name: "life",
-            spriteCoordinates: { x: 11, y: 4 },
+            count: 0,
+            spriteCoordinates: { x: 3, y: 4 },
             includeInStartZone: false,
             stacks: 300,
-            maxStackAmount: 20,
+            maxStackAmount: 50,
+            iconElement: document.getElementById("life-icon"),
+            element: document.getElementById("life-count"),
             onCollect: function(item) {
                 player.addLife(item.amount);
             }
         },
     }
 
-    let ui = {
-        coin: {
-            count: 0,
-            stackable: true,
-            active: true,
-            element: document.getElementById("coin-count"),
-        },
-        key: {
-            count: 0,
-            stackable: true,
-            active: false,
-            element: document.getElementById("key-count"),
-        },
-        map: {
-            count: 0,
-            stackable: false,
-            active: false,
-            element: document.getElementById("map"),
-        },
-    };
+    let startFormLabelText = "";
+    startForm.addEventListener("submit", function(evt) {
+        evt.preventDefault();
+        const startFormName = startForm.querySelector("#start-form-name");
+        const startFormLabel = startForm.querySelector("#start-form-label");
+        if (startFormLabelText == "") {
+            startFormLabelText = startFormLabel.textContent;
+        }
+        if (startFormName.value == "") {
+            startFormLabel.textContent = startFormLabelText + " - Please fill out!";
+            startFormLabel.classList.add("js-invalid");
+            startFormName.addEventListener("keyup", keyListen);
 
-    newGame();
-
+            function keyListen() {
+                startFormLabel.textContent = startFormLabelText;
+                startFormLabel.classList.remove("js-invalid");
+                console.log("hello")
+                startFormName.removeEventListener("keyup", keyListen);
+            }
+            return false;
+        }
+        newGame(startFormName.value);
+        startScreen.classList.add("js-hidden");
+    });
     document.addEventListener("keyup", function(evt) {
-        if (evt.key == "m") {
+        if (gameStarted && evt.key == "m") {
             miniMap.zoomToggle();
         }
     });
 
-    function newGame() {
+    function uiIcon(collectable) {
+        const x = collectable.spriteCoordinates.x * 64;
+        const y = collectable.spriteCoordinates.y * 64;
+        console.log(collectable.spriteCoordinates)
+        collectable.iconElement.style.backgroundPosition = `-${x}px -${y}px`;
+    }
+
+    function newGame(playerName) {
         const regionSize = new Direction(11, 14, 11, 14);
         const zoneSize = new Dimension(7, 7);
         region = new Region("home", "outdoor", zoneContainer, regionSize, zoneSize, 64, worlds.home.bioms);
         miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
-        const lifeUIElm = document.getElementById("life-count");
-        const strengthUIElm = document.getElementById("strength-count");
-        const armorUIElm = document.getElementById("armor-count");
-        player = new Player("Player 1", 250, 150, 300, 100, 10, 0, lifeUIElm, strengthUIElm, armorUIElm);
+        const lifeUIElm = collectables.potions.element;
+        const strengthUIElm = collectables.weapons.element;
+        const armorUIElm = collectables.armors.element;
+        player = new Player(playerName, 150, 150, 100, 10, 0, lifeUIElm, strengthUIElm, armorUIElm, null, gameOver);
+        for (let i = 0; i < Object.values(collectables).length; i++) {
+            const value = Object.values(collectables)[i];
+            uiIcon(value);
+        }
         buildMap();
         buildZone("0_0");
         placePlayer(getCenterTileIndex());
         addPlayerControls();
         setEvent();
+        gameStarted = true;
 
         //CHEATS!!!
         // ui.key.count++;
         // ui.key.element.textContent = ui.key.count;
     }
 
+    function gameOver(playerObj) {
+        gameOverScreen.classList.remove("js-hidden");
+        setTimeout(() => {
+            gameOverScreen.classList.add("js-hidden");
+            startScreen.classList.remove("js-hidden");
+        }, 3000);
+        calmEvent();
+    }
+
     function enterGate(areaObj) {
         if (areaObj.locked) {
-            if (ui.key.count > 0) {
-                ui.key.count--;
-                ui.key.element.textContent = ui.key.count;
+            if (collectables.keys.count > 0) {
+                collectables.keys.count--;
+                collectables.keys.element.textContent = collectables.keys.count;
                 areaObj.unlock();
             } else {
                 console.log("Key is missing!");
@@ -725,7 +767,7 @@ document.addEventListener("DOMContentLoaded", event => {
         // const tileObj2 = zone.getTileObj("2_2");
         // placeEnemy(tileObj2, enemyTypes[1]);
         // const tileObj = zone.getTileObj("2_1");
-        // placeEnemy(tileObj, enemyTypes[0]);
+        // placeEnemy(tileObj, enemyTypes[1]);
 
         //Loop through all items and place them randomly in the world (Coins, Keys, Weapons, Armors, Potions, etc.)
         for (let i = 0; i < Object.keys(collectables).length; i++) {
@@ -846,21 +888,23 @@ document.addEventListener("DOMContentLoaded", event => {
         const targetTile = targetObj.currentTile;
         const sourceCoordinates = sourceTile.coordinates();
         const targetCoordinates = targetTile.coordinates();
-        const zone = currentZone;
+        let moveDirection;
+
         if (targetCoordinates.x > sourceCoordinates.x) {
-            return "right";
+            moveDirection = "right";
         } else if (targetCoordinates.y > sourceCoordinates.y) {
-            return "down";
+            moveDirection = "down";
         }
         if (targetCoordinates.x < sourceCoordinates.x) {
-            return "left";
+            moveDirection = "left";
         } else if (targetCoordinates.y < sourceCoordinates.y) {
-            return "up";
+            moveDirection = "up";
         }
-        return "none";
+        return moveDirection;
     }
 
     function enemyMove(enemyObj, direction, destinationTileObj) {
+        enemyObj.currentTile.element.classList.add("attacking");
         setTimeout(() => {
             enemyObj.element.classList.add("animation-" + direction);
             if (destinationTileObj == player.currentTile) {
@@ -869,12 +913,13 @@ document.addEventListener("DOMContentLoaded", event => {
                     effect.explosion.createHTML(destinationTileObj, 700);
                     const playerKilled = destinationTileObj.object.takeDamage(enemyObj.strength);
                     if (playerKilled) {
-                        console.log("Player died!");
+                        console.log("Player is very dead!!!");
                     }
                 }, function() {
                     if (!destinationTileObj.object.isDead) {
                         nextTurn();
                     }
+                    enemyObj.currentTile.element.classList.remove("attacking");
                 });
             } else {
                 enemyObj.setMoveTime();
@@ -888,6 +933,7 @@ document.addEventListener("DOMContentLoaded", event => {
                     currentTile.setEmpty();
                 }, function() {
                     enemyObj.element.classList.remove("animation-" + direction);
+                    enemyObj.currentTile.element.classList.remove("attacking");
                     setTimeout(() => {
                         nextTurn();
                     }, 500);
@@ -952,7 +998,6 @@ document.addEventListener("DOMContentLoaded", event => {
         tileObj.object = player;
         tileObj.element.append(tileObj.object.element);
         player.currentTile = tileObj;
-        // player.currentTile = tileObj;
     }
 
     function placeEnemies() {
@@ -999,10 +1044,14 @@ document.addEventListener("DOMContentLoaded", event => {
             console.log("Array is empty!");
             return;
         }
-        const enemy = new Enemy(type.name, type.moveTime, type.attackTime, type.life, type.strength, type.cls, tileObj);
+        const enemy = new Enemy(type.name, type.moveTime, type.attackTime, type.life, type.strength, type.cls, tileObj, enemyDeath);
         tileObj.setEmpty();
         tileObj.placeObject(enemy, "enemy", true);
         type.totalCount++;
+    }
+
+    function enemyDeath(enemy) {
+        console.log("Enemy: " + enemy.name);
     }
 
     function getRandomArrayItem(arr) {
@@ -1154,11 +1203,7 @@ document.addEventListener("DOMContentLoaded", event => {
             });
             return false;
         }
-        if (destinationTileObj.type == "item") {
-            player.setInteractTime();
-        } else {
-            player.setMoveTime();
-        }
+        player.setMoveTime();
         fullMove(element, player.moveTime, direction, function() {
             if (destinationTileObj.type == "item") {
                 destinationTileObj.object.collect(destinationTileObj);
