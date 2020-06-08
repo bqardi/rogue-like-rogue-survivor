@@ -31,20 +31,60 @@ a:hover {
     color: var(--theme-link-hover);
 }
 
-.header {
-    display: flex;
-    align-items: center;
-    padding: 2rem 0;
+.game {
+    height: 100vh;
+}
+
+.game>.biom {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -1;
+}
+
+.game>.biom.biom-forest,
+.game>.biom.biom-desert,
+.game>.biom.biom-snow {
+    opacity: 0;
+    transition: opacity 1000ms;
+}
+
+.game.forest>img.biom-forest,
+.game.desert>img.biom-desert,
+.game.snow>img.biom-snow {
+    opacity: 1;
+    transition: opacity 1000ms;
+}
+
+.game.battle .game-title::after {
+    content: " - BATTLE";
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
 }
 
 .main {
     max-width: 1000px;
     margin: 0 auto;
-    padding: 0 1rem;
+    display: grid;
+    grid-template-rows: 100px auto;
+}
+
+.header {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    padding: 2rem 0;
 }
 
 .margin-top {
@@ -55,8 +95,9 @@ a:hover {
 /* #region GAME */
 
 .main-game {
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: 170px 1fr auto;
+    gap: 1rem;
 }
 
 .game-board {
@@ -154,16 +195,16 @@ a:hover {
 /* #endregion UI */
 
 
-/* #region GRID */
+/* #region ZONE */
 
-.grid {
+.zone {
     display: grid;
     gap: 2px;
     background-color: black;
     padding: 10px;
 }
 
-.grid__tile {
+.zone__tile {
     position: relative;
     width: 64px;
     height: 64px;
@@ -179,43 +220,43 @@ a:hover {
     position: absolute;
 }
 
-.grid__tile:hover {
+.zone__tile:hover {
     background-color: khaki !important;
 }
 
-.forest .grid__tile {
+.forest .zone__tile {
     background-color: var(--forest);
 }
 
-.desert .grid__tile {
+.desert .zone__tile {
     background-color: var(--desert);
 }
 
-.snow .grid__tile {
+.snow .zone__tile {
     background-color: var(--snow);
 }
 
-.forest .grid__tree {
+.forest .zone__tree {
     background-image: url(../images/tree-forest.png);
 }
 
-.desert .grid__tree {
+.desert .zone__tree {
     background-image: url(../images/tree-desert.png);
 }
 
-.snow .grid__tree {
+.snow .zone__tree {
     background-image: url(../images/tree-snow.png);
 }
 
-.forest .grid__rock {
+.forest .zone__rock {
     background-image: url(../images/rock.png);
 }
 
-.desert .grid__rock {
+.desert .zone__rock {
     background-image: url(../images/rock.png);
 }
 
-.snow .grid__rock {
+.snow .zone__rock {
     background-image: url(../images/rock.png);
 }
 
@@ -258,15 +299,21 @@ a:hover {
 /* #endregion AREAs */
 
 
-/* #endregion GRID */
+/* #endregion ZONE */
 
 
 /* #region MINI MAP */
 
 .mini-map {
-    margin-left: 1rem;
-    padding: 1rem;
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     border: 10px solid black;
+    background-image: url(../images/treasure-map.jpg);
+    background-repeat: no-repeat;
+    background-size: 300%;
+    background-position: center;
 }
 
 .mini-map__title {
@@ -276,6 +323,7 @@ a:hover {
 .mini-map__map {
     display: grid;
     margin-bottom: 0.25rem;
+    border: 2px solid black;
 }
 
 .mini-map__tile {
@@ -355,12 +403,12 @@ a:hover {
     background-color: black;
 }
 
-.grid-icon {
+.zone-icon {
     width: 100%;
     height: 100%;
 }
 
-.grid-icon.location {
+.zone-icon.location {
     fill: black;
 }
 
@@ -433,13 +481,13 @@ a:hover {
 
 /* #region ANIMATIONS */
 
-.attack {
-    animation-fill-mode: backwards !important;
-}
-
 .animation {
     animation-timing-function: linear;
     animation-fill-mode: forwards;
+}
+
+.animation-revert {
+    animation-direction: reverse;
 }
 
 .animation-up {
@@ -591,7 +639,7 @@ a:hover {
     z-index: 1;
 }
 
-.grid__tile:hover .tooltip {
+.zone__tile:hover .tooltip {
     display: block;
 }
 

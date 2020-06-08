@@ -1,25 +1,23 @@
 document.addEventListener("DOMContentLoaded", event => {
-    //#region GRID
-    const gridContainer = document.getElementById("grid-container");
+    //#region ZONE
+    const background = document.getElementById("background");
+    const zoneContainer = document.getElementById("zone-container");
     const miniMapContainer = document.getElementById("mini-map");
     const miniMapZoom = document.getElementById("mini-map-enlarger");
 
     let player;
-    let playerTileObj;
-    let playerAnimationTime = 100;
     let playerIsMoving = false;
+    let playersTurn = true;
+    let battleQueue = [];
+    let turnIndex = 0;
 
     let region;
     let miniMap;
     let currentZone = undefined;
 
-    // const zonesUp = 7;
-    // const zonesDown = -7;
-    // const zonesLeft = -9;
-    // const zonesRight = 9;
-    // const sectionWidth = 7;
-    // const sectionHeight = 7;
-    // const tileSize = 64;
+    let enemiesInZone = 0;
+    let zoneLocked = false;
+
     const worldKeys = 4;
 
     class Region {
@@ -57,11 +55,16 @@ document.addEventListener("DOMContentLoaded", event => {
                 }
             }
         }
-        getRandomZone() {
+        getRandomZone(includeStartZone = false) {
             if (this.zones.length == 0) {
                 return null;
             }
-            const rnd = randomInteger(0, this.zones.length);
+            let rnd = randomInteger(0, this.zones.length);
+            if (!includeStartZone) {
+                while (this.zones[rnd].id == "0_0") {
+                    rnd = randomInteger(0, this.zones.length);
+                }
+            }
             return this.zones[rnd];
         }
         addEnemy(enemy) {
@@ -118,6 +121,12 @@ document.addEventListener("DOMContentLoaded", event => {
                 }
             }
         }
+        getTileObjFromIndex(index) {
+            if (index < 0 || index >= this.tiles.length) {
+                return this.tiles[0];
+            }
+            return this.tiles[index];
+        }
         getRandomTile() {
             if (this.tiles.length == 0) {
                 return null;
@@ -152,7 +161,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.object = null;
             this.occupied = false;
             if (this.element) {
-                this.element.className = "grid__tile grid__empty";
+                this.element.className = "zone__tile zone__empty";
                 this.element.innerHTML = "";
             }
         }
@@ -164,13 +173,12 @@ document.addEventListener("DOMContentLoaded", event => {
         createHTML() {
             let tileElm = document.createElement("DIV");
             tileElm.id = this.id;
-            tileElm.classList.add("grid__tile");
-            tileElm.classList.add(`grid__${this.type}`);
-            tileElm.classList.add(`grid__${this.name}`);
+            tileElm.classList.add("zone__tile");
+            tileElm.classList.add(`zone__${this.type}`);
+            if (this.name != "none") {
+                tileElm.classList.add(`zone__${this.name}`);
+            }
             this.element = tileElm;
-            // if (this.objectHTML) {
-            //     this.element.append(this.objectHTML);
-            // }
             return tileElm;
         }
         placeObject(object, type, occupied) {
@@ -186,6 +194,16 @@ document.addEventListener("DOMContentLoaded", event => {
             this.object = null;
             this.type = "empty";
             this.occupied = false;
+            if (this.element) {
+                this.element.className = "zone__tile zone__empty";
+            }
+        }
+        coordinates() {
+            let coordinate = this.id.split("_");
+            let obj = new Object();
+            obj.x = parseInt(coordinate[0]);
+            obj.y = parseInt(coordinate[1]);
+            return obj;
         }
     }
 
@@ -198,11 +216,11 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         initialize() {
             const height = 70;
-            const gridHeight = this.region.size.up + 1 - this.region.size.down;
-            const gridWidth = this.region.size.right + 1 - this.region.size.left;
-            const width = height / gridHeight * gridWidth;
-            this.zoomedInHeight = height / gridHeight;
-            this.zoomedInWidth = width / gridWidth;
+            const zoneHeight = this.region.size.up + 1 - this.region.size.down;
+            const zoneWidth = this.region.size.right + 1 - this.region.size.left;
+            const width = height / zoneHeight * zoneWidth;
+            this.zoomedInHeight = height / zoneHeight;
+            this.zoomedInWidth = width / zoneWidth;
             this.zoomOut();
         }
         reset() {
@@ -273,17 +291,56 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    class Player {
-        constructor(name, life, lifeElm, strength, strengthElm, armor, armorElm) {
+    class Character {
+        constructor(name, moveTime, attackTime, life, strength, currentTile) {
             this.name = name;
+            this.moveTime = moveTime;
+            this.attackTime = attackTime;
             this.life = life;
-            this.lifeElm = lifeElm;
+            this.totalLife = life;
             this.strength = strength;
-            this.strengthElm = strengthElm;
+            this.currentTile = currentTile;
+            this.element = null;
+            this.isDead = false;
+        }
+        setMoveTime() {
+            this.element.style.animationDuration = `${this.moveTime}ms`;
+        }
+        setAttackTime() {
+            this.element.style.animationDuration = `${this.attackTime}ms`;
+        }
+        addLife(amount) {
+            this.life += amount;
+            if (this.life <= 0) {
+                this.life = 0;
+                this.die();
+            }
+            if (this.life > this.totalLife) {
+                this.life = this.totalLife;
+            }
+        }
+        takeDamage(damage) {
+            if (damage <= 0) {
+                return;
+            }
+            this.addLife(-damage);
+        }
+        die() {
+            this.isDead = true;
+            console.log(this.name + " died!");
+        }
+    }
+
+    class Player extends Character {
+        constructor(name, moveTime, attackTime, interactTime, life, strength, armor, lifeElm, strengthElm, armorElm, currentTile) {
+            super(name, moveTime, attackTime, life, strength, currentTile);
             this.armor = armor;
+            this.lifeElm = lifeElm;
+            this.strengthElm = strengthElm;
             this.armorElm = armorElm;
-            this.initialize();
             this.killCount = 0;
+            this.interactTime = interactTime;
+            this.initialize();
         }
         initialize() {
             this.lifeElm.textContent = this.life;
@@ -293,16 +350,13 @@ document.addEventListener("DOMContentLoaded", event => {
             this.element.classList.add("player");
             this.element.classList.add("animation");
             this.element.classList.add("tile__object");
-            this.element.style.animationDuration = `${playerAnimationTime}ms`;
             this.element.innerHTML = `<div class="tooltip">Player</div>`;
         }
+        setInteractTime() {
+            this.element.style.animationDuration = `${this.interactTime}ms`;
+        }
         addLife(amount) {
-            this.life += amount;
-            if (this.life <= 0) {
-                this.life = 0;
-                this.lifeElm.textContent = 0;
-                this.die();
-            }
+            super.addLife(amount);
             this.lifeElm.textContent = this.life;
         }
         addStrength(amount) {
@@ -317,29 +371,17 @@ document.addEventListener("DOMContentLoaded", event => {
             this.killCount++;
         }
         takeDamage(amount) {
-            let dmg = amount - this.armor;
-            if (dmg <= 0) {
-                return;
-            }
-            this.addLife(-dmg);
-        }
-        die() {
-            console.log(this.name + " died!");
+            super.takeDamage(amount - this.armor);
         }
     }
 
-    class Enemy {
-        constructor(name, cls, life, strength, currentTile) {
-            this.name = name;
+    class Enemy extends Character {
+        constructor(name, moveTime, attackTime, life, strength, cls, currentTile) {
+            super(name, moveTime, attackTime, life, strength, currentTile);
+            this.totalLife = life;
             this.cls = cls;
-            this.life = life;
-            this.strength = strength;
-            this.currentLife = life;
-            this.currentTile;
-            this.elm;
             this.elmBar;
             this.elmBarText;
-            this.currentTile = currentTile;
         }
 
         createHTML() {
@@ -348,31 +390,31 @@ document.addEventListener("DOMContentLoaded", event => {
             enemyHTML.classList.add(this.cls);
             enemyHTML.classList.add("animation");
             enemyHTML.classList.add("tile__object");
-            enemyHTML.style.animationDuration = `${playerAnimationTime}ms`;
+            enemyHTML.style.animationDuration = `${this.animationTime}ms`;
             let healthbar = document.createElement("DIV");
             let bar = document.createElement("DIV");
             let barText = document.createElement("SPAN");
             healthbar.classList.add("healthbar");
             bar.classList.add("bar");
-            bar.style.width = `${this.currentLife / this.life * 100}%`;
+            bar.style.width = `${this.life / this.totalLife * 100}%`;
             barText.classList.add("bar__text");
-            barText.textContent = `${this.currentLife} / ${this.life}`;
+            barText.textContent = `${this.life} / ${this.totalLife}`;
             healthbar.append(bar);
             healthbar.append(barText);
             enemyHTML.append(healthbar);
             enemyHTML.insertAdjacentHTML("beforeend", `<div class="tooltip">${this.name}</div>`);
-            this.elm = enemyHTML;
+            this.element = enemyHTML;
             this.elmBar = bar;
             this.elmBarText = barText;
             return enemyHTML;
         }
 
-        takeDamage(dmgAmount) {
-            this.currentLife -= dmgAmount;
-            this.elmBar.style.width = `${this.currentLife / this.life * 100}%`;
-            this.elmBarText.textContent = `${this.currentLife} / ${this.life}`;
-            if (this.currentLife <= 0) {
-                this.currentTile.removeObject(this.elm);
+        takeDamage(damage) {
+            super.takeDamage(damage);
+            this.elmBar.style.width = `${this.life / this.totalLife * 100}%`;
+            this.elmBarText.textContent = `${this.life} / ${this.totalLife}`;
+            if (this.life <= 0) {
+                this.currentTile.removeObject(this.element);
                 return true;
             }
             return false;
@@ -380,11 +422,12 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Item {
-        constructor(amount, cls, posX, posY) {
+        constructor(amount, cls, posX, posY, callback) {
             this.amount = amount;
             this.cls = cls;
             this.posX = posX * 48;
             this.posY = posY * 48;
+            this.callback = callback;
         }
         createHTML() {
             let item = document.createElement("DIV");
@@ -393,6 +436,10 @@ document.addEventListener("DOMContentLoaded", event => {
             item.style.backgroundPosition = `-${this.posX}px -${this.posY}px`;
             item.classList.add("tile__object");
             return item;
+        }
+        collect(tileObj) {
+            tileObj.setEmpty();
+            this.callback(this);
         }
     }
 
@@ -498,22 +545,31 @@ document.addEventListener("DOMContentLoaded", event => {
         worlds.piratesLair,
     ]
 
-    // let gridAreas = [];
-
-    // let bioms = ["forest", "desert", "snow"]
     let enemyTypes = [{
             name: "Skeleton",
             cls: "skeleton",
             life: 20,
             strength: 8,
+            totalCount: 0,
+            moveTime: 500,
+            attackTime: 300,
         },
         {
             name: "Orc",
             cls: "orc",
             life: 50,
             strength: 18,
+            totalCount: 0,
+            moveTime: 1000,
+            attackTime: 400,
         },
     ]
+
+    // *********************************************************************************************
+    // *********************************************************************************************
+    // ************************ TODO: CHANGE TO CLASS (INSTEAD OF AN OBJECT) ***********************
+    // *********************************************************************************************
+    // *********************************************************************************************
 
     let effect = {
         explosion: {
@@ -534,7 +590,63 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    let inventory = {
+    let collectables = {
+        coins: {
+            name: "coin",
+            spriteCoordinates: { x: 7, y: 3 },
+            includeInStartZone: true,
+            stacks: 100,
+            maxStackAmount: 30,
+            totalStackAmount: 0,
+            onCollect: function(item) {
+                ui.coin.count += item.amount;
+                ui.coin.element.textContent = ui.coin.count;
+            }
+        },
+        keys: {
+            name: "key",
+            spriteCoordinates: { x: 11, y: 3 },
+            includeInStartZone: false,
+            stacks: 6,
+            maxStackAmount: 1,
+            onCollect: function(item) {
+                ui.key.count += item.amount;
+                ui.key.element.textContent = ui.key.count;
+            }
+        },
+        weapons: {
+            name: "strength",
+            spriteCoordinates: { x: 3, y: 7 },
+            includeInStartZone: false,
+            stacks: 40,
+            maxStackAmount: 3,
+            onCollect: function(item) {
+                player.addStrength(item.amount);
+            }
+        },
+        armors: {
+            name: "armor",
+            spriteCoordinates: { x: 9, y: 9 },
+            includeInStartZone: false,
+            stacks: 40,
+            maxStackAmount: 3,
+            onCollect: function(item) {
+                player.addArmor(item.amount);
+            }
+        },
+        potions: {
+            name: "life",
+            spriteCoordinates: { x: 11, y: 4 },
+            includeInStartZone: false,
+            stacks: 300,
+            maxStackAmount: 20,
+            onCollect: function(item) {
+                player.addLife(item.amount);
+            }
+        },
+    }
+
+    let ui = {
         coin: {
             count: 0,
             stackable: true,
@@ -554,27 +666,6 @@ document.addEventListener("DOMContentLoaded", event => {
             element: document.getElementById("map"),
         },
     };
-    let loot = [{
-            cls: "coin",
-            position: {
-                column: 7,
-                row: 3,
-            },
-            max: -1,
-            maxStack: 20,
-            active: true,
-        },
-        {
-            cls: "map",
-            position: {
-                column: 9,
-                row: 3,
-            },
-            max: 1,
-            maxStack: 1,
-            active: false,
-        },
-    ]
 
     newGame();
 
@@ -587,33 +678,28 @@ document.addEventListener("DOMContentLoaded", event => {
     function newGame() {
         const regionSize = new Direction(11, 14, 11, 14);
         const zoneSize = new Dimension(7, 7);
-        region = new Region("home", "outdoor", gridContainer, regionSize, zoneSize, 64, worlds.home.bioms);
+        region = new Region("home", "outdoor", zoneContainer, regionSize, zoneSize, 64, worlds.home.bioms);
         miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
-
-        // createCollectable("apple", true);
-        // createCollectable("key", true);
-
-        for (let i = 0; i < loot.length; i++) {
-            const itemType = loot[i];
-            if (itemType.max > 0) {
-                itemType.max++;
-            }
-        }
+        const lifeUIElm = document.getElementById("life-count");
+        const strengthUIElm = document.getElementById("strength-count");
+        const armorUIElm = document.getElementById("armor-count");
+        player = new Player("Player 1", 250, 150, 300, 100, 10, 0, lifeUIElm, strengthUIElm, armorUIElm);
         buildMap();
         buildZone("0_0");
-        createPlayer(getCenterTileIndex());
+        placePlayer(getCenterTileIndex());
         addPlayerControls();
+        setEvent();
 
         //CHEATS!!!
-        inventory.key.count++;
-        inventory.key.element.textContent = inventory.key.count;
+        // ui.key.count++;
+        // ui.key.element.textContent = ui.key.count;
     }
 
     function enterGate(areaObj) {
         if (areaObj.locked) {
-            if (inventory.key.count > 0) {
-                inventory.key.count--;
-                inventory.key.element.textContent = inventory.key.count;
+            if (ui.key.count > 0) {
+                ui.key.count--;
+                ui.key.element.textContent = ui.key.count;
                 areaObj.unlock();
             } else {
                 console.log("Key is missing!");
@@ -632,49 +718,19 @@ document.addEventListener("DOMContentLoaded", event => {
             }
         }
         placeDungeons();
-        placeKeys();
-    }
+        placeEnemies();
 
-    function miniMapHTML(id, biom) {
-        // let activeClass = "fog-of-war";
-        let activeClass = "";
-        if (id == "0_0") {
-            activeClass = "active";
-        }
-        const miniMapSection = `
-            <div id="minimap_${id}" class="mini-map__tile ${biom} ${activeClass}"></div>
-        `;
-        miniMapContainer.insertAdjacentHTML("beforeend", miniMapSection);
-    }
+        //INSERT ENEMIES MANUALLY FOR TESTING PURPOSES
+        // const zone = region.getZone("0_0");
+        // const tileObj2 = zone.getTileObj("2_2");
+        // placeEnemy(tileObj2, enemyTypes[1]);
+        // const tileObj = zone.getTileObj("2_1");
+        // placeEnemy(tileObj, enemyTypes[0]);
 
-    // function miniMapTileAddClass(id, cls) {
-    //     const miniMapTile = document.getElementById("minimap_" + id);
-    //     miniMapTile.classList.add(cls);
-    // }
-
-    function miniMapTileRemoveClass(id, cls) {
-        const miniMapTile = document.getElementById("minimap_" + id);
-        miniMapTile.classList.remove(cls);
-    }
-
-    function miniMapTileInnerHTML(id, htmlStr) {
-        const miniMapTile = document.getElementById("minimap_" + id);
-        miniMapTile.innerHTML = htmlStr;
-    }
-
-    function miniMapActive(id, setActive) {
-        for (let i = 0; i < region.zones.length; i++) {
-            const zone = region.zones[i];
-            if (zone.id == id) {
-                if (setActive) {
-                    let miniMapSection = document.getElementById("minimap_" + id)
-                    miniMapSection.classList.remove("fog-of-war");
-                    miniMapSection.classList.add("active");
-                    currentZone.explore();
-                } else {
-                    document.getElementById("minimap_" + id).classList.remove("active");
-                }
-            }
+        //Loop through all items and place them randomly in the world (Coins, Keys, Weapons, Armors, Potions, etc.)
+        for (let i = 0; i < Object.keys(collectables).length; i++) {
+            const key = Object.keys(collectables)[i];
+            placeCollectables(collectables[key]);
         }
     }
 
@@ -695,28 +751,29 @@ document.addEventListener("DOMContentLoaded", event => {
                 currentZone.tiles.push(tileObj);
             }
         }
-        if (id != "0_0") {
-            placeEnemies();
-            placeLoot();
-        }
         region.addZone(currentZone);
-        // playerStats.exploredNew(5, function() {
-        //     itemTypes[1].active = true;
-        // });
-        // playerStats.exploredNew(8, function() {
-        //     itemTypes[2].active = true;
-        // });
     }
 
     function buildZone(id) {
         region.element.innerHTML = "";
         currentZone = region.getZone(id);
         region.setBiom(currentZone.biom);
+        for (let i = 0; i < region.bioms.length; i++) {
+            const biom = region.bioms[i];
+            background.classList.remove(biom);
+        }
+        background.classList.add(currentZone.biom);
+        enemiesInZone = 0;
         for (let i = 0; i < currentZone.tiles.length; i++) {
             const tileObj = currentZone.tiles[i];
             region.element.append(tileObj.createHTML());
             if (tileObj.object != null) {
-                if (tileObj.type == "enemy" || tileObj.type == "item") {
+                if (tileObj.type == "enemy") {
+                    tileObj.placeHTML(tileObj.object.createHTML());
+                    battleQueue.push(tileObj.object);
+                    enemiesInZone++;
+                }
+                if (tileObj.type == "item") {
                     tileObj.placeHTML(tileObj.object.createHTML());
                 }
             }
@@ -724,6 +781,154 @@ document.addEventListener("DOMContentLoaded", event => {
         if (currentZone.areaTransition != undefined) {
             if (currentZone.areaTransition.cls == "dungeon") {
                 currentZone.areaTransition.createHTML();
+            }
+        }
+    }
+
+    function setEvent() {
+        if (enemiesInZone > 0) {
+            combatEvent();
+        } else {
+            calmEvent();
+        }
+    }
+
+    function calmEvent() {
+        zoneLocked = false;
+        playersTurn = true;
+        turnIndex = -1;
+        battleQueue = [];
+        background.classList.remove("battle");
+    }
+
+    function combatEvent() {
+        zoneLocked = true;
+        playersTurn = false;
+        turnIndex = -1;
+        background.classList.add("battle");
+        battleQueue.push(player.currentTile.object);
+        shuffleArray(battleQueue);
+        nextTurn();
+    }
+
+    function nextTurn() {
+        turnIndex++;
+        if (turnIndex >= battleQueue.length) {
+            turnIndex = 0;
+        }
+        if (battleQueue[turnIndex] == player.currentTile.object) {
+            playersTurn = true;
+            console.log("Players turn");
+        } else {
+            playersTurn = false;
+            enemyTurn(battleQueue[turnIndex]);
+        }
+    }
+
+    function enemyTurn(enemyObj) {
+        console.log("Enemys turn");
+        if (battleQueue.length > 0) {
+            if (enemyObj.life == 0) {
+                nextTurn();
+                return;
+            }
+            const moveDirection = getMoveDirection(enemyObj, player);
+            const destinationTileObj = adjacentTile(enemyObj.currentTile, moveDirection);
+            enemyMove(enemyObj, moveDirection, destinationTileObj);
+        } else {
+            console.log("Battle ended");
+        }
+    }
+
+    //Enemy AI movement
+    function getMoveDirection(sourceObj, targetObj) {
+        const sourceTile = sourceObj.currentTile;
+        const targetTile = targetObj.currentTile;
+        const sourceCoordinates = sourceTile.coordinates();
+        const targetCoordinates = targetTile.coordinates();
+        const zone = currentZone;
+        if (targetCoordinates.x > sourceCoordinates.x) {
+            return "right";
+        } else if (targetCoordinates.y > sourceCoordinates.y) {
+            return "down";
+        }
+        if (targetCoordinates.x < sourceCoordinates.x) {
+            return "left";
+        } else if (targetCoordinates.y < sourceCoordinates.y) {
+            return "up";
+        }
+        return "none";
+    }
+
+    function enemyMove(enemyObj, direction, destinationTileObj) {
+        setTimeout(() => {
+            enemyObj.element.classList.add("animation-" + direction);
+            if (destinationTileObj == player.currentTile) {
+                enemyObj.setAttackTime();
+                halfWayMove(enemyObj.element, enemyObj.attackTime, direction, function() {
+                    effect.explosion.createHTML(destinationTileObj, 700);
+                    const playerKilled = destinationTileObj.object.takeDamage(enemyObj.strength);
+                    if (playerKilled) {
+                        console.log("Player died!");
+                    }
+                }, function() {
+                    if (!destinationTileObj.object.isDead) {
+                        nextTurn();
+                    }
+                });
+            } else {
+                enemyObj.setMoveTime();
+                fullMove(enemyObj.element, enemyObj.moveTime, direction, function() {
+                    const currentTile = enemyObj.currentTile;
+                    // destinationTileObj.object = enemyObj;
+                    enemyObj.currentTile = destinationTileObj;
+                    // enemyObj.currentTile.element.append(enemyObj.element);
+                    destinationTileObj.placeObject(enemyObj, "enemy", true);
+                    destinationTileObj.placeHTML(enemyObj.element);
+                    currentTile.setEmpty();
+                }, function() {
+                    enemyObj.element.classList.remove("animation-" + direction);
+                    setTimeout(() => {
+                        nextTurn();
+                    }, 500);
+                });
+            }
+        }, 500);
+    }
+
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = randomInteger(0, arr.length);
+            const temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+    }
+
+    function miniMapHTML(id, biom) {
+        let activeClass = "fog-of-war";
+        // let activeClass = "";
+        if (id == "0_0") {
+            activeClass = "active";
+        }
+        const miniMapSection = `
+            <div id="minimap_${id}" class="mini-map__tile ${biom} ${activeClass}"></div>
+        `;
+        miniMapContainer.insertAdjacentHTML("beforeend", miniMapSection);
+    }
+
+    function miniMapActive(id, setActive) {
+        for (let i = 0; i < region.zones.length; i++) {
+            const zone = region.zones[i];
+            if (zone.id == id) {
+                if (setActive) {
+                    let miniMapSection = document.getElementById("minimap_" + id)
+                    miniMapSection.classList.remove("fog-of-war");
+                    miniMapSection.classList.add("active");
+                    currentZone.explore();
+                } else {
+                    document.getElementById("minimap_" + id).classList.remove("active");
+                }
             }
         }
     }
@@ -736,78 +941,47 @@ document.addEventListener("DOMContentLoaded", event => {
         return Math.floor(currentZone.tiles.length / 2);
     }
 
-    function createPlayer(tileIndex) {
-        let tileObj = getIndexedTileObj(currentZone, tileIndex);
+    function placePlayer(tileIndex) {
+        let tileObj = currentZone.getTileObjFromIndex(tileIndex);
         if (tileObj.element == undefined) {
             console.log("No element attached to tileObj!");
             return;
         }
         tileObj.setEmpty();
         tileObj.element.innerHTML = "";
-        const lifeUIElm = document.getElementById("life-count");
-        const strengthUIElm = document.getElementById("strength-count");
-        const armorUIElm = document.getElementById("armor-count");
-        player = new Player("Player 1", 100, lifeUIElm, 10, strengthUIElm, 0, armorUIElm);
         tileObj.object = player;
         tileObj.element.append(tileObj.object.element);
-        playerTileObj = tileObj;
+        player.currentTile = tileObj;
+        // player.currentTile = tileObj;
     }
 
     function placeEnemies() {
-        let amount = 0;
-        const amountChance = randomInteger(0, 100);
-        if (amountChance > 25) {
-            amount++;
-            if (amountChance > 80) {
-                amount++;
-            }
-            if (amountChance > 90) {
-                amount++;
-            }
-            if (amountChance > 95) {
-                amount++;
-            }
-            if (amountChance > 99) {
-                amount++;
-            }
-        }
+        let amount = 500;
         for (let i = 0; i < amount; i++) {
-            const tileObj = currentZone.getRandomTile();
+            const zone = region.getRandomZone();
+            const tileObj = zone.getRandomTile();
             randomEnemy(tileObj);
         }
+        console.log("Skeletons: " + enemyTypes[0].totalCount + ", Orcs: " + enemyTypes[1].totalCount);
     }
 
-    function placeLoot() {
-        let amount = 0;
-        const amountChance = randomInteger(0, 100);
-        if (amountChance > 25) {
-            amount++;
-            if (amountChance > 80) {
-                amount++;
-            }
-            if (amountChance > 90) {
-                amount++;
-            }
-            if (amountChance > 95) {
-                amount++;
-            }
-            if (amountChance > 99) {
-                amount++;
-            }
+    function placeCollectables(collectable) {
+        collectable.totalStackAmount = 0;
+        for (let i = 0; i < collectable.stacks; i++) {
+            const zone = region.getRandomZone(collectable.includeInStartZone);
+            const tileObj = zone.getRandomTile();
+            const rndAmount = randomInteger(1, collectable.maxStackAmount);
+            const coin = new Item(rndAmount, collectable.name, collectable.spriteCoordinates.x, collectable.spriteCoordinates.y, collectable.onCollect);
+            tileObj.placeObject(coin, "item", true);
+            collectable.totalStackAmount += rndAmount;
         }
-        for (let i = 0; i < amount; i++) {
-            const tileObj = currentZone.getRandomTile();
-            randomItem(tileObj);
-        }
+        console.log(collectable.name + "'s total: " + collectable.totalStackAmount);
     }
 
     function placeDungeons() {
         for (let i = 0; i < dungeons.length; i++) {
             const dungeon = dungeons[i];
             const zone = region.getRandomZone();
-            while (zone.id == "0_0") {
-                zone = region.getRandomZone();
-            }
             const tileObj = zone.getRandomTile();
             let dungeonObj = new Gate(dungeon.name, dungeon.type, dungeon.locked, tileObj);
             zone.areaTransition = dungeonObj;
@@ -815,27 +989,20 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    function placeKeys() {
-        let amount = 250;
-        for (let i = 0; i < amount; i++) {
-            let zone = region.getRandomZone();
-            while (zone.id == "0_0") {
-                zone = region.getRandomZone();
-            }
-            const tileObj = zone.getRandomTile();
-            const key = new Item(1, "key", 11, 3);
-            tileObj.placeObject(key, "item", true);
-        }
-    }
-
     function randomEnemy(tileObj) {
         let type = getRandomArrayItem(enemyTypes);
+        placeEnemy(tileObj, type);
+    }
+
+    function placeEnemy(tileObj, type) {
         if (type == null) {
             console.log("Array is empty!");
             return;
         }
-        const enemy = new Enemy(type.name, type.cls, type.life, type.strength, tileObj);
+        const enemy = new Enemy(type.name, type.moveTime, type.attackTime, type.life, type.strength, type.cls, tileObj);
+        tileObj.setEmpty();
         tileObj.placeObject(enemy, "enemy", true);
+        type.totalCount++;
     }
 
     function getRandomArrayItem(arr) {
@@ -846,55 +1013,36 @@ document.addEventListener("DOMContentLoaded", event => {
         return arr[rnd];
     }
 
-    function randomItem(tileObj) {
-        let collectable = getRandomArrayItem(loot);
-        if (collectable == null) {
-            console.log("Array is empty!");
-            return;
-        }
-        while (!collectable.active) {
-            collectable = getRandomArrayItem(loot);
-        }
-        if (collectable.max == 0) {
-            collectable.active = false;
-        } else {
-            collectable.max--;
-        }
-        const rndAmount = randomInteger(1, collectable.maxStack);
-        const item = new Item(rndAmount, collectable.cls, collectable.position.column, collectable.position.row);
-        tileObj.placeObject(item, "item", true);
-    }
-
-    function collectItem(tileObj) {
-        const collectableObj = inventory[tileObj.object.cls];
-        collectableObj.count += tileObj.object.amount;
-        collectableObj.element.textContent = collectableObj.count;
-        tileObj.setEmpty();
-    }
-
     function addPlayerControls() {
         document.addEventListener("keydown", function(evt) {
-            if (evt.repeat || playerIsMoving) {
+            if (evt.repeat || !playersTurn || playerIsMoving) {
                 return;
             }
+            let moveSuccess;
             if (evt.key == "w" || evt.key == "ArrowUp") {
-                move(currentZone, 0, -1, "0 -192px", "up");
+                moveSuccess = playerMove(0, -1, player.element, "up");
+                player.element.style.backgroundPosition = "0 -192px";
             }
             if (evt.key == "s" || evt.key == "ArrowDown") {
-                move(currentZone, 0, 1, "0 0", "down");
+                moveSuccess = playerMove(0, 1, player.element, "down");
+                player.element.style.backgroundPosition = "0 0";
             }
             if (evt.key == "a" || evt.key == "ArrowLeft") {
-                move(currentZone, -1, 0, "0 -64px", "left");
+                moveSuccess = playerMove(-1, 0, player.element, "left");
+                player.element.style.backgroundPosition = "0 -64px";
             }
             if (evt.key == "d" || evt.key == "ArrowRight") {
-                move(currentZone, 1, 0, "0 -128px", "right");
+                moveSuccess = playerMove(1, 0, player.element, "right");
+                player.element.style.backgroundPosition = "0 -128px";
             }
         })
     }
 
     function changeZone(x, y, playerPos) {
+        if (zoneLocked) {
+            return;
+        }
         let areaCoordinates = currentZone.coordinates();
-        // let areaCoordinates = splitId(currentZone.id);
         if (areaCoordinates.y + y > region.size.up) {
             return;
         }
@@ -912,111 +1060,153 @@ document.addEventListener("DOMContentLoaded", event => {
         miniMapActive(currentZone.id, false);
         buildZone(areaCoordinates.x + "_" + areaCoordinates.y);
         miniMapActive(currentZone.id, true);
-        createPlayer(playerPos);
+        placePlayer(playerPos);
+        setEvent();
     }
 
-    function move(gridObj, moveX, moveY, spritePos, direction) {
-        let coordinate = splitId(playerTileObj.id);
+    function adjacentTile(currentTileObj, direction) {
+        let idObj = currentTileObj.coordinates();
+        switch (direction) {
+            case "up":
+                idObj.y--;
+                if (idObj.y < 0) {
+                    return false;
+                }
+                break;
+            case "down":
+                idObj.y++;
+                if (idObj.y >= region.zoneSize.height) {
+                    return false;
+                }
+                break;
+            case "right":
+                idObj.x++;
+                if (idObj.x >= region.zoneSize.width) {
+                    return false;
+                }
+                break;
+            case "left":
+                idObj.x--;
+                if (idObj.x < 0) {
+                    return false;
+                }
+                break;
+
+            default:
+                break;
+        }
+        return currentZone.getTileObj(idObj.x + "_" + idObj.y);
+    }
+
+    function playerMove(moveX, moveY, element, direction) {
+        let coordinate = player.currentTile.coordinates();
         coordinate.x += moveX;
         coordinate.y += moveY;
         if (coordinate.y < 0) {
             changeZone(0, 1, currentZone.tiles.length - region.zoneSize.width + coordinate.x);
-            return;
+            return false;
         }
         if (coordinate.y >= region.zoneSize.height) {
             changeZone(0, -1, coordinate.x);
-            return;
+            return false;
         }
         if (coordinate.x < 0) {
             changeZone(-1, 0, coordinate.y * region.zoneSize.width + region.zoneSize.width - 1);
-            return;
+            return false;
         }
         if (coordinate.x >= region.zoneSize.width) {
             changeZone(1, 0, coordinate.y * region.zoneSize.width);
-            return;
+            return false;
         }
         let destinationTileObj = currentZone.getTileObj(coordinate.x + "_" + coordinate.y);
         if (destinationTileObj.type == "obstacle") {
-            return;
+            return false;
         }
         playerIsMoving = true;
-        player.element.style.backgroundPosition = spritePos;
-        player.element.classList.add("animation-" + direction);
         if (destinationTileObj.type == "gate") {
+            player.setInteractTime();
             if (destinationTileObj.object.locked) {
-                setTimeout(() => {
-                    player.element.classList.add("attack");
-                    setTimeout(() => {
-                        player.element.classList.remove("attack");
-                        player.element.classList.remove("animation-" + direction);
-                        playerIsMoving = false;
-                    }, playerAnimationTime / 2);
-                }, playerAnimationTime / 2);
+                halfWayMove(element, player.interactTime, direction, null, function() {
+                    playerIsMoving = false;
+                });
             }
             enterGate(destinationTileObj.object);
-            return;
+            return true;
         }
         if (destinationTileObj.type == "enemy") {
-            setTimeout(() => {
-                player.element.classList.add("attack");
+            player.setAttackTime();
+            halfWayMove(element, player.attackTime, direction, function() {
                 effect.explosion.createHTML(destinationTileObj, 700);
                 const enemyKilled = destinationTileObj.object.takeDamage(player.strength);
                 if (enemyKilled) {
                     player.enemyKill();
+                    enemiesInZone--;
+                    if (enemiesInZone <= 0) {
+                        enemiesInZone = 0;
+                        calmEvent();
+                    }
                 }
-                setTimeout(() => {
-                    player.element.classList.remove("attack");
-                    player.element.classList.remove("animation-" + direction);
-                    playerIsMoving = false;
-                }, playerAnimationTime / 2);
-            }, playerAnimationTime / 2);
-            return;
+            }, function() {
+                playerIsMoving = false;
+                if (battleQueue.length > 0) {
+                    nextTurn();
+                }
+            });
+            return false;
         }
-        setTimeout(() => {
+        if (destinationTileObj.type == "item") {
+            player.setInteractTime();
+        } else {
+            player.setMoveTime();
+        }
+        fullMove(element, player.moveTime, direction, function() {
             if (destinationTileObj.type == "item") {
-                collectItem(destinationTileObj);
+                destinationTileObj.object.collect(destinationTileObj);
             }
-            destinationTileObj.object = playerTileObj.object;
-            playerTileObj = destinationTileObj;
-            playerTileObj.element.append(playerTileObj.object.element);
-            player.element.classList.remove("animation-" + direction);
+            destinationTileObj.object = player.currentTile.object;
+            player.currentTile = destinationTileObj;
+            player.currentTile.element.append(player.currentTile.object.element);
+        }, function() {
             playerIsMoving = false;
-        }, playerAnimationTime);
+            if (battleQueue.length > 0) {
+                nextTurn();
+            }
+        });
+        return true;
     }
 
-    function splitId(id) {
-        let coordinate = id.split("_");
-        let obj = new Object();
-        obj.x = parseInt(coordinate[0]);
-        obj.y = parseInt(coordinate[1]);
-        return obj;
+    function fullMove(element, animationTime, direction, beforeDestinationReach, destinationReached) {
+        element.classList.add("animation-" + direction);
+        setTimeout(() => {
+            if (beforeDestinationReach) {
+                beforeDestinationReach();
+            }
+            element.classList.remove("animation-" + direction);
+            if (destinationReached) {
+                destinationReached();
+            }
+        }, animationTime);
     }
 
-    // function getTileObj(gridObj, id) {
-    //     for (let i = 0; i < gridObj.tiles.length; i++) {
-    //         const obj = gridObj.tiles[i];
-    //         if (obj.id == id) {
-    //             return obj;
-    //         }
-    //     }
-    // }
-
-    function getIndexedTileObj(gridObj, tileIndex) {
-        let index = tileIndex;
-        const tilesLength = gridObj.tiles.length;
-        if (index < 0 || index >= tilesLength) {
-            return gridObj.tiles[0];
-        }
-        let tileObj = gridObj.tiles[index];
-        return tileObj;
+    function halfWayMove(element, animationTime, direction, halfWayThere, destinationReached) {
+        element.classList.add("animation-" + direction);
+        setTimeout(() => {
+            element.classList.add("animation-revert");
+            if (halfWayThere) {
+                halfWayThere();
+            }
+            setTimeout(() => {
+                element.classList.remove("animation-revert");
+                element.classList.remove("animation-" + direction);
+                if (destinationReached) {
+                    destinationReached();
+                }
+            }, animationTime / 2);
+        }, animationTime / 2);
     }
-    //#endregion GRID
+    //#endregion ZONE
 
     function randomInteger(min, max) {
         return Math.floor(Math.random() * (max - min)) + min;
-    }
-
-    function isPropable(propabilityPercentage) {
-        return propabilityPercentage > randomInteger(0, 100);
     }
 });
