@@ -12,14 +12,20 @@ document.addEventListener("DOMContentLoaded", event => {
     // GAME OVER screen
     const gameOverScreen = document.getElementById("game-over-screen");
 
+    // BATTLE QUEUE screen
+    const battleQueueElement = document.getElementById("battle-queue");
+
+    const tileSize = 48;
+
     gameStarted = false;
 
     let player;
     let playerIsMoving = false;
     let playersTurn = true;
     let battleQueue = [];
-    let turnIndex = 0;
+    let pathFindingGrid = [];
 
+    let currentWorld;
     let region;
     let miniMap;
     let currentZone = undefined;
@@ -27,16 +33,18 @@ document.addEventListener("DOMContentLoaded", event => {
     let enemiesInZone = 0;
     let zoneLocked = false;
 
+
+
     class Region {
-        constructor(name, type, element, size, zoneSize, tileSize, bioms) {
-            this.name = name;
-            this.type = type;
-            this.bioms = bioms;
+        constructor(world, element, tileSize) {
+            this.name = world.name;
+            this.type = world.type;
+            this.bioms = world.bioms;
             this.zones = [];
             this.enemies = [];
             this.element = element;
-            this.size = size;
-            this.zoneSize = zoneSize;
+            this.size = world.size;
+            this.zoneSize = world.zoneSize;
             this.tileSize = tileSize;
             this.initialize();
         }
@@ -44,6 +52,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.size.down = -Math.abs(this.size.down);
             this.size.left = -Math.abs(this.size.left);
             this.element.style.gridTemplateColumns = `repeat(${this.zoneSize.width}, ${this.tileSize}px)`;
+            this.element.style.gridAutoRows = `${this.tileSize}px`;
         }
         get width() {
             return this.size.right + 1 - this.size.left;
@@ -258,10 +267,11 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Gate {
-        constructor(id, cls, locked, tileObj) {
-            this.id = id;
-            this.cls = cls;
-            this.locked = locked;
+        constructor(world, tileObj) {
+            this.world = world;
+            this.id = world.name;
+            this.cls = world.type;
+            this.locked = world.locked;
             this.tileObj = tileObj;
             this.initialize();
         }
@@ -280,16 +290,16 @@ document.addEventListener("DOMContentLoaded", event => {
             }
             gate.classList.add("tile__object");
             this.element = gate;
-            this.tileObj.element.append(gate);
+            this.tileObj.element.append(this.element);
         }
         unlock() {
             if (this.locked) {
                 this.locked = false;
                 let counter = 0;
                 let interval = setInterval(() => {
-                    counter -= 64;
-                    this.element.style.backgroundPosition = `0 ${counter}px`;
-                    if (counter <= -192) {
+                    counter -= 100;
+                    this.element.style.backgroundPosition = `0 ${counter}%`;
+                    if (counter <= -300) {
                         clearInterval(interval);
                     }
                 }, 100);
@@ -299,8 +309,9 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Character {
-        constructor(name, moveTime, attackTime, life, strength, currentTile, onDeath) {
+        constructor(name, type, moveTime, attackTime, life, strength, currentTile, onDeath) {
             this.name = name;
+            this.type = type;
             this.moveTime = moveTime;
             this.attackTime = attackTime;
             this.life = life;
@@ -327,6 +338,7 @@ document.addEventListener("DOMContentLoaded", event => {
             if (this.life > this.totalLife) {
                 this.life = this.totalLife;
             }
+            this.updateHealthBar();
         }
         takeDamage(damage) {
             if (damage <= 0) {
@@ -334,11 +346,56 @@ document.addEventListener("DOMContentLoaded", event => {
             }
             this.addLife(-damage);
         }
+        createCardHTML(parent) {
+            let lcaseName = this.name.toLowerCase();
+            if (this.type == "player") {
+                lcaseName = "spritesheet";
+            }
+            const titleImage = `
+                <h3 class="character-card__title">${this.name}</h3>
+                <img class="character-card__image" src="./images/${this.type}-${lcaseName}.png" alt="${this.name}">
+            `;
+            let card = document.createElement("DIV");
+            let cardHealth = document.createElement("DIV");
+            let cardHealthBar = document.createElement("DIV");
+            card.classList.add("character-card");
+            cardHealth.classList.add("character-card__health");
+            cardHealthBar.classList.add("character-card__health-bar");
+            card.innerHTML = titleImage;
+            card.append(cardHealth);
+            cardHealth.append(cardHealthBar);
+            parent.append(card);
+            this.cardParent = parent;
+            this.card = card;
+            this.cardHealthBar = cardHealthBar;
+            this.updateHealthBar();
+        }
+        removeCard() {
+            if (this.card) {
+                this.cardParent.removeChild(this.card);
+                this.card = undefined;
+            }
+        }
+        updateHealthBar() {
+            if (this.card === undefined) {
+                return;
+            }
+            if (this.isDead) {
+                this.removeCard();
+            } else {
+                this.cardHealthBar.style.width = `${this.life / this.totalLife * 100}%`
+            }
+        }
+        updateOrder(order) {
+            if (!this.isDead) {
+                this.card.style.order = order;
+            }
+        }
     }
 
     class Player extends Character {
-        constructor(name, moveTime, attackTime, life, strength, armor, lifeElm, strengthElm, armorElm, currentTile, onDeath) {
-            super(name, moveTime, attackTime, life, strength, currentTile, onDeath);
+        constructor(name, type, moveTime, attackTime, life, strength, armor, lifeElm, strengthElm, armorElm, currentTile, onDeath) {
+            super(name, type, moveTime, attackTime, life, strength, currentTile, onDeath);
             this.armor = armor;
             this.lifeElm = lifeElm;
             this.strengthElm = strengthElm;
@@ -367,8 +424,16 @@ document.addEventListener("DOMContentLoaded", event => {
             this.strength += amount;
             this.strengthElm.textContent = this.strength;
         }
+        setStrength(amount) {
+            this.strength = amount;
+            this.strengthElm.textContent = this.strength;
+        }
         addArmor(amount) {
             this.armor += amount;
+            this.armorElm.textContent = this.armor;
+        }
+        setArmor(amount) {
+            this.armor = amount;
             this.armorElm.textContent = this.armor;
         }
         enemyKill() {
@@ -380,8 +445,8 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Enemy extends Character {
-        constructor(name, moveTime, attackTime, life, strength, cls, currentTile, onDeath) {
-            super(name, moveTime, attackTime, life, strength, currentTile, onDeath);
+        constructor(name, type, moveTime, attackTime, life, strength, cls, currentTile, onDeath) {
+            super(name, type, moveTime, attackTime, life, strength, currentTile, onDeath);
             this.totalLife = life;
             this.cls = cls;
             this.elmBar;
@@ -426,20 +491,25 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Item {
-        constructor(amount, cls, posX, posY, callback) {
+        constructor(amount, pos, equipable, callback) {
             this.amount = amount;
-            this.cls = cls;
-            this.posX = posX * 64;
-            this.posY = posY * 64;
+            this.posX = pos.x * 100;
+            this.posY = pos.y * 100;
             this.callback = callback;
+            this.equipable = equipable;
+            this.equipped = false;
         }
         createHTML() {
             let item = document.createElement("DIV");
             item.classList.add("item");
-            // item.classList.add(this.cls);
-            item.style.backgroundPosition = `-${this.posX}px -${this.posY}px`;
+            item.style.backgroundPosition = `-${this.posX}% -${this.posY}%`;
             item.classList.add("tile__object");
             return item;
+        }
+        equip(isEquipped) {
+            if (this.equipable) {
+                this.equipped = isEquipped;
+            }
         }
         collect(tileObj) {
             tileObj.setEmpty();
@@ -481,22 +551,6 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    class Direction {
-        constructor(up, right, down, left) {
-            this.up = up;
-            this.right = right;
-            this.down = down;
-            this.left = left;
-        }
-    }
-
-    class Dimension {
-        constructor(width, height) {
-            this.width = width;
-            this.height = height;
-        }
-    }
-
     // let platinum = new Currency();
     // let gold = new Currency(100, platinum);
     // let silver = new Currency(100, gold);
@@ -510,35 +564,95 @@ document.addEventListener("DOMContentLoaded", event => {
     // console.log("Platinum: " + platinum.amount + ", Gold: " + gold.amount + ", silver: " + silver.amount);
 
     const worlds = {
-        home: {
-            name: "Home",
-            type: "outdoors",
+        outdoor: {
+            name: "La La Land",
+            type: "outdoor",
             locked: false,
             bioms: ["forest", "desert", "snow"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 11,
+                right: 14,
+                down: 11,
+                left: 14,
+            },
+            zoneSize: {
+                width: 7,
+                height: 7,
+            },
         },
         kartansLair: {
             name: "Kartans Lair",
             type: "dungeon",
             locked: true,
             bioms: ["floor"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: {
+                width: 7,
+                height: 7,
+            },
         },
         dungeonOfMachlain: {
             name: "The Dungeon of Machlain",
             type: "dungeon",
             locked: true,
             bioms: ["floor"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: {
+                width: 7,
+                height: 7,
+            },
         },
         orchsCave: {
             name: "Orchs cave",
             type: "dungeon",
             locked: true,
             bioms: ["floor"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: {
+                width: 7,
+                height: 7,
+            },
         },
         piratesLair: {
             name: "Pirates Lair",
             type: "dungeon",
             locked: true,
             bioms: ["floor"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: {
+                width: 7,
+                height: 7,
+            },
         }
     }
 
@@ -596,28 +710,32 @@ document.addEventListener("DOMContentLoaded", event => {
 
     let collectables = {
         coins: {
-            name: "coin",
+            type: "coin",
             count: 0,
             spriteCoordinates: { x: 3, y: 3 },
             includeInStartZone: true,
             stacks: 100,
+            minStackAmount: 10,
             maxStackAmount: 30,
-            totalStackAmount: 0,
+            equipable: false,
+            equipped: null,
             iconElement: document.getElementById("coin-icon"),
             element: document.getElementById("coin-count"),
             onCollect: function(item) {
-                console.log(this);
                 collectables.coins.count += item.amount;
                 collectables.coins.element.textContent = collectables.coins.count;
             }
         },
         keys: {
-            name: "key",
+            type: "key",
             count: 0,
             spriteCoordinates: { x: 6, y: 0 },
             includeInStartZone: false,
             stacks: 6,
+            minStackAmount: 1,
             maxStackAmount: 1,
+            equipable: false,
+            equipped: null,
             iconElement: document.getElementById("key-icon"),
             element: document.getElementById("key-count"),
             onCollect: function(item) {
@@ -625,39 +743,101 @@ document.addEventListener("DOMContentLoaded", event => {
                 collectables.keys.element.textContent = collectables.keys.count;
             }
         },
-        weapons: {
-            name: "strength",
+        woodenSword: {
+            type: "weapon",
             count: 0,
             spriteCoordinates: { x: 1, y: 2 },
             includeInStartZone: false,
-            stacks: 40,
-            maxStackAmount: 3,
+            stacks: 30,
+            minStackAmount: 10,
+            maxStackAmount: 10,
+            equipable: true,
+            equipped: true,
             iconElement: document.getElementById("strength-icon"),
             element: document.getElementById("strength-count"),
             onCollect: function(item) {
-                player.addStrength(item.amount);
+                player.setStrength(item.amount);
+                setEquipable(collectables.woodenSword);
             }
         },
-        armors: {
-            name: "armor",
+        ironSword: {
+            type: "weapon",
+            count: 0,
+            spriteCoordinates: { x: 3, y: 2 },
+            includeInStartZone: false,
+            stacks: 40,
+            minStackAmount: 12,
+            maxStackAmount: 12,
+            equipable: true,
+            equipped: false,
+            iconElement: document.getElementById("strength-icon"),
+            element: document.getElementById("strength-count"),
+            onCollect: function(item) {
+                player.setStrength(item.amount);
+                setEquipable(collectables.ironSword);
+            }
+        },
+        ironAxe: {
+            type: "weapon",
+            count: 0,
+            spriteCoordinates: { x: 2, y: 0 },
+            includeInStartZone: false,
+            stacks: 40,
+            minStackAmount: 15,
+            maxStackAmount: 15,
+            equipable: true,
+            equipped: false,
+            iconElement: document.getElementById("strength-icon"),
+            element: document.getElementById("strength-count"),
+            onCollect: function(item) {
+                player.setStrength(item.amount);
+                setEquipable(collectables.ironAxe);
+            }
+        },
+        smallShield: {
+            type: "armor",
             count: 0,
             spriteCoordinates: { x: 5, y: 0 },
             includeInStartZone: false,
             stacks: 40,
-            maxStackAmount: 3,
+            minStackAmount: 1,
+            maxStackAmount: 1,
+            equipable: true,
+            equipped: true,
             iconElement: document.getElementById("armor-icon"),
             element: document.getElementById("armor-count"),
             onCollect: function(item) {
-                player.addArmor(item.amount);
+                player.setArmor(item.amount);
+                setEquipable(collectables.smallShield);
+            }
+        },
+        largeShield: {
+            type: "armor",
+            count: 0,
+            spriteCoordinates: { x: 4, y: 0 },
+            includeInStartZone: false,
+            stacks: 30,
+            minStackAmount: 3,
+            maxStackAmount: 3,
+            equipable: true,
+            equipped: false,
+            iconElement: document.getElementById("armor-icon"),
+            element: document.getElementById("armor-count"),
+            onCollect: function(item) {
+                player.setArmor(item.amount);
+                setEquipable(collectables.largeShield);
             }
         },
         potions: {
-            name: "life",
+            type: "life",
             count: 0,
             spriteCoordinates: { x: 3, y: 4 },
             includeInStartZone: false,
             stacks: 300,
+            minStackAmount: 10,
             maxStackAmount: 50,
+            equipable: false,
+            equipped: null,
             iconElement: document.getElementById("life-icon"),
             element: document.getElementById("life-count"),
             onCollect: function(item) {
@@ -666,27 +846,42 @@ document.addEventListener("DOMContentLoaded", event => {
         },
     }
 
-    let startFormLabelText = "";
+    function setEquipable(collectable) {
+        resetEquipable(collectable.type);
+        collectable.equipped = true;
+        uiIcon(collectable);
+    }
+
+    function resetEquipable(type) {
+        for (let i = 0; i < Object.keys(collectables).length; i++) {
+            const collectable = Object.keys(collectables)[i];
+            console.log(collectable.type)
+            if (collectable.type == type) {
+                collectable.equipped = false;
+            }
+        }
+    }
+
+    // let startFormLabelText = "";
     startForm.addEventListener("submit", function(evt) {
         evt.preventDefault();
         const startFormName = startForm.querySelector("#start-form-name");
-        const startFormLabel = startForm.querySelector("#start-form-label");
-        if (startFormLabelText == "") {
-            startFormLabelText = startFormLabel.textContent;
-        }
-        if (startFormName.value == "") {
-            startFormLabel.textContent = startFormLabelText + " - Please fill out!";
-            startFormLabel.classList.add("js-invalid");
-            startFormName.addEventListener("keyup", keyListen);
+        // const startFormLabel = startForm.querySelector("#start-form-label");
+        // if (startFormLabelText == "") {
+        //     startFormLabelText = startFormLabel.textContent;
+        // }
+        // if (startFormName.value == "") {
+        //     startFormLabel.textContent = startFormLabelText + " - Please fill out!";
+        //     startFormLabel.classList.add("js-invalid");
+        //     startFormName.addEventListener("keyup", keyListen);
 
-            function keyListen() {
-                startFormLabel.textContent = startFormLabelText;
-                startFormLabel.classList.remove("js-invalid");
-                console.log("hello")
-                startFormName.removeEventListener("keyup", keyListen);
-            }
-            return false;
-        }
+        //     function keyListen() {
+        //         startFormLabel.textContent = startFormLabelText;
+        //         startFormLabel.classList.remove("js-invalid");
+        //         startFormName.removeEventListener("keyup", keyListen);
+        //     }
+        //     return false;
+        // }
         newGame(startFormName.value);
         startScreen.classList.add("js-hidden");
     });
@@ -696,26 +891,23 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     });
 
-    function uiIcon(collectable) {
-        const x = collectable.spriteCoordinates.x * 64;
-        const y = collectable.spriteCoordinates.y * 64;
-        console.log(collectable.spriteCoordinates)
-        collectable.iconElement.style.backgroundPosition = `-${x}px -${y}px`;
-    }
-
     function newGame(playerName) {
-        const regionSize = new Direction(11, 14, 11, 14);
-        const zoneSize = new Dimension(7, 7);
-        region = new Region("home", "outdoor", zoneContainer, regionSize, zoneSize, 64, worlds.home.bioms);
+        currentWorld = worlds.outdoor;
+        region = new Region(worlds.outdoor, zoneContainer, tileSize);
         miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
         const lifeUIElm = collectables.potions.element;
-        const strengthUIElm = collectables.weapons.element;
-        const armorUIElm = collectables.armors.element;
-        player = new Player(playerName, 150, 150, 100, 10, 0, lifeUIElm, strengthUIElm, armorUIElm, null, gameOver);
+        const strengthUIElm = collectables.woodenSword.element;
+        const armorUIElm = collectables.smallShield.element;
+        playerName = playerName == "" ? "Player 1" : playerName;
+        player = new Player(playerName, "player", 150, 150, 100, 10, 0, lifeUIElm, strengthUIElm, armorUIElm, null, gameOver);
         for (let i = 0; i < Object.values(collectables).length; i++) {
-            const value = Object.values(collectables)[i];
-            uiIcon(value);
+            const collectable = Object.values(collectables)[i];
+            uiIcon(collectable);
+            if (collectable.equipable && collectable.equipped) {
+                collectable.element.textContent = collectable.minStackAmount;
+            }
         }
+        battleQueueElement.innerHTML = "";
         buildMap();
         buildZone("0_0");
         placePlayer(getCenterTileIndex());
@@ -723,9 +915,50 @@ document.addEventListener("DOMContentLoaded", event => {
         setEvent();
         gameStarted = true;
 
-        //CHEATS!!!
-        // ui.key.count++;
-        // ui.key.element.textContent = ui.key.count;
+        //Pathfinding algorithm test
+        // updatePathfindingGrid();
+        // console.log(findShortestPath({ x: 0, y: 0 }, { x: 3, y: 3 }, pathFindingGrid));
+    }
+
+    function enterRegion(world) {
+        if (world.region == null) {
+            currentWorld.region = region;
+            currentWorld.miniMap = miniMap;
+            region = new Region(world, zoneContainer, tileSize);
+            miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
+            currentWorld = world;
+            battleQueueElement.innerHTML = "";
+            buildMap();
+            buildZone("0_0");
+            placePlayer(getCenterTileIndex());
+            setEvent();
+            gameStarted = true;
+        } else {
+            region = world.region;
+            miniMap = world.miniMap;
+        }
+    }
+
+    function updatePathfindingGrid() {
+        for (let x = 0; x < region.zoneSize.width; x++) {
+            pathFindingGrid[x] = [];
+            for (let y = 0; y < region.zoneSize.height; y++) {
+                if (currentZone.getTileObj(x + "_" + y).occupied) {
+                    pathFindingGrid[x][y] = 'Obstacle';
+                } else {
+                    pathFindingGrid[x][y] = 'Empty';
+                }
+            }
+        }
+    }
+
+    function uiIcon(collectable) {
+        if (collectable.equipable && !collectable.equipped) {
+            return;
+        }
+        const x = collectable.spriteCoordinates.x * 64;
+        const y = collectable.spriteCoordinates.y * 64;
+        collectable.iconElement.style.backgroundPosition = `-${x}px -${y}px`;
     }
 
     function gameOver(playerObj) {
@@ -737,17 +970,19 @@ document.addEventListener("DOMContentLoaded", event => {
         calmEvent();
     }
 
-    function enterGate(areaObj) {
-        if (areaObj.locked) {
+    function enterGate(gate) {
+        if (gate.locked) {
             if (collectables.keys.count > 0) {
                 collectables.keys.count--;
                 collectables.keys.element.textContent = collectables.keys.count;
-                areaObj.unlock();
+                gate.unlock();
             } else {
                 console.log("Key is missing!");
             }
         } else {
-            console.log("Transitioning to " + areaObj.id);
+            console.log("Transitioning to " + gate.id);
+            enterRegion(gate.world);
+            playerIsMoving = false;
         }
     }
 
@@ -768,6 +1003,10 @@ document.addEventListener("DOMContentLoaded", event => {
         // placeEnemy(tileObj2, enemyTypes[1]);
         // const tileObj = zone.getTileObj("2_1");
         // placeEnemy(tileObj, enemyTypes[1]);
+
+        //INSERT KEYS MANUALLY FOR TESTING PURPOSES
+        collectables.keys.count++;
+        collectables.keys.element.textContent = collectables.keys.count;
 
         //Loop through all items and place them randomly in the world (Coins, Keys, Weapons, Armors, Potions, etc.)
         for (let i = 0; i < Object.keys(collectables).length; i++) {
@@ -841,6 +1080,7 @@ document.addEventListener("DOMContentLoaded", event => {
         turnIndex = -1;
         battleQueue = [];
         background.classList.remove("battle");
+        player.removeCard();
     }
 
     function combatEvent() {
@@ -848,59 +1088,61 @@ document.addEventListener("DOMContentLoaded", event => {
         playersTurn = false;
         turnIndex = -1;
         background.classList.add("battle");
-        battleQueue.push(player.currentTile.object);
+        battleQueue.push(player);
         shuffleArray(battleQueue);
+        for (let i = 0; i < battleQueue.length; i++) {
+            const character = battleQueue[i];
+            character.createCardHTML(battleQueueElement);
+        }
         nextTurn();
     }
 
     function nextTurn() {
-        turnIndex++;
-        if (turnIndex >= battleQueue.length) {
-            turnIndex = 0;
+        for (let i = battleQueue.length - 1; i >= 0; i--) {
+            const character = battleQueue[i];
+            if (character.isDead) {
+                battleQueue.splice(i, 1);
+            }
         }
-        if (battleQueue[turnIndex] == player.currentTile.object) {
+        const first = battleQueue.shift();
+        battleQueue.push(first);
+        for (let i = 0; i < battleQueue.length; i++) {
+            const character = battleQueue[i];
+            // if (i == 0) {
+            //     character.card.style.position = "absolute";
+            //     character.card.style.transition = "transform 500ms";
+            //     character.card.style.transform = `translate(${64 * battleQueue.length - 1}px)`;
+            // } else {
+            //     character.card.removeAttribute("style");
+            //     character.card.classList.add("js-left");
+            // }
+            // setTimeout(() => {
+            //     character.card.removeAttribute("style");
+            //     character.card.classList.remove("js-left");
+            // }, 500);
+            character.updateOrder(i);
+        }
+        if (battleQueue[0] == player) {
             playersTurn = true;
-            console.log("Players turn");
         } else {
             playersTurn = false;
-            enemyTurn(battleQueue[turnIndex]);
+            enemyTurn(battleQueue[0]);
         }
     }
 
     function enemyTurn(enemyObj) {
-        console.log("Enemys turn");
         if (battleQueue.length > 0) {
-            if (enemyObj.life == 0) {
-                nextTurn();
-                return;
-            }
-            const moveDirection = getMoveDirection(enemyObj, player);
+            updatePathfindingGrid();
+            const moveDirection = shortestPathDirection(enemyObj.currentTile, player.currentTile);
             const destinationTileObj = adjacentTile(enemyObj.currentTile, moveDirection);
             enemyMove(enemyObj, moveDirection, destinationTileObj);
-        } else {
-            console.log("Battle ended");
         }
     }
 
-    //Enemy AI movement
-    function getMoveDirection(sourceObj, targetObj) {
-        const sourceTile = sourceObj.currentTile;
-        const targetTile = targetObj.currentTile;
-        const sourceCoordinates = sourceTile.coordinates();
-        const targetCoordinates = targetTile.coordinates();
-        let moveDirection;
-
-        if (targetCoordinates.x > sourceCoordinates.x) {
-            moveDirection = "right";
-        } else if (targetCoordinates.y > sourceCoordinates.y) {
-            moveDirection = "down";
-        }
-        if (targetCoordinates.x < sourceCoordinates.x) {
-            moveDirection = "left";
-        } else if (targetCoordinates.y < sourceCoordinates.y) {
-            moveDirection = "up";
-        }
-        return moveDirection;
+    function shortestPathDirection(from, to) {
+        let fromObj = from.coordinates();
+        let toObj = to.coordinates();
+        return findShortestPath(fromObj, toObj, pathFindingGrid)[0];
     }
 
     function enemyMove(enemyObj, direction, destinationTileObj) {
@@ -911,10 +1153,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 enemyObj.setAttackTime();
                 halfWayMove(enemyObj.element, enemyObj.attackTime, direction, function() {
                     effect.explosion.createHTML(destinationTileObj, 700);
-                    const playerKilled = destinationTileObj.object.takeDamage(enemyObj.strength);
-                    if (playerKilled) {
-                        console.log("Player is very dead!!!");
-                    }
+                    destinationTileObj.object.takeDamage(enemyObj.strength);
                 }, function() {
                     if (!destinationTileObj.object.isDead) {
                         nextTurn();
@@ -925,9 +1164,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 enemyObj.setMoveTime();
                 fullMove(enemyObj.element, enemyObj.moveTime, direction, function() {
                     const currentTile = enemyObj.currentTile;
-                    // destinationTileObj.object = enemyObj;
                     enemyObj.currentTile = destinationTileObj;
-                    // enemyObj.currentTile.element.append(enemyObj.element);
                     destinationTileObj.placeObject(enemyObj, "enemy", true);
                     destinationTileObj.placeHTML(enemyObj.element);
                     currentTile.setEmpty();
@@ -952,8 +1189,8 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function miniMapHTML(id, biom) {
-        let activeClass = "fog-of-war";
-        // let activeClass = "";
+        // let activeClass = "fog-of-war";
+        let activeClass = "";
         if (id == "0_0") {
             activeClass = "active";
         }
@@ -1015,12 +1252,15 @@ document.addEventListener("DOMContentLoaded", event => {
         for (let i = 0; i < collectable.stacks; i++) {
             const zone = region.getRandomZone(collectable.includeInStartZone);
             const tileObj = zone.getRandomTile();
-            const rndAmount = randomInteger(1, collectable.maxStackAmount);
-            const coin = new Item(rndAmount, collectable.name, collectable.spriteCoordinates.x, collectable.spriteCoordinates.y, collectable.onCollect);
-            tileObj.placeObject(coin, "item", true);
+            const rndAmount = randomInteger(collectable.minStackAmount, collectable.maxStackAmount);
+            const item = new Item(rndAmount, collectable.spriteCoordinates, collectable.equipable, collectable.onCollect);
+            item.equip(collectable.equipped);
+            tileObj.placeObject(item, "item", true);
             collectable.totalStackAmount += rndAmount;
         }
-        console.log(collectable.name + "'s total: " + collectable.totalStackAmount);
+        //This needs to be deleted at some point.
+        //For now, it is used to adjust collectables-values, to create balance in the game
+        console.log(collectable.type + "'s total: " + collectable.totalStackAmount);
     }
 
     function placeDungeons() {
@@ -1028,7 +1268,7 @@ document.addEventListener("DOMContentLoaded", event => {
             const dungeon = dungeons[i];
             const zone = region.getRandomZone();
             const tileObj = zone.getRandomTile();
-            let dungeonObj = new Gate(dungeon.name, dungeon.type, dungeon.locked, tileObj);
+            let dungeonObj = new Gate(dungeon, tileObj);
             zone.areaTransition = dungeonObj;
             miniMap.tileAddClass(zone.id, dungeon.type);
         }
@@ -1044,7 +1284,7 @@ document.addEventListener("DOMContentLoaded", event => {
             console.log("Array is empty!");
             return;
         }
-        const enemy = new Enemy(type.name, type.moveTime, type.attackTime, type.life, type.strength, type.cls, tileObj, enemyDeath);
+        const enemy = new Enemy(type.name, "enemy", type.moveTime, type.attackTime, type.life, type.strength, type.cls, tileObj, enemyDeath);
         tileObj.setEmpty();
         tileObj.placeObject(enemy, "enemy", true);
         type.totalCount++;
@@ -1070,7 +1310,7 @@ document.addEventListener("DOMContentLoaded", event => {
             let moveSuccess;
             if (evt.key == "w" || evt.key == "ArrowUp") {
                 moveSuccess = playerMove(0, -1, player.element, "up");
-                player.element.style.backgroundPosition = "0 -192px";
+                player.element.style.backgroundPosition = "0 -33.3333%";
             }
             if (evt.key == "s" || evt.key == "ArrowDown") {
                 moveSuccess = playerMove(0, 1, player.element, "down");
@@ -1078,11 +1318,11 @@ document.addEventListener("DOMContentLoaded", event => {
             }
             if (evt.key == "a" || evt.key == "ArrowLeft") {
                 moveSuccess = playerMove(-1, 0, player.element, "left");
-                player.element.style.backgroundPosition = "0 -64px";
+                player.element.style.backgroundPosition = "0 -100%";
             }
             if (evt.key == "d" || evt.key == "ArrowRight") {
                 moveSuccess = playerMove(1, 0, player.element, "right");
-                player.element.style.backgroundPosition = "0 -128px";
+                player.element.style.backgroundPosition = "0 -66.6667%";
             }
         })
     }
@@ -1114,29 +1354,31 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function adjacentTile(currentTileObj, direction) {
-        let idObj = currentTileObj.coordinates();
+        const idObj = currentTileObj.coordinates();
+        let x = idObj.x;
+        let y = idObj.y;
         switch (direction) {
             case "up":
-                idObj.y--;
-                if (idObj.y < 0) {
+                y--;
+                if (y < 0) {
                     return false;
                 }
                 break;
             case "down":
-                idObj.y++;
-                if (idObj.y >= region.zoneSize.height) {
+                y++;
+                if (y >= region.zoneSize.height) {
                     return false;
                 }
                 break;
             case "right":
-                idObj.x++;
-                if (idObj.x >= region.zoneSize.width) {
+                x++;
+                if (x >= region.zoneSize.width) {
                     return false;
                 }
                 break;
             case "left":
-                idObj.x--;
-                if (idObj.x < 0) {
+                x--;
+                if (x < 0) {
                     return false;
                 }
                 break;
@@ -1144,7 +1386,7 @@ document.addEventListener("DOMContentLoaded", event => {
             default:
                 break;
         }
-        return currentZone.getTileObj(idObj.x + "_" + idObj.y);
+        return currentZone.getTileObj(x + "_" + y);
     }
 
     function playerMove(moveX, moveY, element, direction) {
@@ -1254,4 +1496,133 @@ document.addEventListener("DOMContentLoaded", event => {
     function randomInteger(min, max) {
         return Math.floor(Math.random() * (max - min)) + min;
     }
+
+    // *********************************************************************************************
+    // *********************************************************************************************
+    // ************************** PATHFIDING Breadth-First Search algorithm ************************
+    // *********************************************************************************************
+    // *********************************************************************************************
+
+    // Start location will be in the following format:
+    // [distanceFromTop, distanceFromLeft]
+    function findShortestPath(from, to, grid) {
+        //Define the Start position and the Goal position
+        grid[from.x][from.y] = "Start";
+        grid[to.x][to.y] = "Goal";
+
+        // Each "location" will store its coordinates
+        // and the shortest path required to arrive there
+        var location = {
+            x: from.x,
+            y: from.y,
+            path: [],
+            status: 'Start'
+        };
+
+        // Initialize the queue with the start location already inside
+        var queue = [location];
+
+        // Loop through the grid searching for the goal
+        let counter = 0;
+        while (queue.length > 0 && counter < 10000) {
+            // Take the first location off the queue
+            var currentLocation = queue.shift();
+
+            // Explore North
+            var newLocation = exploreInDirection(currentLocation, 'up', grid);
+            if (newLocation.status === 'Goal') {
+                return newLocation.path;
+            } else if (newLocation.status === 'Valid') {
+                queue.push(newLocation);
+            }
+
+            // Explore East
+            var newLocation = exploreInDirection(currentLocation, 'right', grid);
+            if (newLocation.status === 'Goal') {
+                return newLocation.path;
+            } else if (newLocation.status === 'Valid') {
+                queue.push(newLocation);
+            }
+
+            // Explore South
+            var newLocation = exploreInDirection(currentLocation, 'down', grid);
+            if (newLocation.status === 'Goal') {
+                return newLocation.path;
+            } else if (newLocation.status === 'Valid') {
+                queue.push(newLocation);
+            }
+
+            // Explore West
+            var newLocation = exploreInDirection(currentLocation, 'left', grid);
+            if (newLocation.status === 'Goal') {
+                return newLocation.path;
+            } else if (newLocation.status === 'Valid') {
+                queue.push(newLocation);
+            }
+        }
+        return false;
+    };
+
+    // This function will check a location's status
+    // (a location is "valid" if it is on the grid, is not an "obstacle",
+    // and has not yet been visited by our algorithm)
+    // Returns "Valid", "Invalid", "Blocked", or "Goal"
+    function locationStatus(location, grid) {
+        var gridWidth = grid.length;
+        var gridHeight = grid[0].length;
+        var x = location.x;
+        var y = location.y;
+
+        if (location.x < 0 ||
+            location.x >= gridWidth ||
+            location.y < 0 ||
+            location.y >= gridHeight) {
+
+            // location is not on the grid--return false
+            return 'Invalid';
+        } else if (grid[x][y] === 'Goal') {
+            return 'Goal';
+        } else if (grid[x][y] !== 'Empty') {
+            // location is either an obstacle or has been visited
+            return 'Blocked';
+        } else {
+            return 'Valid';
+        }
+    };
+
+
+    // Explores the grid from the given location in the given
+    // direction
+    function exploreInDirection(currentLocation, direction, grid) {
+        var newPath = currentLocation.path.slice();
+        newPath.push(direction);
+
+        var x = currentLocation.x;
+        var y = currentLocation.y;
+
+        if (direction === 'up') {
+            y -= 1;
+        } else if (direction === 'right') {
+            x += 1;
+        } else if (direction === 'down') {
+            y += 1;
+        } else if (direction === 'left') {
+            x -= 1;
+        }
+
+        var newLocation = {
+            x: x,
+            y: y,
+            path: newPath,
+            status: 'Unknown'
+        };
+        newLocation.status = locationStatus(newLocation, grid);
+
+        // If this new location is valid, mark it as 'Visited'
+        if (newLocation.status === 'Valid') {
+            grid[newLocation.x][newLocation.y] = 'Visited';
+        }
+
+        return newLocation;
+    };
 });

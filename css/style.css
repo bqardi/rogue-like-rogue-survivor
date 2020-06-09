@@ -79,13 +79,14 @@ a:hover {
     max-width: 1000px;
     margin: 0 auto;
     display: grid;
-    grid-template-rows: 100px auto;
+    grid-template-rows: 140px auto;
 }
 
 .header {
     display: flex;
     align-items: center;
-    padding: 2rem 0;
+    justify-content: space-between;
+    padding: 1rem 0;
 }
 
 .margin-top {
@@ -184,6 +185,11 @@ form>button:hover {
     color: yellow;
     font-weight: 700;
     text-shadow: 0 0 8px white;
+}
+
+.start-form__input::placeholder {
+    color: white;
+    text-shadow: 1px 1px 3px black;
 }
 
 .start-form__name {
@@ -311,18 +317,22 @@ form>button:hover {
 .zone {
     display: grid;
     gap: 2px;
-    background-color: black;
+    background-image: url(../images/paper-background.png);
     padding: 10px;
+    border: 4px double gold;
+    border-radius: 0.25rem;
 }
 
 .zone__tile {
     position: relative;
-    width: 64px;
-    height: 64px;
+    width: 100%;
+    height: 100%;
     transition: opacity 150ms;
     display: flex;
     justify-content: center;
     align-items: center;
+    background-image: url(../images/bioms.jpg);
+    background-size: 300%;
 }
 
 .tile__object {
@@ -332,63 +342,52 @@ form>button:hover {
 }
 
 .zone__tile:hover {
-    background-color: khaki !important;
+    filter: contrast(140%);
+    z-index: 20;
 }
 
 .forest .zone__tile {
-    background-color: var(--forest);
+    background-position: 0 0;
 }
 
 .desert .zone__tile {
-    background-color: var(--desert);
+    background-position: 0 -100%;
 }
 
 .snow .zone__tile {
-    background-color: var(--snow);
+    background-position: 0 -200%;
 }
 
 .forest .zone__tree {
-    background-image: url(../images/tree-forest.png);
+    background-position: -200% 0;
 }
 
 .desert .zone__tree {
-    background-image: url(../images/tree-desert.png);
+    background-position: -200% -100%;
 }
 
 .snow .zone__tree {
-    background-image: url(../images/tree-snow.png);
+    background-position: -200% -200%;
 }
 
 .forest .zone__rock {
-    background-image: url(../images/rock.png);
+    background-position: -100% 0;
 }
 
 .desert .zone__rock {
-    background-image: url(../images/rock.png);
+    background-position: -100% -100%;
 }
 
 .snow .zone__rock {
-    background-image: url(../images/rock.png);
+    background-position: -100% -200%;
 }
 
 .item {
-    width: 64px;
-    height: 64px;
+    width: 100%;
+    height: 100%;
     background-image: url(../images/collectables.png);
+    background-size: 700%;
 }
-
-
-/* .apple {
-    background-position: -480px -528px;
-}
-
-.key {
-    background-position: -528px -144px;
-}
-
-.map {
-    background-position: -432px -144px;
-} */
 
 
 /* #region AREAs */
@@ -398,7 +397,7 @@ form>button:hover {
 }
 
 .gate.dungeon {
-    background-image: url(../images/dungeon-entrance.png);
+    background-image: url(../images/dungeon-entrance-gate.png);
 }
 
 .gate.dungeon.locked {
@@ -420,11 +419,9 @@ form>button:hover {
     display: flex;
     justify-content: center;
     align-items: center;
-    border: 10px solid black;
-    background-image: url(../images/treasure-map.jpg);
-    background-repeat: no-repeat;
-    background-size: 300%;
-    background-position: center;
+    background-image: url(../images/paper-background.png);
+    border: 4px double gold;
+    border-radius: 0.25rem;
 }
 
 .mini-map__title {
@@ -472,7 +469,7 @@ form>button:hover {
 }
 
 .list__item-icon.dungeon {
-    background-image: url(../images/dungeon-entrance.png);
+    background-image: url(../images/dungeon-entrance-gate.png);
     background-repeat: no-repeat;
     background-size: 100%;
 }
@@ -490,7 +487,7 @@ form>button:hover {
 }
 
 .mini-map__tile.dungeon {
-    background-image: url(../images/dungeon-entrance.png);
+    background-image: url(../images/dungeon-entrance-gate.png);
     background-size: 100%;
 }
 
@@ -583,6 +580,7 @@ form>button:hover {
 .player {
     background-image: url(../images/player-spritesheet.png);
     background-position: 0 0;
+    background-size: 100%;
     z-index: 10;
 }
 
@@ -664,6 +662,7 @@ form>button:hover {
 /* #region ENEMIES */
 
 .enemy {
+    background-size: 100%;
     background-position: 0 0;
     z-index: 5;
     display: flex;
@@ -682,7 +681,7 @@ form>button:hover {
     position: absolute;
     top: 70%;
     width: 90%;
-    height: 1rem;
+    height: 30%;
     background-color: black;
     display: flex;
     align-items: center;
@@ -707,7 +706,56 @@ form>button:hover {
 /* #endregion ENEMIES */
 
 
-/* #region EFECT */
+/* #region BATTLE QUEUE - CHARACTER CARD */
+
+.battle-queue {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.character-card {
+    padding: 0.5rem;
+    background-image: url(../images/paper-background.png);
+    border: 4px double gold;
+    border-radius: 0.25rem;
+    margin-left: 0.5rem;
+    right: 0;
+}
+
+.character-card.js-left {
+    position: absolute;
+    transform: translate;
+}
+
+.character-card__title {
+    font-size: 1rem;
+}
+
+.character-card__image {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    object-position: 0 0;
+}
+
+.character-card__health {
+    height: 0.75rem;
+    padding: 2px;
+    background-color: black;
+}
+
+.character-card__health-bar {
+    height: 100%;
+    background-color: red;
+}
+
+
+/* #endregion BATTLE QUEUE - CHARACTER CARD */
+
+
+/* #region EFFECT */
 
 .effect {
     opacity: 0;
@@ -735,7 +783,7 @@ form>button:hover {
 }
 
 
-/* #endregion EFECT */
+/* #endregion EFFECT */
 
 
 /* #region TOOLTIP */
