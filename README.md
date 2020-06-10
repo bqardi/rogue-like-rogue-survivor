@@ -22,14 +22,31 @@ TODO (?):
 - Collecting specific keys for specific doors/dungeon entrances (currently any key will open any dungeon). This is a definite maybe, since I would also have to change the UI for this to work
 
 #### Enemies
+CURRENTLY:
 - Skeletons (fast and weak)
 - Orcs (slow but strong)
-- More to come...
+
+TODO:
+- Bosses (stronger and faster than normal enemy units, and have special skills)
+- Mages (can cast magic spells like fireball/firewall/frost nova/teleport/invicibility/protection/etc.)
+- Skeleton archers (or other archers for that matter)
+- Goblins
+- Imps
+- Ghosts
+- Aaahrgh, what else? Hmm...
+- Vampires
+- Snakes
+- Vultures
+- Thieves
+- Giant rats
+- Pigs (innocent little creatures that can be slaughtered for fun! HAHAHAHA)
+- Ghouls
+- Zombies
 
 #### Dungeons
 These dungeons are accessed only if you have found a key, and they will give you access to a specific dungeon/maze/cave/lair/whatever, where you can find a lot of loot and a strong end-of-level boss.
 TODO:
-- Currently, when you open a dungeon, nothing will happen. The plan is to transition the player to a new region with its own tileset and layout based on the region class.
+- Currently, when you open a dungeon, nothing will happen (UPDATE: Currently a new region is created, but the layout definitely doesn't look like a dungeon yet). The plan is to transition the player to a new region with its own tileset and layout based on the region class.
 - Creating a more maze like environment (with walls/hallways/doors/etc.)
 - End-of-level boss(es)
 
@@ -41,18 +58,19 @@ TODO:
 #### Battle system
 Currently the battle system is very basic and simple. It is created as a turn-based system, but only when enemies are present. In the following, character refers to both the player and the enemy. This is because both the Player class and the Enemy class inherits from Character class and therefore have shared properties, which makes it possible to create this dynamic battle system.
 CURRENTLY:
-- Turn based system (basics)
+- Turn based system (basics UPDATE: a little more advanced now)
 - Randomly choose the starting character
 - One action per turn, per character
 - Can attack opponent character (by moving into their tile), giving damage based on attacking characters strength
 - Enemy AI tracks the player and moves towards the player one tile at a time
+- UI for the turn based system (UPDATED)
+- Improving AI (especially so they don't move through obstacles (trees/rocks...), as they currently do) (UPDATED)
+- Implemented the Breadth-First Search algorithm (this was simpler for me to understand in contrast to the popular A* algorithm) to get enemies to steer around obstacles, and still move towards (or chase, if you will) the player.
 
 TODO:
-- UI for the turn based system
 - Choose the starting character based on some swiftness or speed parameter. Random if same value is shared between multiple characters
 - Possibility for escaping the battle (maybe if you are worried that you can't win the battle or just don't want to fight(?))
 - Possibility for evading attacks
-- Improving AI (especially so they don't move through obstacles (trees/rocks...), as they currently do)
 - Overall creating a story so the game has a purpose :smiley:
 
 #### Other things
@@ -60,3 +78,9 @@ TODO (?):
 - Daytime cycle (making the environment darker at nighttime)
 - Torches (to light up the area around the player when in dark areas, such as at night or inside a dungeon)
 - Maybe even creating switches in dungeons to switch on light
+- I'm thinking about creating an inventory system, so collected items are placed in the inventory, and then the player can choose what to use/wear/drop/destroy/etc.
+- Adding NPC's to interact with (quest-givers/merchants/???)
+- Survival feature(?). This is a very big MAYBE, since this is a major feature to implement and most likely I won't be implementing it, but for future reference I've added it and maybe I will implement...
+- Crafting feature(?). Also a very big MAYBE! Ability to collect wood from trees / stone from mining rocks (and possibly a small chance to collect gems of sorts) / collecting different items to use for crafting weapons and armor (and maybe other things like tools/chests for storage/traps maybe/glass to store health potions)
+
+I'm dreaming big here, but the things I am listing in this readme is, only meant as a brainstorming sheet, that I can come back to and maybe implement if I want to (some, of course, are required)
