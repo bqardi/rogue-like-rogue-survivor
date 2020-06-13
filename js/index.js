@@ -36,12 +36,14 @@ document.addEventListener("DOMContentLoaded", event => {
 
 
     class Region {
-        constructor(world, element, tileSize) {
+        constructor(world, backgroundElement, element, tileSize) {
             this.name = world.name;
             this.type = world.type;
             this.bioms = world.bioms;
+            this.enemyPercentage = world.enemyPercentage;
             this.zones = [];
             this.enemies = [];
+            this.backgroundElement = backgroundElement;
             this.element = element;
             this.size = world.size;
             this.zoneSize = world.zoneSize;
@@ -51,7 +53,7 @@ document.addEventListener("DOMContentLoaded", event => {
         initialize() {
             this.size.down = -Math.abs(this.size.down);
             this.size.left = -Math.abs(this.size.left);
-            this.element.style.gridTemplateColumns = `repeat(${this.zoneSize.width}, ${this.tileSize}px)`;
+            this.element.style.gridTemplateColumns = `repeat(${this.zoneSize}, ${this.tileSize}px)`;
             this.element.style.gridAutoRows = `${this.tileSize}px`;
         }
         get width() {
@@ -86,20 +88,18 @@ document.addEventListener("DOMContentLoaded", event => {
         addEnemy(enemy) {
             this.enemies.push(enemy);
         }
-        setRandomBiom() {
-            if (this.bioms.length == 0) {
-                return null;
+        setBiom(biomClass, updateHTML) {
+            if (updateHTML) {
+                this.removeBiomHTML();
             }
-            const rnd = randomInteger(0, this.bioms.length);
-            this.setBiom(this.bioms[rnd]);
+            this.backgroundElement.classList.add(biomClass);
+            this.biom = biomClass;
         }
-        setBiom(biomClass) {
+        removeBiomHTML() {
             for (let i = 0; i < this.bioms.length; i++) {
                 const biom = this.bioms[i];
-                this.element.classList.remove(biom);
+                this.backgroundElement.classList.remove(biom);
             }
-            this.element.classList.add(biomClass);
-            this.biom = biomClass;
         }
         getRandomEnemy() {
             if (this.enemies.length == 0) {
@@ -111,12 +111,14 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Zone {
-        constructor(id, explored, biom) {
+        constructor(id, element, explored, biom) {
             this.id = id;
+            this.element = element;
             this.explored = explored;
             this.biom = biom;
             this.tiles = [];
             this.initialize();
+            this.edgeClass = null;
         }
         initialize() {
             if (this.id == "0_0") {
@@ -159,6 +161,15 @@ document.addEventListener("DOMContentLoaded", event => {
             obj.x = parseInt(coordinate[0]);
             obj.y = parseInt(coordinate[1]);
             return obj;
+        }
+        addEdge(edgeClass) {
+            this.edgeClass = edgeClass;
+        }
+        updateHTML() {
+            this.element.className = "zone";
+            if (this.edgeClass != null) {
+                this.element.classList.add(this.edgeClass);
+            }
         }
     }
 
@@ -247,8 +258,8 @@ document.addEventListener("DOMContentLoaded", event => {
             this.element.style.gridAutoRows = `${this.zoomedInHeight}vh`;
         }
         zoomOut() {
-            this.element.style.gridTemplateColumns = `repeat(${this.region.width}, ${this.region.zoneSize.width}px)`;
-            this.element.style.gridAutoRows = `${this.region.zoneSize.height}px`;
+            this.element.style.gridTemplateColumns = `repeat(${this.region.width}, ${this.region.zoneSize}px)`;
+            this.element.style.gridAutoRows = `${this.region.zoneSize}px`;
         }
         zoomToggle() {
             this.zoomElm.classList.toggle("enlarged");
@@ -289,6 +300,18 @@ document.addEventListener("DOMContentLoaded", event => {
                 gate.style.backgroundPosition = "0 0";
             }
             gate.classList.add("tile__object");
+            let enemyTypeHTML = `<div><h4>Enemytypes:</h4><ul class="item-list">`;
+            for (let i = 0; i < this.world.enemyTypes.length; i++) {
+                const enemyType = this.world.enemyTypes[i];
+                enemyTypeHTML += `<li>${enemyType.name}</li>`;
+            }
+            enemyTypeHTML += "</ul></div>";
+            const tooltipObj = createTooltipObj(`
+                <h3>${this.cls}: <span class="title">${this.id}</span></h3>
+                ${enemyTypeHTML}
+            `);
+            gate.append(tooltipObj.element);
+            tooltipPlacement(this.tileObj, tooltipObj.element, tooltipObj.height);
             this.element = gate;
             this.tileObj.element.append(this.element);
         }
@@ -359,6 +382,8 @@ document.addEventListener("DOMContentLoaded", event => {
             let cardHealth = document.createElement("DIV");
             let cardHealthBar = document.createElement("DIV");
             card.classList.add("character-card");
+            card.classList.add("golden-background");
+            card.classList.add(`character-${this.type}`);
             cardHealth.classList.add("character-card__health");
             cardHealthBar.classList.add("character-card__health-bar");
             card.innerHTML = titleImage;
@@ -386,6 +411,16 @@ document.addEventListener("DOMContentLoaded", event => {
                 this.cardHealthBar.style.width = `${this.life / this.totalLife * 100}%`
             }
         }
+        setActive() {
+            if (!this.isDead) {
+                this.card.classList.add("js-active");
+            }
+        }
+        setInactive() {
+            if (!this.isDead) {
+                this.card.classList.remove("js-active");
+            }
+        }
         updateOrder(order) {
             if (!this.isDead) {
                 this.card.style.order = order;
@@ -411,30 +446,55 @@ document.addEventListener("DOMContentLoaded", event => {
             this.element.classList.add("player");
             this.element.classList.add("animation");
             this.element.classList.add("tile__object");
-            this.element.innerHTML = `<div class="tooltip">${this.name}</div>`;
+            this.updateTooltip(false);
+        }
+        updateTooltip(placeTooltip = true) {
+            if (this.tooltip) {
+                this.element.removeChild(this.tooltip);
+            }
+            const tooltipObj = createTooltipObj(`
+                <h3>${this.name}</h3>
+                <p>Life: ${this.life}</p>
+                <p>Damage: ${this.strength}</p>
+                <p>Armor: ${this.armor}</p>
+                <p>Movement speed: ${this.moveTime}</p>
+                <p>Attack speed: ${this.attackTime}</p>
+            `);
+            this.tooltip = tooltipObj.element;
+            this.tooltipHeight = tooltipObj.height;
+            this.element.append(this.tooltip);
+            if (placeTooltip) {
+                tooltipPlacement(this.currentTile, this.tooltip, this.tooltipHeight);
+            }
         }
         setInteractTime() {
             this.element.style.animationDuration = `${this.interactTime}ms`;
+            this.updateTooltip();
         }
         addLife(amount) {
             super.addLife(amount);
             this.lifeElm.textContent = this.life;
+            this.updateTooltip();
         }
         addStrength(amount) {
             this.strength += amount;
             this.strengthElm.textContent = this.strength;
+            this.updateTooltip();
         }
         setStrength(amount) {
             this.strength = amount;
             this.strengthElm.textContent = this.strength;
+            this.updateTooltip();
         }
         addArmor(amount) {
             this.armor += amount;
             this.armorElm.textContent = this.armor;
+            this.updateTooltip();
         }
         setArmor(amount) {
             this.armor = amount;
             this.armorElm.textContent = this.armor;
+            this.updateTooltip();
         }
         enemyKill() {
             this.killCount++;
@@ -471,13 +531,24 @@ document.addEventListener("DOMContentLoaded", event => {
             healthbar.append(bar);
             healthbar.append(barText);
             enemyHTML.append(healthbar);
-            enemyHTML.insertAdjacentHTML("beforeend", `<div class="tooltip">${this.name}</div>`);
             this.element = enemyHTML;
             this.elmBar = bar;
             this.elmBarText = barText;
+            this.updateTooltip();
             return enemyHTML;
         }
-
+        updateTooltip() {
+            if (this.tooltip) {
+                this.element.removeChild(this.tooltip);
+            }
+            const tooltipObj = createTooltipObj(`
+                <h3>${this.name}</h3>
+            `);
+            this.tooltip = tooltipObj.element;
+            this.tooltipHeight = tooltipObj.height;
+            this.element.append(this.tooltip);
+            tooltipPlacement(this.currentTile, this.tooltip, this.tooltipHeight);
+        }
         takeDamage(damage) {
             super.takeDamage(damage);
             this.elmBar.style.width = `${this.life / this.totalLife * 100}%`;
@@ -486,6 +557,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 this.currentTile.removeObject(this.element);
                 return true;
             }
+            this.updateTooltip();
             return false;
         }
     }
@@ -563,107 +635,8 @@ document.addEventListener("DOMContentLoaded", event => {
     // silver.remove(21512);
     // console.log("Platinum: " + platinum.amount + ", Gold: " + gold.amount + ", silver: " + silver.amount);
 
-    const worlds = {
-        outdoor: {
-            name: "La La Land",
-            type: "outdoor",
-            locked: false,
-            bioms: ["forest", "desert", "snow"],
-            region: null,
-            miniMap: null,
-            size: {
-                up: 11,
-                right: 14,
-                down: 11,
-                left: 14,
-            },
-            zoneSize: {
-                width: 7,
-                height: 7,
-            },
-        },
-        kartansLair: {
-            name: "Kartans Lair",
-            type: "dungeon",
-            locked: true,
-            bioms: ["floor"],
-            region: null,
-            miniMap: null,
-            size: {
-                up: 5,
-                right: 5,
-                down: 5,
-                left: 5,
-            },
-            zoneSize: {
-                width: 7,
-                height: 7,
-            },
-        },
-        dungeonOfMachlain: {
-            name: "The Dungeon of Machlain",
-            type: "dungeon",
-            locked: true,
-            bioms: ["floor"],
-            region: null,
-            miniMap: null,
-            size: {
-                up: 5,
-                right: 5,
-                down: 5,
-                left: 5,
-            },
-            zoneSize: {
-                width: 7,
-                height: 7,
-            },
-        },
-        orchsCave: {
-            name: "Orchs cave",
-            type: "dungeon",
-            locked: true,
-            bioms: ["floor"],
-            region: null,
-            miniMap: null,
-            size: {
-                up: 5,
-                right: 5,
-                down: 5,
-                left: 5,
-            },
-            zoneSize: {
-                width: 7,
-                height: 7,
-            },
-        },
-        piratesLair: {
-            name: "Pirates Lair",
-            type: "dungeon",
-            locked: true,
-            bioms: ["floor"],
-            region: null,
-            miniMap: null,
-            size: {
-                up: 5,
-                right: 5,
-                down: 5,
-                left: 5,
-            },
-            zoneSize: {
-                width: 7,
-                height: 7,
-            },
-        }
-    }
-
-    let dungeons = [
-        worlds.kartansLair,
-        worlds.dungeonOfMachlain,
-        worlds.orchsCave,
-        worlds.piratesLair,
-    ]
-
-    let enemyTypes = [{
+    let enemyType = {
+        skeleton: {
             name: "Skeleton",
             cls: "skeleton",
             life: 20,
@@ -672,7 +645,7 @@ document.addEventListener("DOMContentLoaded", event => {
             moveTime: 500,
             attackTime: 300,
         },
-        {
+        orc: {
             name: "Orc",
             cls: "orc",
             life: 50,
@@ -680,8 +653,136 @@ document.addEventListener("DOMContentLoaded", event => {
             totalCount: 0,
             moveTime: 1000,
             attackTime: 400,
+        }
+    }
+
+    const worlds = {
+        outdoor: {
+            name: "La La Land",
+            type: "outdoor",
+            locked: false,
+            bioms: ["forest", "desert", "snow"],
+            obstacles: ["tree", "rock"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 11,
+                right: 14,
+                down: 11,
+                left: 14,
+            },
+            zoneSize: 7,
+            gateWaysTo: function() {
+                return [worlds.kartansLair, worlds.dungeonOfMachlain, worlds.orchsCave, worlds.piratesLair]
+            },
+            enemyPercentage: 50,
+            enemyTypes: [enemyType.skeleton, enemyType.orc],
         },
-    ]
+        kartansLair: {
+            name: "Kartans Lair",
+            type: "dungeon",
+            locked: true,
+            bioms: ["floor"],
+            obstacles: ["pillar", "barrel"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: 7,
+            gateWaysTo: function() {
+                return [worlds.outdoor]
+            },
+            enemyPercentage: 75,
+            enemyTypes: [enemyType.skeleton, enemyType.orc],
+        },
+        dungeonOfMachlain: {
+            name: "The Dungeon of Machlain",
+            type: "dungeon",
+            locked: true,
+            bioms: ["floor"],
+            obstacles: ["pillar", "barrel"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: 7,
+            gateWaysTo: function() {
+                return [worlds.outdoor]
+            },
+            enemyPercentage: 65,
+            enemyTypes: [enemyType.skeleton, enemyType.orc],
+        },
+        orchsCave: {
+            name: "Orchs cave",
+            type: "dungeon",
+            locked: true,
+            bioms: ["floor"],
+            obstacles: ["pillar", "barrel"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: 7,
+            gateWaysTo: function() {
+                return [worlds.outdoor]
+            },
+            enemyPercentage: 70,
+            enemyTypes: [enemyType.skeleton, enemyType.orc],
+        },
+        piratesLair: {
+            name: "Pirates Lair",
+            type: "dungeon",
+            locked: true,
+            bioms: ["floor"],
+            obstacles: ["pillar", "barrel"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: 7,
+            gateWaysTo: function() {
+                return [worlds.outdoor]
+            },
+            enemyPercentage: 75,
+            enemyTypes: [enemyType.skeleton, enemyType.orc],
+        }
+    }
+
+    // let enemyTypes = [{
+    //         name: "Skeleton",
+    //         cls: "skeleton",
+    //         life: 20,
+    //         strength: 5,
+    //         totalCount: 0,
+    //         moveTime: 500,
+    //         attackTime: 300,
+    //     },
+    //     {
+    //         name: "Orc",
+    //         cls: "orc",
+    //         life: 50,
+    //         strength: 8,
+    //         totalCount: 0,
+    //         moveTime: 1000,
+    //         attackTime: 400,
+    //     },
+    // ]
 
     // *********************************************************************************************
     // *********************************************************************************************
@@ -855,7 +956,6 @@ document.addEventListener("DOMContentLoaded", event => {
     function resetEquipable(type) {
         for (let i = 0; i < Object.keys(collectables).length; i++) {
             const collectable = Object.keys(collectables)[i];
-            console.log(collectable.type)
             if (collectable.type == type) {
                 collectable.equipped = false;
             }
@@ -893,7 +993,7 @@ document.addEventListener("DOMContentLoaded", event => {
 
     function newGame(playerName) {
         currentWorld = worlds.outdoor;
-        region = new Region(worlds.outdoor, zoneContainer, tileSize);
+        region = new Region(worlds.outdoor, background, zoneContainer, tileSize);
         miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
         const lifeUIElm = collectables.potions.element;
         const strengthUIElm = collectables.woodenSword.element;
@@ -913,18 +1013,26 @@ document.addEventListener("DOMContentLoaded", event => {
         placePlayer(getCenterTileIndex());
         addPlayerControls();
         setEvent();
-        gameStarted = true;
+
+        //Manual placement of dungeon
+        // const tileObj = currentZone.getRandomTile();
+        // placeDungeon(currentWorld.gateWaysTo()[0], currentZone, tileObj);
 
         //Pathfinding algorithm test
         // updatePathfindingGrid();
         // console.log(findShortestPath({ x: 0, y: 0 }, { x: 3, y: 3 }, pathFindingGrid));
+
+        gameStarted = true;
     }
 
     function enterRegion(world) {
+        //IMPORTANT! CLEAN UP HTML - Must be removed BEFORE setting the new world:
+        region.removeBiomHTML();
+        //IMPORTANT! CLEAN UP HTML
         if (world.region == null) {
             currentWorld.region = region;
             currentWorld.miniMap = miniMap;
-            region = new Region(world, zoneContainer, tileSize);
+            region = new Region(world, background, zoneContainer, tileSize);
             miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
             currentWorld = world;
             battleQueueElement.innerHTML = "";
@@ -936,19 +1044,6 @@ document.addEventListener("DOMContentLoaded", event => {
         } else {
             region = world.region;
             miniMap = world.miniMap;
-        }
-    }
-
-    function updatePathfindingGrid() {
-        for (let x = 0; x < region.zoneSize.width; x++) {
-            pathFindingGrid[x] = [];
-            for (let y = 0; y < region.zoneSize.height; y++) {
-                if (currentZone.getTileObj(x + "_" + y).occupied) {
-                    pathFindingGrid[x][y] = 'Obstacle';
-                } else {
-                    pathFindingGrid[x][y] = 'Empty';
-                }
-            }
         }
     }
 
@@ -990,12 +1085,17 @@ document.addEventListener("DOMContentLoaded", event => {
         miniMap.reset();
         for (let y = region.size.up; y >= region.size.down; y--) {
             for (let x = region.size.left; x <= region.size.right; x++) {
-                newZone(x + "_" + y);
-                miniMapHTML(x + "_" + y, currentZone.biom);
+                const zone = newZone(x + "_" + y);
+                region.addZone(zone);
+                miniMapHTML(x + "_" + y, zone.biom);
+                const edge = edgeControl(x, y);
+                if (edge != "edge") {
+                    zone.addEdge(edge);
+                }
             }
         }
         placeDungeons();
-        placeEnemies();
+        placeEnemies(zoneEnemyCount(region.enemyPercentage));
 
         //INSERT ENEMIES MANUALLY FOR TESTING PURPOSES
         // const zone = region.getZone("0_0");
@@ -1015,30 +1115,46 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
+    function zoneEnemyCount(percentage) {
+        let zoneCount = region.width * region.height;
+        zoneCount * percentage / 100;
+        zoneCount = Math.floor(zoneCount);
+        return zoneCount;
+    }
+
+    function edgeControl(x, y) {
+        let edge = "edge";
+        edge += y == region.size.up ? "-up" : "";
+        edge += y == region.size.down ? "-down" : "";
+        edge += x == region.size.left ? "-left" : "";
+        edge += x == region.size.right ? "-right" : "";
+        return edge;
+    }
+
     function newZone(id) {
-        region.setRandomBiom();
-        currentZone = new Zone(id, false, region.biom);
-        for (let y = 0; y < region.zoneSize.height; y++) {
-            for (let x = 0; x < region.zoneSize.width; x++) {
+        const rnd = randomInteger(0, currentWorld.bioms.length);
+        region.setBiom(currentWorld.bioms[rnd], false);
+        const zone = new Zone(id, zoneContainer, false, region.biom);
+        for (let y = 0; y < region.zoneSize; y++) {
+            for (let x = 0; x < region.zoneSize; x++) {
                 let tileObj = new Tile(`${x}_${y}`);
-                if (x > 0 && x < region.zoneSize.width - 2 && y > 0 && y < region.zoneSize.height - 2) {
+                if (x > 0 && x < region.zoneSize - 2 && y > 0 && y < region.zoneSize - 2) {
                     const rnd = Math.random() * 100;
-                    if (rnd < 10) {
-                        tileObj.setType("tree", "obstacle", true);
-                    } else if (rnd < 20) {
-                        tileObj.setType("rock", "obstacle", true);
+                    if (rnd < 20) {
+                        const rnd = randomInteger(0, currentWorld.obstacles.length);
+                        tileObj.setType(currentWorld.obstacles[rnd], "obstacle", true);
                     }
                 }
-                currentZone.tiles.push(tileObj);
+                zone.tiles.push(tileObj);
             }
         }
-        region.addZone(currentZone);
+        return zone;
     }
 
     function buildZone(id) {
         region.element.innerHTML = "";
         currentZone = region.getZone(id);
-        region.setBiom(currentZone.biom);
+        region.setBiom(currentZone.biom, true);
         for (let i = 0; i < region.bioms.length; i++) {
             const biom = region.bioms[i];
             background.classList.remove(biom);
@@ -1051,6 +1167,7 @@ document.addEventListener("DOMContentLoaded", event => {
             if (tileObj.object != null) {
                 if (tileObj.type == "enemy") {
                     tileObj.placeHTML(tileObj.object.createHTML());
+                    tooltipPlacement(tileObj, tileObj.object.tooltip, tileObj.object.tooltipHeight);
                     battleQueue.push(tileObj.object);
                     enemiesInZone++;
                 }
@@ -1064,6 +1181,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 currentZone.areaTransition.createHTML();
             }
         }
+        currentZone.updateHTML();
     }
 
     function setEvent() {
@@ -1120,6 +1238,11 @@ document.addEventListener("DOMContentLoaded", event => {
             //     character.card.removeAttribute("style");
             //     character.card.classList.remove("js-left");
             // }, 500);
+            if (i == 0) {
+                character.setActive();
+            } else {
+                character.setInactive();
+            }
             character.updateOrder(i);
         }
         if (battleQueue[0] == player) {
@@ -1171,6 +1294,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 }, function() {
                     enemyObj.element.classList.remove("animation-" + direction);
                     enemyObj.currentTile.element.classList.remove("attacking");
+                    tooltipPlacement(enemyObj.currentTile, enemyObj.tooltip, enemyObj.tooltipHeight);
                     setTimeout(() => {
                         nextTurn();
                     }, 500);
@@ -1189,8 +1313,8 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function miniMapHTML(id, biom) {
-        // let activeClass = "fog-of-war";
-        let activeClass = "";
+        let activeClass = "fog-of-war";
+        // let activeClass = "";
         if (id == "0_0") {
             activeClass = "active";
         }
@@ -1235,16 +1359,16 @@ document.addEventListener("DOMContentLoaded", event => {
         tileObj.object = player;
         tileObj.element.append(tileObj.object.element);
         player.currentTile = tileObj;
+        tooltipPlacement(player.currentTile, player.tooltip, player.tooltipHeight);
     }
 
-    function placeEnemies() {
-        let amount = 500;
+    function placeEnemies(amount) {
         for (let i = 0; i < amount; i++) {
             const zone = region.getRandomZone();
             const tileObj = zone.getRandomTile();
             randomEnemy(tileObj);
         }
-        console.log("Skeletons: " + enemyTypes[0].totalCount + ", Orcs: " + enemyTypes[1].totalCount);
+        console.log("Skeletons: " + currentWorld.enemyTypes[0].totalCount + ", Orcs: " + currentWorld.enemyTypes[1].totalCount);
     }
 
     function placeCollectables(collectable) {
@@ -1264,18 +1388,21 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function placeDungeons() {
-        for (let i = 0; i < dungeons.length; i++) {
-            const dungeon = dungeons[i];
+        for (let i = 0; i < currentWorld.gateWaysTo().length; i++) {
             const zone = region.getRandomZone();
             const tileObj = zone.getRandomTile();
-            let dungeonObj = new Gate(dungeon, tileObj);
-            zone.areaTransition = dungeonObj;
-            miniMap.tileAddClass(zone.id, dungeon.type);
+            placeDungeon(currentWorld.gateWaysTo()[i], zone, tileObj);
         }
     }
 
+    function placeDungeon(gateWay, zone, tileObj) {
+        let gateWayObj = new Gate(gateWay, tileObj);
+        zone.areaTransition = gateWayObj;
+        miniMap.tileAddClass(zone.id, gateWay.type);
+    }
+
     function randomEnemy(tileObj) {
-        let type = getRandomArrayItem(enemyTypes);
+        let type = getRandomArrayItem(currentWorld.enemyTypes);
         placeEnemy(tileObj, type);
     }
 
@@ -1291,7 +1418,7 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function enemyDeath(enemy) {
-        console.log("Enemy: " + enemy.name);
+        console.log("Enemy: " + enemy.name + " died.");
     }
 
     function getRandomArrayItem(arr) {
@@ -1366,13 +1493,13 @@ document.addEventListener("DOMContentLoaded", event => {
                 break;
             case "down":
                 y++;
-                if (y >= region.zoneSize.height) {
+                if (y >= region.zoneSize) {
                     return false;
                 }
                 break;
             case "right":
                 x++;
-                if (x >= region.zoneSize.width) {
+                if (x >= region.zoneSize) {
                     return false;
                 }
                 break;
@@ -1394,19 +1521,19 @@ document.addEventListener("DOMContentLoaded", event => {
         coordinate.x += moveX;
         coordinate.y += moveY;
         if (coordinate.y < 0) {
-            changeZone(0, 1, currentZone.tiles.length - region.zoneSize.width + coordinate.x);
+            changeZone(0, 1, currentZone.tiles.length - region.zoneSize + coordinate.x);
             return false;
         }
-        if (coordinate.y >= region.zoneSize.height) {
+        if (coordinate.y >= region.zoneSize) {
             changeZone(0, -1, coordinate.x);
             return false;
         }
         if (coordinate.x < 0) {
-            changeZone(-1, 0, coordinate.y * region.zoneSize.width + region.zoneSize.width - 1);
+            changeZone(-1, 0, coordinate.y * region.zoneSize + region.zoneSize - 1);
             return false;
         }
-        if (coordinate.x >= region.zoneSize.width) {
-            changeZone(1, 0, coordinate.y * region.zoneSize.width);
+        if (coordinate.x >= region.zoneSize) {
+            changeZone(1, 0, coordinate.y * region.zoneSize);
             return false;
         }
         let destinationTileObj = currentZone.getTileObj(coordinate.x + "_" + coordinate.y);
@@ -1455,6 +1582,7 @@ document.addEventListener("DOMContentLoaded", event => {
             player.currentTile.element.append(player.currentTile.object.element);
         }, function() {
             playerIsMoving = false;
+            tooltipPlacement(player.currentTile, player.tooltip, player.tooltipHeight);
             if (battleQueue.length > 0) {
                 nextTurn();
             }
@@ -1495,6 +1623,43 @@ document.addEventListener("DOMContentLoaded", event => {
 
     function randomInteger(min, max) {
         return Math.floor(Math.random() * (max - min)) + min;
+    }
+
+    function createTooltipObj(content) {
+        const tooltip = document.createElement("DIV");
+        tooltip.classList.add("golden-background");
+        tooltip.innerHTML = content;
+        document.body.append(tooltip);
+        const height = tooltip.offsetHeight;
+        tooltip.classList.add("tooltip");
+        const obj = {};
+        obj.element = tooltip;
+        obj.height = height;
+        return obj;
+    }
+
+    function tooltipPlacement(tileObj, tooltip, height) {
+        const offset = 10;
+        tooltip.style.top = "";
+        tooltip.style.bottom = "";
+        if (tileObj.coordinates().y < Math.floor((region.zoneSize - 1) / 2)) {
+            tooltip.style.top = `calc(100% + ${offset}px)`;
+        } else {
+            tooltip.style.top = `-${height + offset}px`;
+        }
+    }
+
+    function updatePathfindingGrid() {
+        for (let x = 0; x < region.zoneSize; x++) {
+            pathFindingGrid[x] = [];
+            for (let y = 0; y < region.zoneSize; y++) {
+                if (currentZone.getTileObj(x + "_" + y).occupied) {
+                    pathFindingGrid[x][y] = 'Obstacle';
+                } else {
+                    pathFindingGrid[x][y] = 'Empty';
+                }
+            }
+        }
     }
 
     // *********************************************************************************************

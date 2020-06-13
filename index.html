@@ -23,10 +23,10 @@
                 </header>
                 <form id="start-form" class="start-form">
                     <label id="start-form-label" for="start-form-name" class="start-form__label">Player name</label>
-                    <input id="start-form-name" class="start-form__element start-form__input start-form__name" type="text" placeholder="Player 1" autofocus>
-                    <button id="start-form-continue" class="start-form__element start-form__button js-disabled">Continue</button>
-                    <button id="start-form-options" class="start-form__element start-form__button js-disabled">Options</button>
-                    <button class="start-form__element start-form__button" type="submit">New game</button>
+                    <input id="start-form-name" class="start-form__element start-form__input start-form__name golden-background" type="text" placeholder="Player 1" autofocus>
+                    <button id="start-form-continue" class="start-form__element start-form__button js-disabled golden-background">Continue</button>
+                    <button id="start-form-options" class="start-form__element start-form__button js-disabled golden-background">Options</button>
+                    <button class="start-form__element start-form__button golden-background" type="submit">New game</button>
                 </form>
             </div>
         </div>
@@ -36,21 +36,16 @@
         <img src="./images/forest.jpg" class="biom biom-forest" alt="Forest">
         <img src="./images/desert.jpg" class="biom biom-desert" alt="Desert">
         <img src="./images/snow.jpg" class="biom biom-snow" alt="Snow">
+        <img src="./images/dungeon.jpg" class="biom biom-dungeon" alt="Dungeon">
         <main class="main">
             <header class="header">
                 <h2 class="game-title">Rogue Survivor</h2>
                 <div id="battle-queue" class="battle-queue">
-                    <!-- <div class="character-card">
-                        <h3 class="character-card__title">Orc</h3>
-                        <img class="character-card__image" src="./images/enemy-orc.png" alt="Orc">
-                        <div class="character-card__health">
-                            <div class="character-card__health-bar"></div>
-                        </div>
-                    </div> -->
+                    <!-- Dynamic content -->
                 </div>
             </header>
             <div class="main-game">
-                <div class="ui">
+                <div class="ui golden-background">
                     <h2 class="ui__title">Stats</h2>
                     <div class="ui__item">
                         <div id="life-icon" class="ui-icon life"></div>
@@ -74,12 +69,12 @@
                         <p id="key-count" class="list__item-count">0</p>
                     </div>
                 </div>
-                <div class="game-board">
-                    <div id="zone-container" class="zone" style="grid-template-columns: repeat(8, 64px);">
+                <div class="game-board golden-background">
+                    <div id="zone-container" class="zone">
                         <!-- Dynamic content -->
                     </div>
                 </div>
-                <div class="mini-map">
+                <div class="mini-map golden-background">
                     <div id="mini-map-enlarger" class="mini-map-enlarger">
                         <h2 class="mini-map__title">Mini map</h2>
                         <div class="mini-map__container">
@@ -113,7 +108,9 @@
                                     <p class="list__item-single">Snow</p>
                                 </div>
                             </div>
-                            <div id="mini-map" class="mini-map__map"></div>
+                            <div id="mini-map" class="mini-map__map">
+                                <!-- Dynamic content -->
+                            </div>
                         </div>
                         <p class="mini-map__text">Press [M] to enlarge</p>
                     </div>
