@@ -39,7 +39,7 @@
         <img src="./images/dungeon.jpg" class="biom biom-dungeon" alt="Dungeon">
         <main class="main">
             <header class="header">
-                <h2 class="game-title">Rogue Survivor</h2>
+                <h2 class="game-title">Rogue<br>Survivor</h2>
                 <div id="battle-queue" class="battle-queue">
                     <!-- Dynamic content -->
                 </div>
@@ -75,6 +75,9 @@
                     </div>
                 </div>
                 <div class="mini-map golden-background">
+                    <div class="settings">
+                        <button id="settings">Settings</button>
+                    </div>
                     <div id="mini-map-enlarger" class="mini-map-enlarger">
                         <h2 class="mini-map__title">Mini map</h2>
                         <div class="mini-map__container">
@@ -114,6 +117,22 @@
                         </div>
                         <p class="mini-map__text">Press [M] to enlarge</p>
                     </div>
+                </div>
+            </div>
+            <div id="actions" class="actions js-active">
+                <img id="ap-image" class="ap-image" src="./images/player-spritesheet.png" alt="Player">
+                <h2 class="ap-title">AP:</h2>
+                <div id="ap" class="actions__ap">
+                    <div class="ap-point">
+                        <div class="fill"></div>
+                    </div>
+                    <div class="ap-point">
+                        <div class="fill"></div>
+                    </div>
+                    <div class="ap-point empty">
+                        <div class="fill"></div>
+                    </div>
+                    <!-- Dynamic content -->
                 </div>
             </div>
         </main>

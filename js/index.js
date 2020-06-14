@@ -4,6 +4,8 @@ document.addEventListener("DOMContentLoaded", event => {
     const zoneContainer = document.getElementById("zone-container");
     const miniMapContainer = document.getElementById("mini-map");
     const miniMapZoom = document.getElementById("mini-map-enlarger");
+    const actions = document.getElementById("actions");
+    const settings = document.getElementById("settings");
 
     // Start screen elements
     const startScreen = document.getElementById("start-screen");
@@ -33,7 +35,231 @@ document.addEventListener("DOMContentLoaded", event => {
     let enemiesInZone = 0;
     let zoneLocked = false;
 
+    let enemyType = {
+        skeleton: {
+            name: "Skeleton",
+            cls: "skeleton",
+            life: 20,
+            strength: 5,
+            totalCount: 0,
+            moveTime: 200,
+            attackTime: 200,
+            actionPoints: 3,
+            spcAtckInfo: "None",
+            sfxs: ["MONSTER_Ugh_02_mono.ogg", "MONSTER_Ugh_01_mono.ogg", "MONSTER_Ugh_04_mono.ogg"],
+            specialAttack: function() {
+                console.log(this.name + " special attack: " + this.spcAtckInfo);
+            },
+        },
+        orc: {
+            name: "Orc",
+            cls: "orc",
+            life: 50,
+            strength: 8,
+            totalCount: 0,
+            moveTime: 300,
+            attackTime: 200,
+            actionPoints: 2,
+            spcAtckInfo: "None",
+            sfxs: ["MONSTER_Ugh_02_mono.ogg", "MONSTER_Grunt_Short_02_mono.ogg"],
+            specialAttack: function() {
+                console.log(this.name + " special attack: " + this.spcAtckInfo);
+            },
+        },
+        goblin: {
+            name: "Goblin",
+            cls: "goblin",
+            life: 12,
+            strength: 2,
+            totalCount: 0,
+            moveTime: 150,
+            attackTime: 180,
+            actionPoints: 4,
+            spcAtckInfo: "Steal money or double damage",
+            sfxs: ["CREATURE_Squeel_05_mono.ogg", "CREATURE_Squeel_03_mono.ogg", "CREATURE_Squeel_04_mono.ogg"],
+            specialAttack: function() {
+                if (player.hasCoins(5)) {
+                    player.removeCoins(5);
+                } else {
+                    player.takeDamage(this.strength);
+                }
+            },
+        },
+    }
 
+    const worlds = {
+        outdoor: {
+            name: "La La Land",
+            type: "outdoor",
+            locked: false,
+            bioms: ["forest", "desert", "snow"],
+            obstacles: ["tree", "rock"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 11,
+                right: 14,
+                down: 11,
+                left: 14,
+            },
+            zoneSize: 7,
+            gateWaysTo: function() {
+                return [worlds.kartansLair, worlds.dungeonOfMachlain, worlds.orchsCave, worlds.piratesLair]
+            },
+            enemyPercentage: 50,
+            enemyTypes: [enemyType.skeleton, enemyType.orc, enemyType.goblin],
+        },
+        kartansLair: {
+            name: "Kartans Lair",
+            type: "dungeon",
+            locked: true,
+            bioms: ["floor"],
+            obstacles: ["pillar", "barrel"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: 7,
+            gateWaysTo: function() {
+                return [worlds.outdoor]
+            },
+            enemyPercentage: 75,
+            enemyTypes: [enemyType.skeleton, enemyType.orc, enemyType.goblin],
+        },
+        dungeonOfMachlain: {
+            name: "The Dungeon of Machlain",
+            type: "dungeon",
+            locked: true,
+            bioms: ["floor"],
+            obstacles: ["pillar", "barrel"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: 7,
+            gateWaysTo: function() {
+                return [worlds.outdoor]
+            },
+            enemyPercentage: 65,
+            enemyTypes: [enemyType.skeleton, enemyType.orc, enemyType.goblin],
+        },
+        orchsCave: {
+            name: "Orchs cave",
+            type: "dungeon",
+            locked: true,
+            bioms: ["floor"],
+            obstacles: ["pillar", "barrel"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: 7,
+            gateWaysTo: function() {
+                return [worlds.outdoor]
+            },
+            enemyPercentage: 70,
+            enemyTypes: [enemyType.orc],
+        },
+        piratesLair: {
+            name: "Pirates Lair",
+            type: "dungeon",
+            locked: true,
+            bioms: ["floor"],
+            obstacles: ["pillar", "barrel"],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 5,
+                right: 5,
+                down: 5,
+                left: 5,
+            },
+            zoneSize: 7,
+            gateWaysTo: function() {
+                return [worlds.outdoor]
+            },
+            enemyPercentage: 75,
+            enemyTypes: [enemyType.skeleton, enemyType.goblin],
+        }
+    }
+
+    class SFX {
+        constructor(audioFile) {
+            this.audioFile = audioFile;
+            this.initialize();
+        }
+        initialize() {
+            this.audio = new Audio(this.audioFile);
+        }
+        play() {
+            this.audio.play();
+            this.audio.onended = function() {
+                this.audio = null;
+            }
+        }
+    }
+
+    class Music {
+        constructor(audioFile, volume) {
+            this.volume = volume;
+            this.initialize(audioFile);
+        }
+        initialize(audioFile) {
+            this.audio = new Audio(audioFile);
+            this.audio.volume = this.volume;
+            this.audio.loop = true;
+        }
+        play() {
+            this.audio.play();
+        }
+        pause() {
+            this.audio.pause();
+        }
+        stop() {
+            this.pause();
+            this.audio.currentTime = 0;
+        }
+        fadeIn() {
+            let volume = 0;
+            this.audio.volume = volume;
+            this.play();
+            let interval = setInterval(() => {
+                volume += 0.05;
+                if (volume >= this.volume) {
+                    volume = this.volume;
+                    this.audio.volume = volume;
+                    clearInterval(interval);
+                    return;
+                }
+                this.audio.volume = volume;
+            }, 50);
+        }
+        fadeOut() {
+            let volume = this.volume;
+            let interval = setInterval(() => {
+                volume -= 0.05;
+                if (volume <= 0) {
+                    this.audio.volume = 0;
+                    this.stop();
+                    clearInterval(interval);
+                    return;
+                }
+                this.audio.volume = volume;
+            }, 50);
+        }
+    }
 
     class Region {
         constructor(world, backgroundElement, element, tileSize) {
@@ -145,15 +371,37 @@ document.addEventListener("DOMContentLoaded", event => {
             }
             return this.tiles[index];
         }
-        getRandomTile() {
+        getRandomTile(onlyAtCenter = false) {
             if (this.tiles.length == 0) {
                 return null;
             }
             let rnd = randomInteger(0, this.tiles.length);
-            while (this.tiles[rnd].occupied) {
-                rnd = randomInteger(0, this.tiles.length);
+            if (onlyAtCenter) {
+                while (this.tiles[rnd].occupied || !this.centerTile(this.tiles[rnd])) {
+                    rnd = randomInteger(0, this.tiles.length);
+                }
+            } else {
+                while (this.tiles[rnd].occupied) {
+                    rnd = randomInteger(0, this.tiles.length);
+                }
             }
             return this.tiles[rnd];
+        }
+        centerTile(tileObj) {
+            const coordinate = tileObj.coordinates();
+            if (coordinate.y == 0) {
+                return false;
+            }
+            if (coordinate.x == 0) {
+                return false;
+            }
+            if (coordinate.y == currentWorld.zoneSize - 1) {
+                return false;
+            }
+            if (coordinate.x == currentWorld.zoneSize - 1) {
+                return false;
+            }
+            return true;
         }
         coordinates() {
             let coordinate = this.id.split("_");
@@ -332,7 +580,7 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Character {
-        constructor(name, type, moveTime, attackTime, life, strength, currentTile, onDeath) {
+        constructor(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, onDeath) {
             this.name = name;
             this.type = type;
             this.moveTime = moveTime;
@@ -341,9 +589,69 @@ document.addEventListener("DOMContentLoaded", event => {
             this.totalLife = life;
             this.strength = strength;
             this.currentTile = currentTile;
+            this.actionPoints = actionPoints;
+            this.actionPointMax = actionPoints;
+            this.sfxs = sfxs;
             this.element = null;
             this.isDead = false;
+            this.apElement = apElement;
+            this.ap = this.apElement.querySelector("#ap");
+            this.apImage = this.apElement.querySelector("#ap-image");
+            this.apPoints = [];
             this.onDeath = onDeath;
+        }
+        actionPointsRemove(amount) {
+            if (this.actionPoints == 0) {
+                return -1;
+            }
+            if ((this.actionPoints - amount) < 0) {
+                return -1;
+            }
+            this.actionPoints -= amount;
+            this.actionPointHTMLUpdate();
+            return this.actionPoints;
+        }
+        actionPointAdd(amount) {
+            this.actionPoints += amount;
+            this.actionPointHTMLUpdate();
+            return this.actionPoints;
+        }
+        actionPointsReset() {
+            this.actionPoints = this.actionPointMax;
+            this.apPoints = [];
+            this.actionPointHTML();
+        }
+        actionPointHTML() {
+            this.actionPointHTMLRemove();
+            this.apElement.classList.add("js-active");
+            let lcaseName = this.name.toLowerCase();
+            if (this.type == "player") {
+                lcaseName = "spritesheet";
+            }
+            this.apImage.src = `./images/${this.type}-${lcaseName}.png`;
+            this.apImage.alt = this.name;
+            for (let i = 0; i < this.actionPoints; i++) {
+                let apPoint = document.createElement("DIV");
+                let apPointFill = document.createElement("DIV");
+                apPoint.classList.add("ap-point");
+                apPointFill.classList.add("fill");
+                apPoint.append(apPointFill);
+                this.ap.append(apPoint);
+                this.apPoints.push(apPoint);
+            }
+            this.actionPointHTMLUpdate();
+        }
+        actionPointHTMLRemove() {
+            this.ap.innerHTML = "";
+            this.apElement.classList.remove("js-active");
+        }
+        actionPointHTMLUpdate() {
+            for (let i = 0; i < this.apPoints.length; i++) {
+                const apPoint = this.apPoints[i];
+                if (i >= this.actionPoints) {
+                    apPoint.classList.add("empty");
+                }
+            }
         }
         setMoveTime() {
             this.element.style.animationDuration = `${this.moveTime}ms`;
@@ -368,6 +676,16 @@ document.addEventListener("DOMContentLoaded", event => {
                 return;
             }
             this.addLife(-damage);
+            if (this.isDead) {
+                this.playSFX(this.sfxs[0]);
+            } else {
+                const rnd = randomInteger(1, this.sfxs.length);
+                this.playSFX(this.sfxs[rnd]);
+            }
+        }
+        playSFX(sfxFile) {
+            const sfx = new SFX("../audio/sfx/" + sfxFile);
+            sfx.play();
         }
         createCardHTML(parent) {
             let lcaseName = this.name.toLowerCase();
@@ -429,12 +747,13 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Player extends Character {
-        constructor(name, type, moveTime, attackTime, life, strength, armor, lifeElm, strengthElm, armorElm, currentTile, onDeath) {
-            super(name, type, moveTime, attackTime, life, strength, currentTile, onDeath);
+        constructor(name, type, moveTime, attackTime, life, strength, armor, lifeElm, strengthElm, armorElm, currentTile, apElement, actionPoints, coins, sfxs, onDeath) {
+            super(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, onDeath);
             this.armor = armor;
             this.lifeElm = lifeElm;
             this.strengthElm = strengthElm;
             this.armorElm = armorElm;
+            this.coins = coins;
             this.killCount = 0;
             this.initialize();
         }
@@ -496,6 +815,20 @@ document.addEventListener("DOMContentLoaded", event => {
             this.armorElm.textContent = this.armor;
             this.updateTooltip();
         }
+        hasCoins(amount) {
+            if (this.coins.count >= amount) {
+                return true;
+            }
+            return false;
+        }
+        addCoins(amount) {
+            this.coins.count += amount;
+            this.coins.element.textContent = this.coins.count;
+        }
+        removeCoins(amount) {
+            this.coins.count -= amount;
+            this.coins.element.textContent = this.coins.count;
+        }
         enemyKill() {
             this.killCount++;
         }
@@ -505,18 +838,27 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Enemy extends Character {
-        constructor(name, type, moveTime, attackTime, life, strength, cls, currentTile, onDeath) {
-            super(name, type, moveTime, attackTime, life, strength, currentTile, onDeath);
+        constructor(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, typeObj, onDeath) {
+            super(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, onDeath);
             this.totalLife = life;
-            this.cls = cls;
+            this.cls = typeObj.cls;
             this.elmBar;
             this.elmBarText;
+            this.spcAtckInfo = typeObj.spcAtckInfo
+            this.specialAttack = typeObj.specialAttack;
+            this.initialize();
         }
-
+        initialize() {
+            if (this.spcAtckInfo != "None") {
+                this.spcAtckInfoHTML = `<p>Special:</p><span class="special-attack-info">${this.spcAtckInfo}</span>`;
+            } else {
+                this.spcAtckInfoHTML = "";
+            }
+        }
         createHTML() {
             let enemyHTML = document.createElement("DIV");
             enemyHTML.classList.add("enemy");
-            enemyHTML.classList.add(this.cls);
+            enemyHTML.style.backgroundImage = `url(../images/enemy-${this.cls}.png)`;
             enemyHTML.classList.add("animation");
             enemyHTML.classList.add("tile__object");
             enemyHTML.style.animationDuration = `${this.animationTime}ms`;
@@ -543,6 +885,9 @@ document.addEventListener("DOMContentLoaded", event => {
             }
             const tooltipObj = createTooltipObj(`
                 <h3>${this.name}</h3>
+                <p>Life: ${this.life}</p>
+                <p>Damage: ${this.strength}</p>
+                ${this.spcAtckInfoHTML}
             `);
             this.tooltip = tooltipObj.element;
             this.tooltipHeight = tooltipObj.height;
@@ -635,155 +980,6 @@ document.addEventListener("DOMContentLoaded", event => {
     // silver.remove(21512);
     // console.log("Platinum: " + platinum.amount + ", Gold: " + gold.amount + ", silver: " + silver.amount);
 
-    let enemyType = {
-        skeleton: {
-            name: "Skeleton",
-            cls: "skeleton",
-            life: 20,
-            strength: 5,
-            totalCount: 0,
-            moveTime: 500,
-            attackTime: 300,
-        },
-        orc: {
-            name: "Orc",
-            cls: "orc",
-            life: 50,
-            strength: 8,
-            totalCount: 0,
-            moveTime: 1000,
-            attackTime: 400,
-        }
-    }
-
-    const worlds = {
-        outdoor: {
-            name: "La La Land",
-            type: "outdoor",
-            locked: false,
-            bioms: ["forest", "desert", "snow"],
-            obstacles: ["tree", "rock"],
-            region: null,
-            miniMap: null,
-            size: {
-                up: 11,
-                right: 14,
-                down: 11,
-                left: 14,
-            },
-            zoneSize: 7,
-            gateWaysTo: function() {
-                return [worlds.kartansLair, worlds.dungeonOfMachlain, worlds.orchsCave, worlds.piratesLair]
-            },
-            enemyPercentage: 50,
-            enemyTypes: [enemyType.skeleton, enemyType.orc],
-        },
-        kartansLair: {
-            name: "Kartans Lair",
-            type: "dungeon",
-            locked: true,
-            bioms: ["floor"],
-            obstacles: ["pillar", "barrel"],
-            region: null,
-            miniMap: null,
-            size: {
-                up: 5,
-                right: 5,
-                down: 5,
-                left: 5,
-            },
-            zoneSize: 7,
-            gateWaysTo: function() {
-                return [worlds.outdoor]
-            },
-            enemyPercentage: 75,
-            enemyTypes: [enemyType.skeleton, enemyType.orc],
-        },
-        dungeonOfMachlain: {
-            name: "The Dungeon of Machlain",
-            type: "dungeon",
-            locked: true,
-            bioms: ["floor"],
-            obstacles: ["pillar", "barrel"],
-            region: null,
-            miniMap: null,
-            size: {
-                up: 5,
-                right: 5,
-                down: 5,
-                left: 5,
-            },
-            zoneSize: 7,
-            gateWaysTo: function() {
-                return [worlds.outdoor]
-            },
-            enemyPercentage: 65,
-            enemyTypes: [enemyType.skeleton, enemyType.orc],
-        },
-        orchsCave: {
-            name: "Orchs cave",
-            type: "dungeon",
-            locked: true,
-            bioms: ["floor"],
-            obstacles: ["pillar", "barrel"],
-            region: null,
-            miniMap: null,
-            size: {
-                up: 5,
-                right: 5,
-                down: 5,
-                left: 5,
-            },
-            zoneSize: 7,
-            gateWaysTo: function() {
-                return [worlds.outdoor]
-            },
-            enemyPercentage: 70,
-            enemyTypes: [enemyType.skeleton, enemyType.orc],
-        },
-        piratesLair: {
-            name: "Pirates Lair",
-            type: "dungeon",
-            locked: true,
-            bioms: ["floor"],
-            obstacles: ["pillar", "barrel"],
-            region: null,
-            miniMap: null,
-            size: {
-                up: 5,
-                right: 5,
-                down: 5,
-                left: 5,
-            },
-            zoneSize: 7,
-            gateWaysTo: function() {
-                return [worlds.outdoor]
-            },
-            enemyPercentage: 75,
-            enemyTypes: [enemyType.skeleton, enemyType.orc],
-        }
-    }
-
-    // let enemyTypes = [{
-    //         name: "Skeleton",
-    //         cls: "skeleton",
-    //         life: 20,
-    //         strength: 5,
-    //         totalCount: 0,
-    //         moveTime: 500,
-    //         attackTime: 300,
-    //     },
-    //     {
-    //         name: "Orc",
-    //         cls: "orc",
-    //         life: 50,
-    //         strength: 8,
-    //         totalCount: 0,
-    //         moveTime: 1000,
-    //         attackTime: 400,
-    //     },
-    // ]
-
     // *********************************************************************************************
     // *********************************************************************************************
     // ************************ TODO: CHANGE TO CLASS (INSTEAD OF AN OBJECT) ***********************
@@ -795,18 +991,44 @@ document.addEventListener("DOMContentLoaded", event => {
             name: "Explosion",
             class: "explosion",
             speed: 20,
-            createHTML: function(tileObj, duration) {
-                let effect = document.createElement("DIV");
-                effect.classList.add("effect");
-                effect.classList.add(this.class);
-                effect.classList.add("tile__object");
-                effect.style.animationDuration = `${duration}ms`;
-                tileObj.element.append(effect);
+            duration: 700,
+            createHTML: function(element) {
+                let fx = document.createElement("DIV");
+                fx.classList.add("effect");
+                fx.classList.add(this.class);
+                fx.classList.add("tile__object");
+                fx.style.animationDuration = `${this.duration}ms`;
+                element.append(fx);
                 setTimeout(() => {
-                    tileObj.element.removeChild(effect);
-                }, duration);
+                    element.removeChild(fx);
+                }, this.duration);
+            },
+            soundEffect(soundFile) {
+                let sfx = new Audio("../audio/sfx/" + soundFile);
+                sfx.play();
             }
-        }
+        },
+        flash: {
+            name: "Flash",
+            class: "flash",
+            speed: 20,
+            duration: 300,
+            createHTML: function(element) {
+                let fx = document.createElement("DIV");
+                fx.classList.add("effect");
+                fx.classList.add(this.class);
+                fx.classList.add("tile__object");
+                fx.style.animationDuration = `${this.duration}ms`;
+                element.append(fx);
+                setTimeout(() => {
+                    element.removeChild(fx);
+                }, this.duration);
+            },
+            soundEffect(soundFile) {
+                let sfx = new Audio("../audio/sfx/" + soundFile);
+                sfx.play();
+            }
+        },
     }
 
     let collectables = {
@@ -823,8 +1045,9 @@ document.addEventListener("DOMContentLoaded", event => {
             iconElement: document.getElementById("coin-icon"),
             element: document.getElementById("coin-count"),
             onCollect: function(item) {
-                collectables.coins.count += item.amount;
-                collectables.coins.element.textContent = collectables.coins.count;
+                player.addCoins(item.amount);
+                const sfx = new SFX("../audio/sfx/CHAIN_Drop_03_mono.ogg");
+                sfx.play();
             }
         },
         keys: {
@@ -842,6 +1065,8 @@ document.addEventListener("DOMContentLoaded", event => {
             onCollect: function(item) {
                 collectables.keys.count += item.amount;
                 collectables.keys.element.textContent = collectables.keys.count;
+                const sfx = new SFX("../audio/sfx/LOCK_Metal_Padlock_Unlock_Pop_01_mono.ogg");
+                sfx.play();
             }
         },
         woodenSword: {
@@ -859,6 +1084,8 @@ document.addEventListener("DOMContentLoaded", event => {
             onCollect: function(item) {
                 player.setStrength(item.amount);
                 setEquipable(collectables.woodenSword);
+                const sfx = new SFX("../audio/sfx/BOW_Release_Arrow_mono.ogg");
+                sfx.play();
             }
         },
         ironSword: {
@@ -876,6 +1103,8 @@ document.addEventListener("DOMContentLoaded", event => {
             onCollect: function(item) {
                 player.setStrength(item.amount);
                 setEquipable(collectables.ironSword);
+                const sfx = new SFX("../audio/sfx/FRICTION_Metal_Bars_05_mono.ogg");
+                sfx.play();
             }
         },
         ironAxe: {
@@ -893,6 +1122,8 @@ document.addEventListener("DOMContentLoaded", event => {
             onCollect: function(item) {
                 player.setStrength(item.amount);
                 setEquipable(collectables.ironAxe);
+                const sfx = new SFX("../audio/sfx/FRICTION_Metal_Bars_02_mono.ogg");
+                sfx.play();
             }
         },
         smallShield: {
@@ -910,6 +1141,8 @@ document.addEventListener("DOMContentLoaded", event => {
             onCollect: function(item) {
                 player.setArmor(item.amount);
                 setEquipable(collectables.smallShield);
+                const sfx = new SFX("../audio/sfx/TOOL_Toolbox_Close_mono.ogg");
+                sfx.play();
             }
         },
         largeShield: {
@@ -927,6 +1160,8 @@ document.addEventListener("DOMContentLoaded", event => {
             onCollect: function(item) {
                 player.setArmor(item.amount);
                 setEquipable(collectables.largeShield);
+                const sfx = new SFX("../audio/sfx/TOOL_Toolbox_Close_mono.ogg");
+                sfx.play();
             }
         },
         potions: {
@@ -943,9 +1178,35 @@ document.addEventListener("DOMContentLoaded", event => {
             element: document.getElementById("life-count"),
             onCollect: function(item) {
                 player.addLife(item.amount);
+                const sfx = new SFX("../audio/sfx/EAT_Swallow_mono.ogg");
+                sfx.play();
             }
         },
     }
+
+    let calmMusic = new Music("../audio/medieval_market_LOOP.ogg", 1);
+    let combatMusic = new Music("../audio/enemy_territory_LOOP.ogg", 1);
+    let currentMusic = calmMusic;
+
+    settings.addEventListener("click", function() {
+        if (currentMusic.audio.paused) {
+            currentMusic.play();
+        } else {
+            currentMusic.pause();
+        }
+    });
+
+    startForm.addEventListener("submit", function(evt) {
+        evt.preventDefault();
+        const startFormName = startForm.querySelector("#start-form-name");
+        newGame(startFormName.value);
+        startScreen.classList.add("js-hidden");
+    });
+    document.addEventListener("keyup", function(evt) {
+        if (gameStarted && evt.key == "m") {
+            miniMap.zoomToggle();
+        }
+    });
 
     function setEquipable(collectable) {
         resetEquipable(collectable.type);
@@ -962,36 +1223,8 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    // let startFormLabelText = "";
-    startForm.addEventListener("submit", function(evt) {
-        evt.preventDefault();
-        const startFormName = startForm.querySelector("#start-form-name");
-        // const startFormLabel = startForm.querySelector("#start-form-label");
-        // if (startFormLabelText == "") {
-        //     startFormLabelText = startFormLabel.textContent;
-        // }
-        // if (startFormName.value == "") {
-        //     startFormLabel.textContent = startFormLabelText + " - Please fill out!";
-        //     startFormLabel.classList.add("js-invalid");
-        //     startFormName.addEventListener("keyup", keyListen);
-
-        //     function keyListen() {
-        //         startFormLabel.textContent = startFormLabelText;
-        //         startFormLabel.classList.remove("js-invalid");
-        //         startFormName.removeEventListener("keyup", keyListen);
-        //     }
-        //     return false;
-        // }
-        newGame(startFormName.value);
-        startScreen.classList.add("js-hidden");
-    });
-    document.addEventListener("keyup", function(evt) {
-        if (gameStarted && evt.key == "m") {
-            miniMap.zoomToggle();
-        }
-    });
-
     function newGame(playerName) {
+        currentMusic.play();
         currentWorld = worlds.outdoor;
         region = new Region(worlds.outdoor, background, zoneContainer, tileSize);
         miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
@@ -999,7 +1232,11 @@ document.addEventListener("DOMContentLoaded", event => {
         const strengthUIElm = collectables.woodenSword.element;
         const armorUIElm = collectables.smallShield.element;
         playerName = playerName == "" ? "Player 1" : playerName;
-        player = new Player(playerName, "player", 150, 150, 100, 10, 0, lifeUIElm, strengthUIElm, armorUIElm, null, gameOver);
+        const coinsObj = new Object();
+        coinsObj.count = collectables.coins.count;
+        coinsObj.element = collectables.coins.element;
+        const sfxArr = ["VOICE_Girl_4yo_Hurt_Long_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_04_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_05_mono.ogg"];
+        player = new Player(playerName, "player", 150, 150, 100, 10, 0, lifeUIElm, strengthUIElm, armorUIElm, null, actions, 3, coinsObj, sfxArr, gameOver);
         for (let i = 0; i < Object.values(collectables).length; i++) {
             const collectable = Object.values(collectables)[i];
             uiIcon(collectable);
@@ -1057,12 +1294,15 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function gameOver(playerObj) {
+        currentMusic.stop();
         gameOverScreen.classList.remove("js-hidden");
         setTimeout(() => {
-            gameOverScreen.classList.add("js-hidden");
-            startScreen.classList.remove("js-hidden");
-        }, 3000);
-        calmEvent();
+            (new SFX("../audio/sfx/losing.ogg")).play();
+            setTimeout(() => {
+                gameOverScreen.classList.add("js-hidden");
+                startScreen.classList.remove("js-hidden");
+            }, 3000);
+        }, 100);
     }
 
     function enterGate(gate) {
@@ -1199,6 +1439,12 @@ document.addEventListener("DOMContentLoaded", event => {
         battleQueue = [];
         background.classList.remove("battle");
         player.removeCard();
+        player.actionPointHTMLRemove();
+        if (currentMusic != calmMusic) {
+            combatMusic.fadeOut();
+            calmMusic.fadeIn();
+            currentMusic = calmMusic;
+        }
     }
 
     function combatEvent() {
@@ -1212,6 +1458,9 @@ document.addEventListener("DOMContentLoaded", event => {
             const character = battleQueue[i];
             character.createCardHTML(battleQueueElement);
         }
+        calmMusic.fadeOut();
+        combatMusic.fadeIn();
+        currentMusic = combatMusic;
         nextTurn();
     }
 
@@ -1222,22 +1471,10 @@ document.addEventListener("DOMContentLoaded", event => {
                 battleQueue.splice(i, 1);
             }
         }
-        const first = battleQueue.shift();
-        battleQueue.push(first);
+        const endTurnCharacter = battleQueue.shift();
+        battleQueue.push(endTurnCharacter);
         for (let i = 0; i < battleQueue.length; i++) {
             const character = battleQueue[i];
-            // if (i == 0) {
-            //     character.card.style.position = "absolute";
-            //     character.card.style.transition = "transform 500ms";
-            //     character.card.style.transform = `translate(${64 * battleQueue.length - 1}px)`;
-            // } else {
-            //     character.card.removeAttribute("style");
-            //     character.card.classList.add("js-left");
-            // }
-            // setTimeout(() => {
-            //     character.card.removeAttribute("style");
-            //     character.card.classList.remove("js-left");
-            // }, 500);
             if (i == 0) {
                 character.setActive();
             } else {
@@ -1245,11 +1482,13 @@ document.addEventListener("DOMContentLoaded", event => {
             }
             character.updateOrder(i);
         }
-        if (battleQueue[0] == player) {
+        const currentCharacter = battleQueue[0];
+        currentCharacter.actionPointsReset();
+        if (currentCharacter == player) {
             playersTurn = true;
         } else {
             playersTurn = false;
-            enemyTurn(battleQueue[0]);
+            enemyTurn(currentCharacter);
         }
     }
 
@@ -1262,12 +1501,6 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    function shortestPathDirection(from, to) {
-        let fromObj = from.coordinates();
-        let toObj = to.coordinates();
-        return findShortestPath(fromObj, toObj, pathFindingGrid)[0];
-    }
-
     function enemyMove(enemyObj, direction, destinationTileObj) {
         enemyObj.currentTile.element.classList.add("attacking");
         setTimeout(() => {
@@ -1275,13 +1508,15 @@ document.addEventListener("DOMContentLoaded", event => {
             if (destinationTileObj == player.currentTile) {
                 enemyObj.setAttackTime();
                 halfWayMove(enemyObj.element, enemyObj.attackTime, direction, function() {
-                    effect.explosion.createHTML(destinationTileObj, 700);
+                    effect.explosion.createHTML(destinationTileObj.element);
+                    effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
                     destinationTileObj.object.takeDamage(enemyObj.strength);
+                    enemyObj.specialAttack();
                 }, function() {
-                    if (!destinationTileObj.object.isDead) {
-                        nextTurn();
-                    }
                     enemyObj.currentTile.element.classList.remove("attacking");
+                    if (!destinationTileObj.object.isDead) {
+                        enemyAction(enemyObj)
+                    }
                 });
             } else {
                 enemyObj.setMoveTime();
@@ -1295,12 +1530,20 @@ document.addEventListener("DOMContentLoaded", event => {
                     enemyObj.element.classList.remove("animation-" + direction);
                     enemyObj.currentTile.element.classList.remove("attacking");
                     tooltipPlacement(enemyObj.currentTile, enemyObj.tooltip, enemyObj.tooltipHeight);
-                    setTimeout(() => {
-                        nextTurn();
-                    }, 500);
+                    enemyAction(enemyObj);
                 });
             }
         }, 500);
+    }
+
+    function enemyAction(enemyObj) {
+        if (enemyObj.actionPointsRemove(1) == 0) {
+            setTimeout(() => {
+                nextTurn();
+            }, 300);
+        } else {
+            enemyTurn(enemyObj);
+        }
     }
 
     function shuffleArray(arr) {
@@ -1354,21 +1597,43 @@ document.addEventListener("DOMContentLoaded", event => {
             console.log("No element attached to tileObj!");
             return;
         }
+        let itemInTile = false;
+        let enemyInTile = false;
+        if (tileObj.object != null) {
+            if (tileObj.type == "item") {
+                itemInTile = true;
+                tileObj.object.collect(tileObj);
+            }
+            if (tileObj.type == "enemy") {
+                enemyInTile = true;
+            }
+        }
         tileObj.setEmpty();
         tileObj.element.innerHTML = "";
         tileObj.object = player;
         tileObj.element.append(tileObj.object.element);
         player.currentTile = tileObj;
         tooltipPlacement(player.currentTile, player.tooltip, player.tooltipHeight);
+        if (itemInTile) {
+            effect.flash.createHTML(player.element);
+        }
+        if (enemyInTile) {
+            console.log("Enemy");
+        }
     }
 
     function placeEnemies(amount) {
         for (let i = 0; i < amount; i++) {
             const zone = region.getRandomZone();
-            const tileObj = zone.getRandomTile();
+            const tileObj = zone.getRandomTile(true);
             randomEnemy(tileObj);
         }
-        console.log("Skeletons: " + currentWorld.enemyTypes[0].totalCount + ", Orcs: " + currentWorld.enemyTypes[1].totalCount);
+        //This needs to be deleted at some point.
+        //For now, it is used for adjustments of enemy amount/values
+        for (let i = 0; i < currentWorld.enemyTypes.length; i++) {
+            const nmeType = currentWorld.enemyTypes[i];
+            console.log(nmeType.name + "'s: " + nmeType.totalCount);
+        }
     }
 
     function placeCollectables(collectable) {
@@ -1383,7 +1648,7 @@ document.addEventListener("DOMContentLoaded", event => {
             collectable.totalStackAmount += rndAmount;
         }
         //This needs to be deleted at some point.
-        //For now, it is used to adjust collectables-values, to create balance in the game
+        //For now, it is used for adjustments of collectables- amount/values
         console.log(collectable.type + "'s total: " + collectable.totalStackAmount);
     }
 
@@ -1411,7 +1676,7 @@ document.addEventListener("DOMContentLoaded", event => {
             console.log("Array is empty!");
             return;
         }
-        const enemy = new Enemy(type.name, "enemy", type.moveTime, type.attackTime, type.life, type.strength, type.cls, tileObj, enemyDeath);
+        const enemy = new Enemy(type.name, "enemy", type.moveTime, type.attackTime, type.life, type.strength, tileObj, actions, type.actionPoints, type.sfxs, type, enemyDeath);
         tileObj.setEmpty();
         tileObj.placeObject(enemy, "enemy", true);
         type.totalCount++;
@@ -1421,20 +1686,11 @@ document.addEventListener("DOMContentLoaded", event => {
         console.log("Enemy: " + enemy.name + " died.");
     }
 
-    function getRandomArrayItem(arr) {
-        if (arr.length == 0) {
-            return null;
-        }
-        let rnd = randomInteger(0, arr.length);
-        return arr[rnd];
-    }
-
     function addPlayerControls() {
         document.addEventListener("keydown", function(evt) {
             if (evt.repeat || !playersTurn || playerIsMoving) {
                 return;
             }
-            let moveSuccess;
             if (evt.key == "w" || evt.key == "ArrowUp") {
                 moveSuccess = playerMove(0, -1, player.element, "up");
                 player.element.style.backgroundPosition = "0 -33.3333%";
@@ -1554,7 +1810,8 @@ document.addEventListener("DOMContentLoaded", event => {
         if (destinationTileObj.type == "enemy") {
             player.setAttackTime();
             halfWayMove(element, player.attackTime, direction, function() {
-                effect.explosion.createHTML(destinationTileObj, 700);
+                effect.explosion.createHTML(destinationTileObj.element);
+                effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
                 const enemyKilled = destinationTileObj.object.takeDamage(player.strength);
                 if (enemyKilled) {
                     player.enemyKill();
@@ -1567,7 +1824,9 @@ document.addEventListener("DOMContentLoaded", event => {
             }, function() {
                 playerIsMoving = false;
                 if (battleQueue.length > 0) {
-                    nextTurn();
+                    if (player.actionPointsRemove(1) == 0) {
+                        nextTurn();
+                    }
                 }
             });
             return false;
@@ -1575,6 +1834,7 @@ document.addEventListener("DOMContentLoaded", event => {
         player.setMoveTime();
         fullMove(element, player.moveTime, direction, function() {
             if (destinationTileObj.type == "item") {
+                effect.flash.createHTML(player.element);
                 destinationTileObj.object.collect(destinationTileObj);
             }
             destinationTileObj.object = player.currentTile.object;
@@ -1584,7 +1844,9 @@ document.addEventListener("DOMContentLoaded", event => {
             playerIsMoving = false;
             tooltipPlacement(player.currentTile, player.tooltip, player.tooltipHeight);
             if (battleQueue.length > 0) {
-                nextTurn();
+                if (player.actionPointsRemove(1) == 0) {
+                    nextTurn();
+                }
             }
         });
         return true;
@@ -1625,6 +1887,14 @@ document.addEventListener("DOMContentLoaded", event => {
         return Math.floor(Math.random() * (max - min)) + min;
     }
 
+    function getRandomArrayItem(arr) {
+        if (arr.length == 0) {
+            return null;
+        }
+        let rnd = randomInteger(0, arr.length);
+        return arr[rnd];
+    }
+
     function createTooltipObj(content) {
         const tooltip = document.createElement("DIV");
         tooltip.classList.add("golden-background");
@@ -1649,6 +1919,12 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
+    // *********************************************************************************************
+    // *********************************************************************************************
+    // ************************** PATHFIDING Breadth-First Search algorithm ************************
+    // *********************************************************************************************
+    // *********************************************************************************************
+
     function updatePathfindingGrid() {
         for (let x = 0; x < region.zoneSize; x++) {
             pathFindingGrid[x] = [];
@@ -1662,11 +1938,11 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    // *********************************************************************************************
-    // *********************************************************************************************
-    // ************************** PATHFIDING Breadth-First Search algorithm ************************
-    // *********************************************************************************************
-    // *********************************************************************************************
+    function shortestPathDirection(from, to) {
+        let fromObj = from.coordinates();
+        let toObj = to.coordinates();
+        return findShortestPath(fromObj, toObj, pathFindingGrid)[0];
+    }
 
     // Start location will be in the following format:
     // [distanceFromTop, distanceFromLeft]

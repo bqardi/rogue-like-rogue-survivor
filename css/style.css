@@ -67,6 +67,11 @@ a:hover {
     transition: opacity 1000ms;
 }
 
+.main .game-title {
+    color: white;
+    text-shadow: 0 0 5px black;
+}
+
 .game.battle .game-title::after {
     content: " - BATTLE";
 }
@@ -146,7 +151,7 @@ form>button:hover {
     display: flex;
     justify-content: center;
     align-items: center;
-    background-image: url(../images/start-screen-background.jpg);
+    background-image: url(../images/forest.jpg);
     background-size: cover;
     transition: opacity 800ms, visibility 800ms;
 }
@@ -509,8 +514,9 @@ form>button:hover {
 .mini-map {
     padding: 2rem;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
+    flex-direction: column;
 }
 
 .mini-map__title {
@@ -761,14 +767,6 @@ form>button:hover {
     justify-content: center;
 }
 
-.enemy.skeleton {
-    background-image: url(../images/enemy-skeleton.png);
-}
-
-.enemy.orc {
-    background-image: url(../images/enemy-orc.png);
-}
-
 .healthbar {
     position: absolute;
     top: 70%;
@@ -852,9 +850,70 @@ form>button:hover {
 /* #endregion BATTLE QUEUE - CHARACTER CARD */
 
 
+/* #region BATTLE ACTION POINTS */
+
+.actions {
+    min-height: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    visibility: hidden;
+}
+
+.actions.js-active {
+    visibility: visible;
+}
+
+.actions__ap {
+    display: flex;
+    align-items: center;
+}
+
+.ap-title {
+    color: white;
+    text-shadow: 0 0 5px black;
+    margin-right: 0.25rem;
+}
+
+.ap-image {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    object-position: 0 0;
+    margin-right: 0.25rem;
+}
+
+.ap-point {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 4px double gold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-left: 0.25rem;
+    background-image: url(../images/paper-background.png);
+}
+
+.ap-point .fill {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: green;
+}
+
+.ap-point.empty .fill {
+    background-color: transparent;
+}
+
+
+/* #endregion BATTLE ACTION POINTS */
+
+
 /* #region EFFECT */
 
 .effect {
+    position: absolute;
     opacity: 0;
     z-index: 29;
 }
@@ -871,6 +930,23 @@ form>button:hover {
         opacity: 0;
     }
     40% {
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+.effect.flash {
+    background-image: url(../images/flash.png);
+    background-size: contain;
+    animation-name: flash;
+}
+
+@keyframes flash {
+    0% {
+        transform: scale(1);
         opacity: 1;
     }
     100% {
@@ -909,6 +985,11 @@ form>button:hover {
 .tooltip .item-list {
     list-style: none;
     padding-left: 1rem;
+}
+
+.tooltip .special-attack-info {
+    padding-left: 1rem;
+    color: #c01717;
 }
 
 
