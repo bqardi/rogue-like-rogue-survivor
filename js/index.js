@@ -937,7 +937,7 @@ document.addEventListener("DOMContentLoaded", event => {
         createHTML() {
             let enemyHTML = document.createElement("DIV");
             enemyHTML.classList.add("enemy");
-            enemyHTML.style.backgroundImage = `url(../images/enemy-${this.cls}.png)`;
+            enemyHTML.style.backgroundImage = `url(./images/enemy-${this.cls}.png)`;
             enemyHTML.classList.add("animation");
             enemyHTML.classList.add("tile__object");
             enemyHTML.style.animationDuration = `${this.animationTime}ms`;
