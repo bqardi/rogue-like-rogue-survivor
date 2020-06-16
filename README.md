@@ -10,9 +10,9 @@ Loot is placed randomly around the entire world as well as enemies and obstacles
 To pick up loot, just walk over the tile with the loot
 - Coins (adds to your total amount of money/gold)
 - Health potions (adds to your life/health)
-- Armor (adds to your armor/shield)
-- Weapons (adds to your strength)
-- Keys (Intended to open up for Dungeons (see below), but other usecases can be added)
+- Armor (adds to your armor/shield) UPDATE: Now added to inventory.
+- Weapons (adds to your strength) UPDATE: Now added to inventory.
+- Keys (Intended to open up for Dungeons (see below), but other usecases can be added) UPDATE: Now added to inventory.
 - More to come...
 
 #### Player
@@ -25,12 +25,12 @@ TODO (?):
 CURRENTLY:
 - Skeletons (fast and weak)
 - Orcs (slow but strong)
+- Goblins (fast, weak and steals money)
 
 TODO:
 - Bosses (stronger and faster than normal enemy units, and have special skills)
 - Mages (can cast magic spells like fireball/firewall/frost nova/teleport/invicibility/protection/etc.)
 - Skeleton archers (or other archers for that matter)
-- Goblins
 - Imps
 - Ghosts
 - Aaahrgh, what else? Hmm...
@@ -45,14 +45,19 @@ TODO:
 
 #### Dungeons
 These dungeons are accessed only if you have found a key, and they will give you access to a specific dungeon/maze/cave/lair/whatever, where you can find a lot of loot and a strong end-of-level boss.
+
+CURRENTLY:
+- The player now transitions to a new region with its own tileset (floor) and layout based on the region class (pillar- and barrel-obstacles).
+
 TODO:
-- Currently, when you open a dungeon, nothing will happen (UPDATE: Currently a new region is created, but the layout definitely doesn't look like a dungeon yet). The plan is to transition the player to a new region with its own tileset and layout based on the region class.
 - Creating a more maze like environment (with walls/hallways/doors/etc.)
 - End-of-level boss(es)
 
 #### Obstacles
 - Trees (different sprites based on biom)
-- Rocks
+- Rocks (different sprites based on biom)
+- Pillars (Only in dungeons)
+- Barrels (Only in dungeons)
 - More to come(?)...
 
 #### Battle system
@@ -74,11 +79,14 @@ TODO:
 - Overall creating a story so the game has a purpose :smiley:
 
 #### Other things
+CURRENTLY:
+- Created an inventory system, so collected items are placed in the inventory.
+
 TODO (?):
+- The player can choose what to use/wear/drop/destroy/etc. from the inventory.
 - Daytime cycle (making the environment darker at nighttime)
 - Torches (to light up the area around the player when in dark areas, such as at night or inside a dungeon)
 - Maybe even creating switches in dungeons to switch on light
-- I'm thinking about creating an inventory system, so collected items are placed in the inventory, and then the player can choose what to use/wear/drop/destroy/etc.
 - Adding NPC's to interact with (quest-givers/merchants/???)
 - Survival feature(?). This is a very big MAYBE, since this is a major feature to implement and most likely I won't be implementing it, but for future reference I've added it and maybe I will implement...
 - Crafting feature(?). Also a very big MAYBE! Ability to collect wood from trees / stone from mining rocks (and possibly a small chance to collect gems of sorts) / collecting different items to use for crafting weapons and armor (and maybe other things like tools/chests for storage/traps maybe/glass to store health potions)
