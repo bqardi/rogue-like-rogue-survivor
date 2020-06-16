@@ -8,14 +8,52 @@ document.addEventListener("DOMContentLoaded", event => {
     const settings = document.getElementById("settings");
 
     // Start screen elements
+    const welcomeScreen = document.getElementById("welcome-screen");
     const startScreen = document.getElementById("start-screen");
     const startForm = document.getElementById("start-form");
+    const startFormName = document.getElementById("start-form-name");
+    const startFormContinue = document.getElementById("start-form-continue");
+    const startFormOptions = document.getElementById("start-form-options");
+    const optionsScreen = document.getElementById("options-screen");
+    // const optionsForm = document.getElementById("options-form");
+    const optionsFormBack = document.getElementById("options-form-back");
+    const optionsFormMusic = document.getElementById("options-form-music");
+    const optionsFormSfx = document.getElementById("options-form-sfx");
+    const optionsFormExit = document.getElementById("options-form-exit");
 
     // GAME OVER screen
     const gameOverScreen = document.getElementById("game-over-screen");
 
     // BATTLE QUEUE screen
     const battleQueueElement = document.getElementById("battle-queue");
+
+    //UI
+    const ui = {
+        life: {
+            icon: document.getElementById("life-icon"),
+            count: document.getElementById("life-count"),
+            sprite: { x: 3, y: 4 },
+        },
+        strength: {
+            icon: document.getElementById("strength-icon"),
+            count: document.getElementById("strength-count"),
+            sprite: { x: 1, y: 2 },
+        },
+        armor: {
+            icon: document.getElementById("armor-icon"),
+            count: document.getElementById("armor-count"),
+            sprite: { x: 1, y: 3 },
+        },
+        coins: {
+            icon: document.getElementById("coin-icon"),
+            count: document.getElementById("coin-count"),
+            sprite: { x: 3, y: 3 },
+        },
+    }
+
+    //Inventory
+    const inventory = document.getElementById("inventory");
+    const inventoryGrid = document.getElementById("inventory-grid");
 
     const tileSize = 48;
 
@@ -35,6 +73,10 @@ document.addEventListener("DOMContentLoaded", event => {
     let enemiesInZone = 0;
     let zoneLocked = false;
 
+    //Audio settings
+    const startVolume = 0.8;
+    let sfxVolume = startVolume;
+
     let enemyType = {
         skeleton: {
             name: "Skeleton",
@@ -48,8 +90,11 @@ document.addEventListener("DOMContentLoaded", event => {
             spcAtckInfo: "None",
             sfxs: ["MONSTER_Ugh_02_mono.ogg", "MONSTER_Ugh_01_mono.ogg", "MONSTER_Ugh_04_mono.ogg"],
             specialAttack: function() {
-                console.log(this.name + " special attack: " + this.spcAtckInfo);
+                //Nothing
             },
+            enemyDeath: function(enemy) {
+                //Nothing
+            }
         },
         orc: {
             name: "Orc",
@@ -63,8 +108,11 @@ document.addEventListener("DOMContentLoaded", event => {
             spcAtckInfo: "None",
             sfxs: ["MONSTER_Ugh_02_mono.ogg", "MONSTER_Grunt_Short_02_mono.ogg"],
             specialAttack: function() {
-                console.log(this.name + " special attack: " + this.spcAtckInfo);
+                //Nothing
             },
+            enemyDeath: function(enemy) {
+                //Nothing
+            }
         },
         goblin: {
             name: "Goblin",
@@ -84,6 +132,9 @@ document.addEventListener("DOMContentLoaded", event => {
                     player.takeDamage(this.strength);
                 }
             },
+            enemyDeath: function(enemy) {
+                //Nothing
+            }
         },
     }
 
@@ -196,12 +247,16 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class SFX {
-        constructor(audioFile) {
+        constructor(audioFile, volume, playInstantly = true) {
             this.audioFile = audioFile;
-            this.initialize();
+            this.initialize(volume, playInstantly);
         }
-        initialize() {
+        initialize(volume, playInstantly) {
             this.audio = new Audio(this.audioFile);
+            this.audio.volume = volume;
+            if (playInstantly) {
+                this.play();
+            }
         }
         play() {
             this.audio.play();
@@ -213,11 +268,12 @@ document.addEventListener("DOMContentLoaded", event => {
 
     class Music {
         constructor(audioFile, volume) {
+            this.audioFile = audioFile;
             this.volume = volume;
-            this.initialize(audioFile);
+            this.initialize();
         }
-        initialize(audioFile) {
-            this.audio = new Audio(audioFile);
+        initialize() {
+            this.audio = new Audio(this.audioFile);
             this.audio.volume = this.volume;
             this.audio.loop = true;
         }
@@ -231,7 +287,11 @@ document.addEventListener("DOMContentLoaded", event => {
             this.pause();
             this.audio.currentTime = 0;
         }
-        fadeIn() {
+        setVolume(volume) {
+            this.volume = volume;
+            this.audio.volume = this.volume;
+        }
+        fadeIn(onFaded) {
             let volume = 0;
             this.audio.volume = volume;
             this.play();
@@ -241,19 +301,25 @@ document.addEventListener("DOMContentLoaded", event => {
                     volume = this.volume;
                     this.audio.volume = volume;
                     clearInterval(interval);
+                    if (onFaded) {
+                        onFaded();
+                    }
                     return;
                 }
                 this.audio.volume = volume;
             }, 50);
         }
-        fadeOut() {
-            let volume = this.volume;
+        fadeOut(onFaded) {
+            let volume = this.audio.volume;
             let interval = setInterval(() => {
                 volume -= 0.05;
                 if (volume <= 0) {
                     this.audio.volume = 0;
                     this.stop();
                     clearInterval(interval);
+                    if (onFaded) {
+                        onFaded();
+                    }
                     return;
                 }
                 this.audio.volume = volume;
@@ -580,7 +646,7 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Character {
-        constructor(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, onDeath) {
+        constructor(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, inventory, onDeath) {
             this.name = name;
             this.type = type;
             this.moveTime = moveTime;
@@ -591,7 +657,9 @@ document.addEventListener("DOMContentLoaded", event => {
             this.currentTile = currentTile;
             this.actionPoints = actionPoints;
             this.actionPointMax = actionPoints;
+            this.actionPointsTransfer = 0;
             this.sfxs = sfxs;
+            this.inventory = inventory;
             this.element = null;
             this.isDead = false;
             this.apElement = apElement;
@@ -617,7 +685,8 @@ document.addEventListener("DOMContentLoaded", event => {
             return this.actionPoints;
         }
         actionPointsReset() {
-            this.actionPoints = this.actionPointMax;
+            this.actionPoints = this.actionPointMax + this.actionPointsTransfer;
+            this.actionPointsTransfer = 0;
             this.apPoints = [];
             this.actionPointHTML();
         }
@@ -653,6 +722,9 @@ document.addEventListener("DOMContentLoaded", event => {
                 }
             }
         }
+        endTurn() {
+            this.actionPointsTransfer = this.actionPoints;
+        }
         setMoveTime() {
             this.element.style.animationDuration = `${this.moveTime}ms`;
         }
@@ -684,8 +756,7 @@ document.addEventListener("DOMContentLoaded", event => {
             }
         }
         playSFX(sfxFile) {
-            const sfx = new SFX("../audio/sfx/" + sfxFile);
-            sfx.play();
+            new SFX("../audio/sfx/" + sfxFile, sfxVolume);
         }
         createCardHTML(parent) {
             let lcaseName = this.name.toLowerCase();
@@ -747,25 +818,33 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Player extends Character {
-        constructor(name, type, moveTime, attackTime, life, strength, armor, lifeElm, strengthElm, armorElm, currentTile, apElement, actionPoints, coins, sfxs, onDeath) {
-            super(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, onDeath);
+        constructor(name, type, moveTime, attackTime, life, strength, armor, uiObj, currentTile, apElement, actionPoints, sfxs, inventory, onDeath) {
+            super(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, inventory, onDeath);
             this.armor = armor;
-            this.lifeElm = lifeElm;
-            this.strengthElm = strengthElm;
-            this.armorElm = armorElm;
-            this.coins = coins;
+            this.coins = 0;
+            this.ui = uiObj;
             this.killCount = 0;
+            this.inBattle = false;
             this.initialize();
         }
         initialize() {
-            this.lifeElm.textContent = this.life;
-            this.strengthElm.textContent = this.strength;
-            this.armorElm.textContent = this.armor;
+            this.ui.life.count.textContent = this.life;
+            this.ui.strength.count.textContent = this.strength;
+            this.ui.armor.count.textContent = this.armor;
             this.element = document.createElement("DIV");
             this.element.classList.add("player");
             this.element.classList.add("animation");
             this.element.classList.add("tile__object");
             this.updateTooltip(false);
+            this.updateUI();
+        }
+        updateUI() {
+            for (let i = 0; i < Object.keys(this.ui).length; i++) {
+                const uiObj = this.ui[Object.keys(this.ui)[i]];
+                const x = uiObj.sprite.x * 100;
+                const y = uiObj.sprite.y * 100;
+                uiObj.icon.style.backgroundPosition = `-${x}% -${y}%`;
+            }
         }
         updateTooltip(placeTooltip = true) {
             if (this.tooltip) {
@@ -792,42 +871,32 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         addLife(amount) {
             super.addLife(amount);
-            this.lifeElm.textContent = this.life;
-            this.updateTooltip();
-        }
-        addStrength(amount) {
-            this.strength += amount;
-            this.strengthElm.textContent = this.strength;
+            this.ui.life.count.textContent = this.life;
             this.updateTooltip();
         }
         setStrength(amount) {
             this.strength = amount;
-            this.strengthElm.textContent = this.strength;
-            this.updateTooltip();
-        }
-        addArmor(amount) {
-            this.armor += amount;
-            this.armorElm.textContent = this.armor;
+            this.ui.strength.count.textContent = this.strength;
             this.updateTooltip();
         }
         setArmor(amount) {
             this.armor = amount;
-            this.armorElm.textContent = this.armor;
+            this.ui.armor.count.textContent = this.armor;
             this.updateTooltip();
         }
         hasCoins(amount) {
-            if (this.coins.count >= amount) {
+            if (this.coins >= amount) {
                 return true;
             }
             return false;
         }
         addCoins(amount) {
-            this.coins.count += amount;
-            this.coins.element.textContent = this.coins.count;
+            this.coins += amount;
+            this.ui.coins.count.textContent = this.coins;
         }
         removeCoins(amount) {
-            this.coins.count -= amount;
-            this.coins.element.textContent = this.coins.count;
+            this.coins -= amount;
+            this.ui.coins.count.textContent = this.coins;
         }
         enemyKill() {
             this.killCount++;
@@ -835,11 +904,21 @@ document.addEventListener("DOMContentLoaded", event => {
         takeDamage(amount) {
             super.takeDamage(amount - this.armor);
         }
+        setEquipable(collectable) {
+            if (!collectable.equipable) {
+                return;
+            }
+            this[collectable.type] = collectable;
+            this.ui[collectable.type].count.textContent = collectable.count;
+        }
+        collect(item) {
+            item.callback(item);
+        }
     }
 
     class Enemy extends Character {
-        constructor(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, typeObj, onDeath) {
-            super(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, onDeath);
+        constructor(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, inventory, typeObj, onDeath) {
+            super(name, type, moveTime, attackTime, life, strength, currentTile, apElement, actionPoints, sfxs, inventory, onDeath);
             this.totalLife = life;
             this.cls = typeObj.cls;
             this.elmBar;
@@ -908,7 +987,8 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Item {
-        constructor(amount, pos, equipable, callback) {
+        constructor(name, amount, pos, equipable, callback) {
+            this.name = name;
             this.amount = amount;
             this.posX = pos.x * 100;
             this.posY = pos.y * 100;
@@ -927,10 +1007,6 @@ document.addEventListener("DOMContentLoaded", event => {
             if (this.equipable) {
                 this.equipped = isEquipped;
             }
-        }
-        collect(tileObj) {
-            tileObj.setEmpty();
-            this.callback(this);
         }
     }
 
@@ -968,6 +1044,64 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
+    class Inventory {
+        constructor() {
+            this.contents = [];
+        }
+        addNewItem(item, amount) {
+            let content = this.getItem(item);
+            if (content === null) {
+                content = new Object();
+                content.item = item;
+                content.amount = 0;
+                this.contents.push(content);
+            }
+            content.amount += amount;
+            return content;
+        }
+        removeItem(item) {
+            const index = this.getContentIndex(item);
+            this.contents.splice(index, 1);
+        }
+        addItemAmount(item, amount) {
+            let content = this.getItem(item);
+            if (content === null) {
+                content = this.addNewItem(item, amount);
+            } else {
+                content.amount += amount;
+            }
+        }
+        removeItemAmount(item, amount) {
+            let content = this.getItem(item);
+            if (content === null) {
+                return false;
+            }
+            if (content.amount - amount >= 0) {
+                content.amount -= amount;
+            }
+            return content;
+        }
+        getItem(item) {
+            const index = this.getContentIndex(item);
+            if (index === -1) {
+                return null;
+            }
+            return this.contents[index];
+        }
+        getContentIndex(item) {
+            if (this.contents.length == 0) {
+                return -1;
+            }
+            for (let i = 0; i < this.contents.length; i++) {
+                const content = this.contents[i];
+                if (content.item.name == item.name) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+    }
+
     // let platinum = new Currency();
     // let gold = new Currency(100, platinum);
     // let silver = new Currency(100, gold);
@@ -986,6 +1120,7 @@ document.addEventListener("DOMContentLoaded", event => {
     // *********************************************************************************************
     // *********************************************************************************************
 
+    //#region OBJECTS
     let effect = {
         explosion: {
             name: "Explosion",
@@ -1033,186 +1168,246 @@ document.addEventListener("DOMContentLoaded", event => {
 
     let collectables = {
         coins: {
+            name: "Coin",
             type: "coin",
-            count: 0,
             spriteCoordinates: { x: 3, y: 3 },
             includeInStartZone: true,
             stacks: 100,
             minStackAmount: 10,
             maxStackAmount: 30,
             equipable: false,
-            equipped: null,
-            iconElement: document.getElementById("coin-icon"),
-            element: document.getElementById("coin-count"),
             onCollect: function(item) {
+                new SFX("../audio/sfx/CHAIN_Drop_03_mono.ogg", sfxVolume);
                 player.addCoins(item.amount);
-                const sfx = new SFX("../audio/sfx/CHAIN_Drop_03_mono.ogg");
-                sfx.play();
             }
         },
         keys: {
+            name: "Key",
             type: "key",
-            count: 0,
             spriteCoordinates: { x: 6, y: 0 },
             includeInStartZone: false,
             stacks: 6,
             minStackAmount: 1,
             maxStackAmount: 1,
             equipable: false,
-            equipped: null,
-            iconElement: document.getElementById("key-icon"),
-            element: document.getElementById("key-count"),
             onCollect: function(item) {
-                collectables.keys.count += item.amount;
-                collectables.keys.element.textContent = collectables.keys.count;
-                const sfx = new SFX("../audio/sfx/LOCK_Metal_Padlock_Unlock_Pop_01_mono.ogg");
-                sfx.play();
+                new SFX("../audio/sfx/LOCK_Metal_Padlock_Unlock_Pop_01_mono.ogg", sfxVolume);
+                player.inventory.addItemAmount(item, 1);
             }
         },
         woodenSword: {
+            name: "Wood sword",
             type: "weapon",
-            count: 0,
             spriteCoordinates: { x: 1, y: 2 },
             includeInStartZone: false,
             stacks: 30,
             minStackAmount: 10,
             maxStackAmount: 10,
             equipable: true,
-            equipped: true,
-            iconElement: document.getElementById("strength-icon"),
-            element: document.getElementById("strength-count"),
             onCollect: function(item) {
-                player.setStrength(item.amount);
-                setEquipable(collectables.woodenSword);
-                const sfx = new SFX("../audio/sfx/BOW_Release_Arrow_mono.ogg");
-                sfx.play();
+                new SFX("../audio/sfx/BOW_Release_Arrow_mono.ogg", sfxVolume);
+                player.inventory.addItemAmount(item, 1);
             }
         },
         ironSword: {
+            name: "Iron sword",
             type: "weapon",
-            count: 0,
             spriteCoordinates: { x: 3, y: 2 },
             includeInStartZone: false,
             stacks: 40,
             minStackAmount: 12,
             maxStackAmount: 12,
             equipable: true,
-            equipped: false,
-            iconElement: document.getElementById("strength-icon"),
-            element: document.getElementById("strength-count"),
             onCollect: function(item) {
-                player.setStrength(item.amount);
-                setEquipable(collectables.ironSword);
-                const sfx = new SFX("../audio/sfx/FRICTION_Metal_Bars_05_mono.ogg");
-                sfx.play();
+                new SFX("../audio/sfx/FRICTION_Metal_Bars_05_mono.ogg", sfxVolume);
+                player.inventory.addItemAmount(item, 1);
             }
         },
         ironAxe: {
+            name: "Iron axe",
             type: "weapon",
-            count: 0,
             spriteCoordinates: { x: 2, y: 0 },
             includeInStartZone: false,
             stacks: 40,
             minStackAmount: 15,
             maxStackAmount: 15,
             equipable: true,
-            equipped: false,
-            iconElement: document.getElementById("strength-icon"),
-            element: document.getElementById("strength-count"),
             onCollect: function(item) {
-                player.setStrength(item.amount);
-                setEquipable(collectables.ironAxe);
-                const sfx = new SFX("../audio/sfx/FRICTION_Metal_Bars_02_mono.ogg");
-                sfx.play();
+                new SFX("../audio/sfx/FRICTION_Metal_Bars_02_mono.ogg", sfxVolume);
+                player.inventory.addItemAmount(item, 1);
             }
         },
         smallShield: {
+            name: "Small shield",
             type: "armor",
-            count: 0,
             spriteCoordinates: { x: 5, y: 0 },
             includeInStartZone: false,
             stacks: 40,
             minStackAmount: 1,
             maxStackAmount: 1,
             equipable: true,
-            equipped: true,
-            iconElement: document.getElementById("armor-icon"),
-            element: document.getElementById("armor-count"),
             onCollect: function(item) {
-                player.setArmor(item.amount);
-                setEquipable(collectables.smallShield);
-                const sfx = new SFX("../audio/sfx/TOOL_Toolbox_Close_mono.ogg");
-                sfx.play();
+                new SFX("../audio/sfx/TOOL_Toolbox_Close_mono.ogg", sfxVolume);
+                player.inventory.addItemAmount(item, 1);
             }
         },
         largeShield: {
+            name: "Large shield",
             type: "armor",
-            count: 0,
             spriteCoordinates: { x: 4, y: 0 },
             includeInStartZone: false,
             stacks: 30,
             minStackAmount: 3,
             maxStackAmount: 3,
             equipable: true,
-            equipped: false,
-            iconElement: document.getElementById("armor-icon"),
-            element: document.getElementById("armor-count"),
             onCollect: function(item) {
-                player.setArmor(item.amount);
-                setEquipable(collectables.largeShield);
-                const sfx = new SFX("../audio/sfx/TOOL_Toolbox_Close_mono.ogg");
-                sfx.play();
+                new SFX("../audio/sfx/TOOL_Toolbox_Close_mono.ogg", sfxVolume);
+                player.inventory.addItemAmount(item, 1);
             }
         },
         potions: {
+            name: "Potion",
             type: "life",
-            count: 0,
             spriteCoordinates: { x: 3, y: 4 },
             includeInStartZone: false,
             stacks: 300,
             minStackAmount: 10,
             maxStackAmount: 50,
             equipable: false,
-            equipped: null,
-            iconElement: document.getElementById("life-icon"),
-            element: document.getElementById("life-count"),
             onCollect: function(item) {
+                new SFX("../audio/sfx/EAT_Swallow_mono.ogg", sfxVolume);
                 player.addLife(item.amount);
-                const sfx = new SFX("../audio/sfx/EAT_Swallow_mono.ogg");
-                sfx.play();
             }
         },
     }
 
-    let calmMusic = new Music("../audio/medieval_market_LOOP.ogg", 1);
-    let combatMusic = new Music("../audio/enemy_territory_LOOP.ogg", 1);
-    let currentMusic = calmMusic;
-
-    settings.addEventListener("click", function() {
-        if (currentMusic.audio.paused) {
-            currentMusic.play();
-        } else {
-            currentMusic.pause();
+    let music = {
+            current: null,
+            menu: new Music("../audio/fantasy_title.ogg", startVolume),
+            calm: new Music("../audio/medieval_market_LOOP.ogg", startVolume),
+            combat: new Music("../audio/enemy_territory_LOOP.ogg", startVolume),
+            setCurrent: function(musicObj) {
+                this.current = musicObj;
+            },
+            setVolume: function(volume) {
+                this.menu.setVolume(volume);
+                this.calm.setVolume(volume);
+                this.combat.setVolume(volume);
+            },
+            crossFade: function(toMusicObj) {
+                if (this.current === toMusicObj) {
+                    return;
+                }
+                toMusicObj.fadeIn();
+                if (this.current != null) {
+                    this.current.fadeOut(function() {
+                        music.setCurrent(toMusicObj);
+                    });
+                }
+            }
         }
+        //#endregion OBJECTS
+
+    //#region EVENT LISTENERS
+    welcomeScreen.addEventListener("click", function() {
+        this.classList.add("js-hidden");
+        startFormName.focus();
+        optionsFormMusic.value = startVolume * 100;
+        optionsFormSfx.value = startVolume * 100;
+        music.setCurrent(music.menu);
+        music.current.fadeIn();
+    })
+    settings.addEventListener("click", function() {
+        optionsScreen.classList.remove("js-hidden");
+        enableButton(optionsFormExit);
+    });
+    startFormContinue.addEventListener("click", function(evt) {
+        evt.preventDefault();
+        console.log("Continue");
+    });
+    startFormOptions.addEventListener("click", function(evt) {
+        evt.preventDefault();
+        optionsScreen.classList.remove("js-hidden");
+        disableButton(optionsFormExit);
+    });
+    optionsFormMusic.addEventListener("input", function() {
+        music.setVolume(this.value / 100);
+    });
+    optionsFormSfx.addEventListener("input", function() {
+        sfxVolume = this.value / 100;
+    });
+    optionsFormSfx.addEventListener("change", function() {
+        new SFX("../audio/sfx/CHAIN_Drop_03_mono.ogg", sfxVolume);
+    });
+    optionsFormBack.addEventListener("click", function(evt) {
+        evt.preventDefault();
+        optionsScreen.classList.add("js-hidden");
+    });
+    optionsFormExit.addEventListener("click", function(evt) {
+        evt.preventDefault();
+        startScreen.classList.remove("js-hidden");
+        optionsScreen.classList.add("js-hidden");
+        music.crossFade(music.menu);
     });
 
     startForm.addEventListener("submit", function(evt) {
         evt.preventDefault();
-        const startFormName = startForm.querySelector("#start-form-name");
         newGame(startFormName.value);
         startScreen.classList.add("js-hidden");
     });
+
     document.addEventListener("keyup", function(evt) {
-        if (gameStarted && evt.key == "m") {
-            miniMap.zoomToggle();
+        if (gameStarted) {
+            if (evt.key == "m") {
+                miniMap.zoomToggle();
+            }
+            if (evt.key == "i") {
+                inventory.classList.toggle("js-hidden");
+                if (!inventory.classList.contains("js-hidden")) {
+                    createInventoryItemsUI();
+                }
+            }
+            if (player.inBattle) {
+                if (evt.key == "e") {
+                    nextTurn();
+                }
+            }
+        } else {
+            welcomeScreen.classList.add("js-hidden");
+            startFormName.focus();
         }
     });
+    //#endregion EVENT LISTENERS
 
-    function setEquipable(collectable) {
-        resetEquipable(collectable.type);
-        collectable.equipped = true;
-        uiIcon(collectable);
+    function createInventoryItemsUI() {
+        inventoryGrid.innerHTML = "";
+        for (let i = 0; i < player.inventory.contents.length; i++) {
+            const content = player.inventory.contents[i];
+            const x = content.item.posX / 100 * 64;
+            const y = content.item.posY / 100 * 64;
+            inventoryGrid.insertAdjacentHTML("beforeend", `
+                <button class="inventory__item" aria-label="Inventory item" style="background-position: -${x}px -${y}px;">
+                    <span class="inventory__amount">${content.amount}</span>
+                </button>
+            `);
+        }
     }
+
+    function disableButton(button) {
+        button.classList.add("js-disabled");
+        button.disabled = true;
+    }
+
+    function enableButton(button) {
+        button.classList.remove("js-disabled");
+        button.disabled = false;
+    }
+
+    // function setEquipable(collectable) {
+    //     resetEquipable(collectable.type);
+    //     collectable.equipped = true;
+    //     uiIcon(collectable);
+    // }
 
     function resetEquipable(type) {
         for (let i = 0; i < Object.keys(collectables).length; i++) {
@@ -1224,26 +1419,20 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function newGame(playerName) {
-        currentMusic.play();
+        music.crossFade(music.calm);
         currentWorld = worlds.outdoor;
         region = new Region(worlds.outdoor, background, zoneContainer, tileSize);
         miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
-        const lifeUIElm = collectables.potions.element;
-        const strengthUIElm = collectables.woodenSword.element;
-        const armorUIElm = collectables.smallShield.element;
         playerName = playerName == "" ? "Player 1" : playerName;
-        const coinsObj = new Object();
-        coinsObj.count = collectables.coins.count;
-        coinsObj.element = collectables.coins.element;
         const sfxArr = ["VOICE_Girl_4yo_Hurt_Long_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_04_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_05_mono.ogg"];
-        player = new Player(playerName, "player", 150, 150, 100, 10, 0, lifeUIElm, strengthUIElm, armorUIElm, null, actions, 3, coinsObj, sfxArr, gameOver);
-        for (let i = 0; i < Object.values(collectables).length; i++) {
-            const collectable = Object.values(collectables)[i];
-            uiIcon(collectable);
-            if (collectable.equipable && collectable.equipped) {
-                collectable.element.textContent = collectable.minStackAmount;
-            }
-        }
+        player = new Player(playerName, "player", 150, 150, 100, 10, 0, ui, null, actions, 3, sfxArr, new Inventory(), gameOver);
+        // for (let i = 0; i < Object.values(collectables).length; i++) {
+        //     const collectable = Object.values(collectables)[i];
+        //     uiIcon(collectable);
+        //     if (collectable.equipable && collectable.equipped) {
+        //         collectable.element.textContent = collectable.minStackAmount;
+        //     }
+        // }
         battleQueueElement.innerHTML = "";
         buildMap();
         buildZone("0_0");
@@ -1284,20 +1473,20 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    function uiIcon(collectable) {
-        if (collectable.equipable && !collectable.equipped) {
-            return;
-        }
-        const x = collectable.spriteCoordinates.x * 64;
-        const y = collectable.spriteCoordinates.y * 64;
-        collectable.iconElement.style.backgroundPosition = `-${x}px -${y}px`;
-    }
+    // function uiIcon(collectable) {
+    //     if (collectable.equipable && !collectable.equipped) {
+    //         return;
+    //     }
+    //     const x = collectable.spriteCoordinates.x * 100;
+    //     const y = collectable.spriteCoordinates.y * 100;
+    //     collectable.iconElement.style.backgroundPosition = `-${x}% -${y}%`;
+    // }
 
     function gameOver(playerObj) {
-        currentMusic.stop();
+        music.current.stop();
         gameOverScreen.classList.remove("js-hidden");
         setTimeout(() => {
-            (new SFX("../audio/sfx/losing.ogg")).play();
+            new SFX("../audio/sfx/losing.ogg", sfxVolume);
             setTimeout(() => {
                 gameOverScreen.classList.add("js-hidden");
                 startScreen.classList.remove("js-hidden");
@@ -1345,8 +1534,8 @@ document.addEventListener("DOMContentLoaded", event => {
         // placeEnemy(tileObj, enemyTypes[1]);
 
         //INSERT KEYS MANUALLY FOR TESTING PURPOSES
-        collectables.keys.count++;
-        collectables.keys.element.textContent = collectables.keys.count;
+        // collectables.keys.count++;
+        // collectables.keys.element.textContent = collectables.keys.count;
 
         //Loop through all items and place them randomly in the world (Coins, Keys, Weapons, Armors, Potions, etc.)
         for (let i = 0; i < Object.keys(collectables).length; i++) {
@@ -1435,22 +1624,17 @@ document.addEventListener("DOMContentLoaded", event => {
     function calmEvent() {
         zoneLocked = false;
         playersTurn = true;
-        turnIndex = -1;
         battleQueue = [];
         background.classList.remove("battle");
         player.removeCard();
         player.actionPointHTMLRemove();
-        if (currentMusic != calmMusic) {
-            combatMusic.fadeOut();
-            calmMusic.fadeIn();
-            currentMusic = calmMusic;
-        }
+        player.inBattle = false;
+        music.crossFade(music.calm);
     }
 
     function combatEvent() {
         zoneLocked = true;
         playersTurn = false;
-        turnIndex = -1;
         background.classList.add("battle");
         battleQueue.push(player);
         shuffleArray(battleQueue);
@@ -1458,10 +1642,26 @@ document.addEventListener("DOMContentLoaded", event => {
             const character = battleQueue[i];
             character.createCardHTML(battleQueueElement);
         }
-        calmMusic.fadeOut();
-        combatMusic.fadeIn();
-        currentMusic = combatMusic;
-        nextTurn();
+        player.inBattle = true;
+        music.crossFade(music.combat);
+        takeTurn();
+    }
+
+    function takeTurn() {
+        for (let i = 0; i < battleQueue.length; i++) {
+            const character = battleQueue[i];
+            character.setInactive();
+            character.updateOrder(i);
+        }
+        const currentCharacter = battleQueue[0];
+        currentCharacter.setActive();
+        currentCharacter.actionPointsReset();
+        if (currentCharacter == player) {
+            playersTurn = true;
+        } else {
+            playersTurn = false;
+            enemyTurn(currentCharacter);
+        }
     }
 
     function nextTurn() {
@@ -1473,23 +1673,8 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         const endTurnCharacter = battleQueue.shift();
         battleQueue.push(endTurnCharacter);
-        for (let i = 0; i < battleQueue.length; i++) {
-            const character = battleQueue[i];
-            if (i == 0) {
-                character.setActive();
-            } else {
-                character.setInactive();
-            }
-            character.updateOrder(i);
-        }
-        const currentCharacter = battleQueue[0];
-        currentCharacter.actionPointsReset();
-        if (currentCharacter == player) {
-            playersTurn = true;
-        } else {
-            playersTurn = false;
-            enemyTurn(currentCharacter);
-        }
+        endTurnCharacter.endTurn();
+        takeTurn();
     }
 
     function enemyTurn(enemyObj) {
@@ -1539,6 +1724,7 @@ document.addEventListener("DOMContentLoaded", event => {
     function enemyAction(enemyObj) {
         if (enemyObj.actionPointsRemove(1) == 0) {
             setTimeout(() => {
+                enemyObj.endTurn();
                 nextTurn();
             }, 300);
         } else {
@@ -1602,7 +1788,7 @@ document.addEventListener("DOMContentLoaded", event => {
         if (tileObj.object != null) {
             if (tileObj.type == "item") {
                 itemInTile = true;
-                tileObj.object.collect(tileObj);
+                player.collect(tileObj.object);
             }
             if (tileObj.type == "enemy") {
                 enemyInTile = true;
@@ -1642,7 +1828,7 @@ document.addEventListener("DOMContentLoaded", event => {
             const zone = region.getRandomZone(collectable.includeInStartZone);
             const tileObj = zone.getRandomTile();
             const rndAmount = randomInteger(collectable.minStackAmount, collectable.maxStackAmount);
-            const item = new Item(rndAmount, collectable.spriteCoordinates, collectable.equipable, collectable.onCollect);
+            const item = new Item(collectable.name, rndAmount, collectable.spriteCoordinates, collectable.equipable, collectable.onCollect);
             item.equip(collectable.equipped);
             tileObj.placeObject(item, "item", true);
             collectable.totalStackAmount += rndAmount;
@@ -1676,14 +1862,10 @@ document.addEventListener("DOMContentLoaded", event => {
             console.log("Array is empty!");
             return;
         }
-        const enemy = new Enemy(type.name, "enemy", type.moveTime, type.attackTime, type.life, type.strength, tileObj, actions, type.actionPoints, type.sfxs, type, enemyDeath);
+        const enemy = new Enemy(type.name, "enemy", type.moveTime, type.attackTime, type.life, type.strength, tileObj, actions, type.actionPoints, type.sfxs, new Inventory(), type, type.enemyDeath);
         tileObj.setEmpty();
         tileObj.placeObject(enemy, "enemy", true);
         type.totalCount++;
-    }
-
-    function enemyDeath(enemy) {
-        console.log("Enemy: " + enemy.name + " died.");
     }
 
     function addPlayerControls() {
@@ -1835,7 +2017,9 @@ document.addEventListener("DOMContentLoaded", event => {
         fullMove(element, player.moveTime, direction, function() {
             if (destinationTileObj.type == "item") {
                 effect.flash.createHTML(player.element);
-                destinationTileObj.object.collect(destinationTileObj);
+                // destinationTileObj.object.collect(destinationTileObj);
+                player.collect(destinationTileObj.object);
+                destinationTileObj.setEmpty();
             }
             destinationTileObj.object = player.currentTile.object;
             player.currentTile = destinationTileObj;

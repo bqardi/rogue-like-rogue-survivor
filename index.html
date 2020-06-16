@@ -15,19 +15,51 @@
 </head>
 
 <body>
+    <div id="welcome-screen" class="welcome-screen">
+        <header class="welcome-screen__header">
+            <h1>Rogue<br>Survivor</h1>
+            <p>Press <strong class="any-key">ANY KEY</strong> to continue</p>
+        </header>
+    </div>
     <div id="background" class="game forest battle">
         <div id="start-screen" class="start-screen">
             <div class="start-content">
                 <header class="start-title">
-                    <h1>Rogue Survivor</h1>
+                    <h2>Rogue Survivor</h2>
                 </header>
                 <form id="start-form" class="start-form">
-                    <label id="start-form-label" for="start-form-name" class="start-form__label">Player name</label>
-                    <input id="start-form-name" class="start-form__element start-form__input start-form__name golden-background" type="text" placeholder="Player 1" autofocus>
-                    <button id="start-form-continue" class="start-form__element start-form__button js-disabled golden-background">Continue</button>
-                    <button id="start-form-options" class="start-form__element start-form__button js-disabled golden-background">Options</button>
-                    <button class="start-form__element start-form__button golden-background" type="submit">New game</button>
+                    <label for="start-form-name" class="start-form__label">Player name</label>
+                    <input id="start-form-name" class="start-form__element start-form__input start-form__bottom-space golden-background" type="text" placeholder="Player 1">
+                    <button id="start-form-new" class="start-form__element start-form__button golden-background" type="submit">New game</button>
+                    <button id="start-form-continue" class="start-form__element start-form__button js-disabled golden-background" disabled>Continue</button>
+                    <button id="start-form-options" class="start-form__element start-form__button golden-background">Options</button>
                 </form>
+            </div>
+        </div>
+        <div id="options-screen" class="start-screen js-hidden">
+            <div class="start-content">
+                <header class="start-title">
+                    <h2>Rogue Survivor</h2>
+                </header>
+                <form id="options-form" class="start-form">
+                    <fieldset class="golden-background">
+                        <legend>Audio settings</legend>
+                        <label for="options-form-music" class="start-form__label">Music volume</label>
+                        <input type="range" min="0" max="100" value="100" class="slider" id="options-form-music">
+                        <label for="options-form-sfx" class="start-form__label">Sfx volume</label>
+                        <input type="range" min="0" max="100" value="100" class="slider" id="options-form-sfx">
+                    </fieldset>
+                    <button id="options-form-back" class="start-form__element start-form__button golden-background">Back</button>
+                    <button id="options-form-exit" class="start-form__element start-form__button golden-background js-disabled">Exit game</button>
+                </form>
+            </div>
+        </div>
+        <div id="inventory" class="inventory js-hidden">
+            <h2 class="inventory__title">Inventory</h2>
+            <div class="inventory__content">
+                <div id="inventory-grid" class="inventory__grid">
+                    <!-- Dynamic content -->
+                </div>
             </div>
         </div>
         <div id="game-over-screen" class="game-over-screen js-hidden">
@@ -39,7 +71,7 @@
         <img src="./images/dungeon.jpg" class="biom biom-dungeon" alt="Dungeon">
         <main class="main">
             <header class="header">
-                <h2 class="game-title">Rogue<br>Survivor</h2>
+                <h2 class="game-title">Rogue Survivor</h2>
                 <div id="battle-queue" class="battle-queue">
                     <!-- Dynamic content -->
                 </div>
@@ -65,9 +97,13 @@
                         <p id="coin-count" class="list__item-count">0</p>
                     </div>
                     <div class="ui__item">
+                        <div id="backpack-icon" class="ui-icon backpack"></div>
+                        <p id="backpack" class="list__item-count">[I]nventory</p>
+                    </div>
+                    <!-- <div class="ui__item">
                         <div id="key-icon" class="ui-icon key"></div>
                         <p id="key-count" class="list__item-count">0</p>
-                    </div>
+                    </div> -->
                 </div>
                 <div class="game-board golden-background">
                     <div id="zone-container" class="zone">
@@ -76,7 +112,9 @@
                 </div>
                 <div class="mini-map golden-background">
                     <div class="settings">
-                        <button id="settings">Settings</button>
+                        <button id="settings" class="golden-button" aria-label="Settings">
+                            <svg class="golden-button__icon" viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"></path></svg>
+                        </button>
                     </div>
                     <div id="mini-map-enlarger" class="mini-map-enlarger">
                         <h2 class="mini-map__title">Mini map</h2>
@@ -123,15 +161,6 @@
                 <img id="ap-image" class="ap-image" src="./images/player-spritesheet.png" alt="Player">
                 <h2 class="ap-title">AP:</h2>
                 <div id="ap" class="actions__ap">
-                    <div class="ap-point">
-                        <div class="fill"></div>
-                    </div>
-                    <div class="ap-point">
-                        <div class="fill"></div>
-                    </div>
-                    <div class="ap-point empty">
-                        <div class="fill"></div>
-                    </div>
                     <!-- Dynamic content -->
                 </div>
             </div>
