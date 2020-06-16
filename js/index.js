@@ -756,7 +756,7 @@ document.addEventListener("DOMContentLoaded", event => {
             }
         }
         playSFX(sfxFile) {
-            new SFX("../audio/sfx/" + sfxFile, sfxVolume);
+            new SFX("./audio/sfx/" + sfxFile, sfxVolume);
         }
         createCardHTML(parent) {
             let lcaseName = this.name.toLowerCase();
@@ -1177,7 +1177,7 @@ document.addEventListener("DOMContentLoaded", event => {
             maxStackAmount: 30,
             equipable: false,
             onCollect: function(item) {
-                new SFX("../audio/sfx/CHAIN_Drop_03_mono.ogg", sfxVolume);
+                new SFX("./audio/sfx/CHAIN_Drop_03_mono.ogg", sfxVolume);
                 player.addCoins(item.amount);
             }
         },
@@ -1191,7 +1191,7 @@ document.addEventListener("DOMContentLoaded", event => {
             maxStackAmount: 1,
             equipable: false,
             onCollect: function(item) {
-                new SFX("../audio/sfx/LOCK_Metal_Padlock_Unlock_Pop_01_mono.ogg", sfxVolume);
+                new SFX("./audio/sfx/LOCK_Metal_Padlock_Unlock_Pop_01_mono.ogg", sfxVolume);
                 player.inventory.addItemAmount(item, 1);
             }
         },
@@ -1205,7 +1205,7 @@ document.addEventListener("DOMContentLoaded", event => {
             maxStackAmount: 10,
             equipable: true,
             onCollect: function(item) {
-                new SFX("../audio/sfx/BOW_Release_Arrow_mono.ogg", sfxVolume);
+                new SFX("./audio/sfx/BOW_Release_Arrow_mono.ogg", sfxVolume);
                 player.inventory.addItemAmount(item, 1);
             }
         },
@@ -1219,7 +1219,7 @@ document.addEventListener("DOMContentLoaded", event => {
             maxStackAmount: 12,
             equipable: true,
             onCollect: function(item) {
-                new SFX("../audio/sfx/FRICTION_Metal_Bars_05_mono.ogg", sfxVolume);
+                new SFX("./audio/sfx/FRICTION_Metal_Bars_05_mono.ogg", sfxVolume);
                 player.inventory.addItemAmount(item, 1);
             }
         },
@@ -1233,7 +1233,7 @@ document.addEventListener("DOMContentLoaded", event => {
             maxStackAmount: 15,
             equipable: true,
             onCollect: function(item) {
-                new SFX("../audio/sfx/FRICTION_Metal_Bars_02_mono.ogg", sfxVolume);
+                new SFX("./audio/sfx/FRICTION_Metal_Bars_02_mono.ogg", sfxVolume);
                 player.inventory.addItemAmount(item, 1);
             }
         },
@@ -1247,7 +1247,7 @@ document.addEventListener("DOMContentLoaded", event => {
             maxStackAmount: 1,
             equipable: true,
             onCollect: function(item) {
-                new SFX("../audio/sfx/TOOL_Toolbox_Close_mono.ogg", sfxVolume);
+                new SFX("./audio/sfx/TOOL_Toolbox_Close_mono.ogg", sfxVolume);
                 player.inventory.addItemAmount(item, 1);
             }
         },
@@ -1261,7 +1261,7 @@ document.addEventListener("DOMContentLoaded", event => {
             maxStackAmount: 3,
             equipable: true,
             onCollect: function(item) {
-                new SFX("../audio/sfx/TOOL_Toolbox_Close_mono.ogg", sfxVolume);
+                new SFX("./audio/sfx/TOOL_Toolbox_Close_mono.ogg", sfxVolume);
                 player.inventory.addItemAmount(item, 1);
             }
         },
@@ -1275,7 +1275,7 @@ document.addEventListener("DOMContentLoaded", event => {
             maxStackAmount: 50,
             equipable: false,
             onCollect: function(item) {
-                new SFX("../audio/sfx/EAT_Swallow_mono.ogg", sfxVolume);
+                new SFX("./audio/sfx/EAT_Swallow_mono.ogg", sfxVolume);
                 player.addLife(item.amount);
             }
         },
@@ -1283,9 +1283,9 @@ document.addEventListener("DOMContentLoaded", event => {
 
     let music = {
             current: null,
-            menu: new Music("../audio/fantasy_title.ogg", startVolume),
-            calm: new Music("../audio/medieval_market_LOOP.ogg", startVolume),
-            combat: new Music("../audio/enemy_territory_LOOP.ogg", startVolume),
+            menu: new Music("./audio/fantasy_title.ogg", startVolume),
+            calm: new Music("./audio/medieval_market_LOOP.ogg", startVolume),
+            combat: new Music("./audio/enemy_territory_LOOP.ogg", startVolume),
             setCurrent: function(musicObj) {
                 this.current = musicObj;
             },
@@ -1337,7 +1337,7 @@ document.addEventListener("DOMContentLoaded", event => {
         sfxVolume = this.value / 100;
     });
     optionsFormSfx.addEventListener("change", function() {
-        new SFX("../audio/sfx/CHAIN_Drop_03_mono.ogg", sfxVolume);
+        new SFX("./audio/sfx/CHAIN_Drop_03_mono.ogg", sfxVolume);
     });
     optionsFormBack.addEventListener("click", function(evt) {
         evt.preventDefault();
@@ -1486,7 +1486,7 @@ document.addEventListener("DOMContentLoaded", event => {
         music.current.stop();
         gameOverScreen.classList.remove("js-hidden");
         setTimeout(() => {
-            new SFX("../audio/sfx/losing.ogg", sfxVolume);
+            new SFX("./audio/sfx/losing.ogg", sfxVolume);
             setTimeout(() => {
                 gameOverScreen.classList.add("js-hidden");
                 startScreen.classList.remove("js-hidden");
