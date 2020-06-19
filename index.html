@@ -54,21 +54,23 @@
                 </form>
             </div>
         </div>
-        <div id="inventory" class="inventory js-hidden">
-            <h2 class="inventory__title">Inventory</h2>
-            <div class="inventory__content">
-                <div id="inventory-grid" class="inventory__grid">
-                    <!-- Dynamic content -->
+        <div id="inventory" class="inventory-container transparent-background js-hidden">
+            <div class="inventory golden-background">
+                <h2 class="inventory__title">Inventory</h2>
+                <div class="inventory__content">
+                    <div id="inventory-grid" class="inventory__grid">
+                        <!-- Dynamic content -->
+                    </div>
                 </div>
             </div>
         </div>
         <div id="game-over-screen" class="game-over-screen js-hidden">
             <h2 class="game-over-title">G&nbsp;A&nbsp;M&nbsp;E&nbsp;&nbsp;&nbsp;O&nbsp;V&nbsp;E&nbsp;R</h2>
         </div>
-        <img src="./images/forest.jpg" class="biom biom-forest" alt="Forest">
-        <img src="./images/desert.jpg" class="biom biom-desert" alt="Desert">
-        <img src="./images/snow.jpg" class="biom biom-snow" alt="Snow">
-        <img src="./images/dungeon.jpg" class="biom biom-dungeon" alt="Dungeon">
+        <img src="./images/forest.jpg" class="biom biom-image biom-forest" alt="Forest">
+        <img src="./images/desert.jpg" class="biom biom-image biom-desert" alt="Desert">
+        <img src="./images/snow.jpg" class="biom biom-image biom-snow" alt="Snow">
+        <img src="./images/dungeon.jpg" class="biom biom-image biom-dungeon" alt="Dungeon">
         <main class="main">
             <header class="header">
                 <h2 class="game-title">Rogue Survivor</h2>
@@ -77,7 +79,7 @@
                 </div>
             </header>
             <div class="main-game">
-                <div class="ui golden-background">
+                <div class="ui full-width golden-background">
                     <h2 class="ui__title">Stats</h2>
                     <div class="ui__item">
                         <div id="life-icon" class="ui-icon life"></div>
@@ -98,7 +100,7 @@
                     </div>
                     <div class="ui__item">
                         <div id="backpack-icon" class="ui-icon backpack"></div>
-                        <p id="backpack" class="list__item-count">[I]nventory</p>
+                        <p id="backpack" class="list__item-text">Press [I]</p>
                     </div>
                     <!-- <div class="ui__item">
                         <div id="key-icon" class="ui-icon key"></div>
@@ -165,6 +167,29 @@
                 </div>
             </div>
         </main>
+    </div>
+    <div id="game-menu" class="game-menu" style="top:100px;left:100px;">
+        <button id="menu-inventory" class="game-menu-button golden-button js-active" aria-label="Toggle inventory">
+            <span class="game-menu-shortcut game-menu-label">I</span>
+            <span class="game-menu-icon" style="background-position: -200% -100%;"></span>
+            <span class="game-menu-name">
+                <span class="game-menu-name-inner game-menu-label">Inv.</span>
+            </span>
+        </button>
+        <button id="menu-map" class="game-menu-button golden-button" aria-label="Toggle map">
+            <span class="game-menu-shortcut game-menu-label">M</span>
+            <span class="game-menu-icon" style="background-position: 0 0;"></span>
+            <span class="game-menu-name">
+                <span class="game-menu-name-inner game-menu-label">Map</span>
+            </span>
+        </button>
+        <button id="menu-torch" class="game-menu-button golden-button" aria-label="Toggle torch">
+            <span class="game-menu-shortcut game-menu-label">t</span>
+            <span class="game-menu-icon" style="background-position: -600% -300%;"></span>
+            <span class="game-menu-name">
+                <span class="game-menu-name-inner game-menu-label">Map</span>
+            </span>
+        </button>
     </div>
 </body>
 
