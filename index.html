@@ -58,6 +58,21 @@
             <div class="inventory golden-background">
                 <h2 class="inventory__title">Inventory</h2>
                 <div class="inventory__content">
+                    <div id="inventory-info" class="inventory__info">
+                        <header class="inventory-info__header">
+                            <div id="inv-info-image" class="inventory-info__image"></div>
+                            <h3 id="inv-info-title" class="inventory-info__title">Title</h3>
+                        </header>
+                        <div id="inv-info-content">
+                            <!-- Dynamic content -->
+                            <div class="inventory-info__row">
+                                <p class="inventory-info__heading">Title:</p>
+                                <span class="inventory-info__text">Something</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="inventory__content">
                     <div id="inventory-grid" class="inventory__grid">
                         <!-- Dynamic content -->
                     </div>
@@ -74,6 +89,7 @@
         <main class="main">
             <header class="header">
                 <h2 class="game-title">Rogue Survivor</h2>
+                <img id="sun" class="sun" src="./images/sun.png" alt="The sun">
                 <div id="battle-queue" class="battle-queue">
                     <!-- Dynamic content -->
                 </div>
@@ -187,7 +203,7 @@
             <span class="game-menu-shortcut game-menu-label">t</span>
             <span class="game-menu-icon" style="background-position: -600% -300%;"></span>
             <span class="game-menu-name">
-                <span class="game-menu-name-inner game-menu-label">Map</span>
+                <span class="game-menu-name-inner game-menu-label">Torch</span>
             </span>
         </button>
     </div>

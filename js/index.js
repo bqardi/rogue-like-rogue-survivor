@@ -1,13 +1,18 @@
 document.addEventListener("DOMContentLoaded", event => {
+    //#region GAME SETTINGS
+
+    //#region VARIABLES
+
     //#region CHEATS/TEST SETTINGS
     const cheatsOn = true;
-    const cheatKey = true;
-    const cheatWeapon = true;
-    const cheatMoney = 99999;
+    const cheatKey = false;
+    const cheatWeapon = false;
+    const cheatFogOfWar = true;
+    const cheatMoney = 0;
     const startVolume = 0.0;
     //#endregion CHEATS/TEST SETTINGS
 
-    //#region ZONE
+    // Zone
     const background = document.getElementById("background");
     const zoneContainer = document.getElementById("zone-container");
     const miniMapContainer = document.getElementById("mini-map");
@@ -49,6 +54,10 @@ document.addEventListener("DOMContentLoaded", event => {
     let inventoryActive = false;
     let menuButtonIndex = 0;
 
+    // Sun
+    const sun = document.getElementById("sun");
+    let cycleDaylight = true;
+
     //Animation frame variables
     let lastTime;
     let animFrame;
@@ -58,6 +67,7 @@ document.addEventListener("DOMContentLoaded", event => {
     let torchUnEquipping = false;
     let torchEquipTimeCurrent = 0;
     const torchEquipTime = 0.3;
+    let firstDaylight = true;
 
     //Animation frame tick/timer variables
     const ticksPerSecond = 10;
@@ -68,6 +78,15 @@ document.addEventListener("DOMContentLoaded", event => {
     //Inventory
     const inventory = document.getElementById("inventory");
     const inventoryGrid = document.getElementById("inventory-grid");
+
+    const invInfo = {
+        image: document.getElementById("inv-info-image"),
+        title: document.getElementById("inv-info-title"),
+        content: document.getElementById("inv-info-content"),
+    }
+
+    let invBtnSelectedIndex = 0;
+    let invBtns = [];
 
     //UI
     const ui = {
@@ -126,6 +145,10 @@ document.addEventListener("DOMContentLoaded", event => {
 
     //Audio settings
     let sfxVolume = startVolume;
+
+    //#endregion VARIABLES
+
+    //#region OBJECTS before class initialization
 
     let enemyType = {
         skeleton: {
@@ -191,7 +214,8 @@ document.addEventListener("DOMContentLoaded", event => {
                 if (player.hasCoins(5)) {
                     player.removeCoins(5);
                 } else {
-                    player.takeDamage(this.strength);
+                    player.removeCoins(player.coins);
+                    player.takeDamage(this.strength); // Damage is done on the classes, and this line gives an extra amount of damage.
                 }
             },
             enemyDeath: function(enemy) {
@@ -201,6 +225,52 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     const worlds = {
+        zoneCount: function(world) {
+            const worldHeight = world.size.up + 1 + world.size.down;
+            const worldwidth = world.size.left + 1 + world.size.right;
+            return worldwidth * worldHeight;
+        },
+        tileCount: function(world) {
+            return world.zoneSize * world.zoneSize;
+        },
+        home: {
+            name: "Home",
+            type: "indoor",
+            locked: false,
+            bioms: ["building"],
+            obstacles: [],
+            region: null,
+            miniMap: null,
+            size: {
+                up: 0,
+                right: 0,
+                down: 0,
+                left: 0,
+            },
+            zoneSize: 7,
+            startZoneId: "0_0",
+            gatewayObjs: [],
+            placeGateways: function() {
+                if (this.gatewayObjs.length > 0) {
+                    for (let i = 0; i < this.gatewayObjs.length; i++) {
+                        const gatewayObj = this.gatewayObjs[i];
+                        console.log(gatewayObj);
+                        replaceGateway(gatewayObj.gate, gatewayObj.gateway, gatewayObj.zone);
+                    }
+                    return;
+                }
+                const zone = region.getZone(this.startZoneId);
+                const x = Math.floor(this.zoneSize / 2);
+                const y = this.zoneSize - 1;
+                const tileId = x + "_" + y;
+                const gate = placeGateway(worlds.outdoor, zone, zone.getTileObj(tileId), { x: 0, y: -1 });
+                this.gatewayObjs.push({ gate: gate, gateway: worlds.outdoor, zone: zone });
+            },
+            enemyPercentage: 0,
+            enemyTypes: [],
+            daylightCycle: false,
+            darkness: 0,
+        },
         outdoor: {
             name: "La La Land",
             type: "outdoor",
@@ -216,17 +286,39 @@ document.addEventListener("DOMContentLoaded", event => {
                 left: 14,
             },
             zoneSize: 7,
-            gateWaysTo: function() {
-                return [worlds.kartansLair, worlds.dungeonOfMachlain, worlds.orchsCave, worlds.piratesLair]
+            startZoneId: "0_0",
+            gatewayObjs: [],
+            placeGateways: function() {
+                if (this.gatewayObjs.length > 0) {
+                    for (let i = 0; i < this.gatewayObjs.length; i++) {
+                        const gatewayObj = this.gatewayObjs[i];
+                        replaceGateway(gatewayObj.gate, gatewayObj.gateway, gatewayObj.zone);
+                    }
+                    return;
+                }
+                const gateWays = [worlds.kartansLair, worlds.dungeonOfMachlain, worlds.orchsCave, worlds.piratesLair];
+                for (let i = 0; i < gateWays.length; i++) {
+                    const zone = region.getRandomZone();
+                    const tileObj = zone.getRandomTile();
+                    const gate = placeGateway(gateWays[i], zone, tileObj, { x: 0, y: 1 });
+                    this.gatewayObjs.push({ gate: gate, gateway: gateWays[i], zone: zone });
+                }
+                const zone = region.getZone(this.startZoneId);
+                const x = Math.floor(this.zoneSize / 2);
+                const y = x - 1;
+                const gate = placeGateway(worlds.home, zone, zone.getTileObj(x + "_" + y), { x: 0, y: 1 });
+                this.gatewayObjs.push({ gate: gate, gateway: worlds.home, zone: zone });
             },
             enemyPercentage: 50,
             enemyTypes: [enemyType.skeleton, enemyType.orc, enemyType.goblin],
+            daylightCycle: true,
+            darkness: 0,
         },
         kartansLair: {
             name: "Kartans Lair",
             type: "dungeon",
             locked: true,
-            bioms: ["floor"],
+            bioms: ["dungeon"],
             obstacles: ["pillar", "barrel"],
             region: null,
             miniMap: null,
@@ -237,17 +329,38 @@ document.addEventListener("DOMContentLoaded", event => {
                 left: 5,
             },
             zoneSize: 7,
-            gateWaysTo: function() {
-                return [worlds.outdoor]
+            startZoneId: "0_0",
+            gatewayObjs: [],
+            placeGateways: function() {
+                if (this.gatewayObjs.length > 0) {
+                    for (let i = 0; i < this.gatewayObjs.length; i++) {
+                        const gatewayObj = this.gatewayObjs[i];
+                        replaceGateway(gatewayObj.gate, gatewayObj.gateway, gatewayObj.zone);
+                    }
+                    return;
+                }
+                // const gateWays = [];
+                // for (let i = 0; i < gateWays.length; i++) {
+                //     const zone = region.getZone(this.startZoneId);
+                //     const tileObj = zone.getRandomTile();
+                //     const gate = placeGateway(gateWays[i], zone, tileObj, { x: 0, y: 1 });
+                //     this.gatewayObjs.push({ gate: gate, gateway: gateWays[i], zone: zone });
+                // }
+                const zone = region.getZone(this.startZoneId);
+                const tileObj = zone.getRandomTile();
+                const gate = placeGateway(worlds.outdoor, zone, tileObj, { x: 0, y: 1 });
+                this.gatewayObjs.push({ gate: gate, gateway: worlds.outdoor, zone: zone });
             },
             enemyPercentage: 75,
             enemyTypes: [enemyType.skeleton, enemyType.orc, enemyType.goblin],
+            daylightCycle: false,
+            darkness: 0.75,
         },
         dungeonOfMachlain: {
             name: "The Dungeon of Machlain",
             type: "dungeon",
             locked: true,
-            bioms: ["floor"],
+            bioms: ["dungeon"],
             obstacles: ["pillar", "barrel"],
             region: null,
             miniMap: null,
@@ -258,17 +371,38 @@ document.addEventListener("DOMContentLoaded", event => {
                 left: 5,
             },
             zoneSize: 7,
-            gateWaysTo: function() {
-                return [worlds.outdoor]
+            startZoneId: "0_0",
+            gatewayObjs: [],
+            placeGateways: function() {
+                if (this.gatewayObjs.length > 0) {
+                    for (let i = 0; i < this.gatewayObjs.length; i++) {
+                        const gatewayObj = this.gatewayObjs[i];
+                        replaceGateway(gatewayObj.gate, gatewayObj.gateway, gatewayObj.zone);
+                    }
+                    return;
+                }
+                // const gateWays = [];
+                // for (let i = 0; i < gateWays.length; i++) {
+                //     const zone = region.getZone(this.startZoneId);
+                //     const tileObj = zone.getRandomTile();
+                //     const gate = placeGateway(gateWays[i], zone, tileObj, { x: 0, y: 1 });
+                //     this.gatewayObjs.push({ gate: gate, gateway: gateWays[i], zone: zone });
+                // }
+                const zone = region.getZone(this.startZoneId);
+                const tileObj = zone.getRandomTile();
+                const gate = placeGateway(worlds.outdoor, zone, tileObj, { x: 0, y: 1 });
+                this.gatewayObjs.push({ gate: gate, gateway: worlds.outdoor, zone: zone });
             },
             enemyPercentage: 65,
             enemyTypes: [enemyType.skeleton, enemyType.orc, enemyType.goblin],
+            daylightCycle: false,
+            darkness: 0.75,
         },
         orchsCave: {
             name: "Orchs cave",
             type: "dungeon",
             locked: true,
-            bioms: ["floor"],
+            bioms: ["dungeon"],
             obstacles: ["pillar", "barrel"],
             region: null,
             miniMap: null,
@@ -279,17 +413,38 @@ document.addEventListener("DOMContentLoaded", event => {
                 left: 5,
             },
             zoneSize: 7,
-            gateWaysTo: function() {
-                return [worlds.outdoor]
+            startZoneId: "0_0",
+            gatewayObjs: [],
+            placeGateways: function() {
+                if (this.gatewayObjs.length > 0) {
+                    for (let i = 0; i < this.gatewayObjs.length; i++) {
+                        const gatewayObj = this.gatewayObjs[i];
+                        replaceGateway(gatewayObj.gate, gatewayObj.gateway, gatewayObj.zone);
+                    }
+                    return;
+                }
+                // const gateWays = [];
+                // for (let i = 0; i < gateWays.length; i++) {
+                //     const zone = region.getZone(this.startZoneId);
+                //     const tileObj = zone.getRandomTile();
+                //     const gate = placeGateway(gateWays[i], zone, tileObj, { x: 0, y: 1 });
+                //     this.gatewayObjs.push({ gate: gate, gateway: gateWays[i], zone: zone });
+                // }
+                const zone = region.getZone(this.startZoneId);
+                const tileObj = zone.getRandomTile();
+                const gate = placeGateway(worlds.outdoor, zone, tileObj, { x: 0, y: 1 });
+                this.gatewayObjs.push({ gate: gate, gateway: worlds.outdoor, zone: zone });
             },
             enemyPercentage: 70,
             enemyTypes: [enemyType.orc],
+            daylightCycle: false,
+            darkness: 0.75,
         },
         piratesLair: {
             name: "Pirates Lair",
             type: "dungeon",
             locked: true,
-            bioms: ["floor"],
+            bioms: ["dungeon"],
             obstacles: ["pillar", "barrel"],
             region: null,
             miniMap: null,
@@ -300,14 +455,38 @@ document.addEventListener("DOMContentLoaded", event => {
                 left: 5,
             },
             zoneSize: 7,
-            gateWaysTo: function() {
-                return [worlds.outdoor]
+            startZoneId: "0_0",
+            gatewayObjs: [],
+            placeGateways: function() {
+                if (this.gatewayObjs.length > 0) {
+                    for (let i = 0; i < this.gatewayObjs.length; i++) {
+                        const gatewayObj = this.gatewayObjs[i];
+                        replaceGateway(gatewayObj.gate, gatewayObj.gateway, gatewayObj.zone);
+                    }
+                    return;
+                }
+                // const gateWays = [];
+                // for (let i = 0; i < gateWays.length; i++) {
+                //     const zone = region.getZone(this.startZoneId);
+                //     const tileObj = zone.getRandomTile();
+                //     const gate = placeGateway(gateWays[i], zone, tileObj, { x: 0, y: 1 });
+                //     this.gatewayObjs.push({ gate: gate, gateway: gateWays[i], zone: zone });
+                // }
+                const zone = region.getZone(this.startZoneId);
+                const tileObj = zone.getRandomTile();
+                const gate = placeGateway(worlds.outdoor, zone, tileObj, { x: 0, y: 1 });
+                this.gatewayObjs.push({ gate: gate, gateway: worlds.outdoor, zone: zone });
             },
             enemyPercentage: 75,
             enemyTypes: [enemyType.skeleton, enemyType.goblin],
+            daylightCycle: false,
+            darkness: 0.75,
         }
     }
 
+    //#endregion OBJECTS before class initialization
+
+    //#region CLASSES
     class SFX {
         constructor(audioFile, volume, playInstantly = true) {
             this.audioFile = audioFile;
@@ -432,7 +611,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 return null;
             }
             let rnd = randomInteger(0, this.zones.length);
-            if (!includeStartZone) {
+            if (!includeStartZone && this.zones.length > 1) {
                 while (this.zones[rnd].id == "0_0") {
                     rnd = randomInteger(0, this.zones.length);
                 }
@@ -473,6 +652,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.tiles = [];
             this.initialize();
             this.edgeClass = null;
+            this.gateway;
         }
         initialize() {
             if (this.id == "0_0") {
@@ -514,6 +694,13 @@ document.addEventListener("DOMContentLoaded", event => {
                 }
             }
             return this.tiles[rnd];
+        }
+        getCenterTile() {
+            if (currentZone.tiles.length == 0) {
+                return null;
+            }
+            const tileObj = this.getTileObjFromIndex(Math.floor(currentZone.tiles.length / 2));
+            return tileObj;
         }
         centerTile(tileObj) {
             const coordinate = tileObj.coordinates();
@@ -657,18 +844,24 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Gate {
-        constructor(world, tileObj) {
+        constructor(world, tileObj, offsetObj) {
             this.world = world;
             this.id = world.name;
             this.cls = world.type;
             this.locked = world.locked;
             this.tileObj = tileObj;
-            this.initialize();
+            this.exitTileId;
+            this.initialize(offsetObj);
         }
-        initialize() {
+        initialize(offsetObj) {
             this.tileObj.object = this;
             this.tileObj.type = "gate";
             this.tileObj.occupied = true;
+            this.setGateway(offsetObj.x, offsetObj.y);
+        }
+        setGateway(offsetX, offsetY) {
+            const obj = this.tileObj.coordinates();
+            this.exitTileId = (obj.x + offsetX) + "_" + (obj.y + offsetY);
         }
         createTooltip() {
             const texts = [
@@ -692,17 +885,21 @@ document.addEventListener("DOMContentLoaded", event => {
             this.tooltip.showAbove();
         }
         createHTML() {
-            let gate = document.createElement("DIV");
-            gate.classList.add("gate");
-            gate.classList.add(this.cls);
+            this.element = document.createElement("DIV");
+            this.element.classList.add("gate");
+            this.element.classList.add(this.cls);
             if (this.locked) {
-                gate.classList.add("locked");
-                gate.style.backgroundPosition = "0 0";
+                this.element.classList.add("locked");
+                this.element.style.backgroundPosition = "0 0";
+            } else {
+                this.element.style.backgroundPosition = "0 -300%";
             }
-            gate.classList.add("tile__object");
-            this.element = gate;
+            this.element.classList.add("tile__object");
             this.tileObj.element.append(this.element);
             this.createTooltip();
+        }
+        updateHTML() {
+
         }
         unlock() {
             if (this.locked) {
@@ -1225,6 +1422,7 @@ document.addEventListener("DOMContentLoaded", event => {
     class Item {
         constructor(id, collectable) {
             this.id = id;
+            this.type = collectable.type;
             this.name = collectable.name;
             this.amount;
             this.posX = collectable.spriteCoordinates.x * 100;
@@ -1341,8 +1539,14 @@ document.addEventListener("DOMContentLoaded", event => {
         getItemIndex(item) {
             for (let i = 0; i < this.contents.length; i++) {
                 const content = this.contents[i];
-                if (content.item.id === item.id) {
-                    return i;
+                if (content.item.stackable) {
+                    if (content.item.name === item.name) {
+                        return i;
+                    }
+                } else {
+                    if (content.item.id === item.id) {
+                        return i;
+                    }
                 }
             }
             return -1;
@@ -1467,13 +1671,10 @@ document.addEventListener("DOMContentLoaded", event => {
     // silver.remove(21512);
     // console.log("Platinum: " + platinum.amount + ", Gold: " + gold.amount + ", silver: " + silver.amount);
 
-    // *********************************************************************************************
-    // *********************************************************************************************
-    // ************************ TODO: CHANGE TO CLASS (INSTEAD OF AN OBJECT) ***********************
-    // *********************************************************************************************
-    // *********************************************************************************************
+    //#endregion CLASSES
 
-    //#region OBJECTS
+    //#region OBJECTS after class initialization
+
     let effect = {
         explosion: {
             name: "Explosion",
@@ -1523,7 +1724,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "coin",
             spriteCoordinates: { x: 3, y: 3 },
             includeInStartZone: true,
-            stacks: 100,
+            stacks: 15,
             minStackAmount: 10,
             maxStackAmount: 30,
             stackable: true,
@@ -1543,7 +1744,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "life",
             spriteCoordinates: { x: 3, y: 4 },
             includeInStartZone: false,
-            stacks: 300,
+            stacks: 10,
             minStackAmount: 10,
             maxStackAmount: 50,
             stackable: true,
@@ -1566,7 +1767,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "key",
             spriteCoordinates: { x: 6, y: 0 },
             includeInStartZone: false,
-            stacks: 6,
+            stacks: 0.4,
             minStackAmount: 1,
             maxStackAmount: 1,
             stackable: true,
@@ -1586,7 +1787,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "weapon",
             spriteCoordinates: { x: 1, y: 2 },
             includeInStartZone: false,
-            stacks: 30,
+            stacks: 2,
             minStackAmount: 10,
             maxStackAmount: 10,
             stackable: false,
@@ -1608,7 +1809,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "weapon",
             spriteCoordinates: { x: 3, y: 2 },
             includeInStartZone: false,
-            stacks: 40,
+            stacks: 1.6,
             minStackAmount: 21,
             maxStackAmount: 28,
             stackable: false,
@@ -1630,7 +1831,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "weapon",
             spriteCoordinates: { x: 2, y: 0 },
             includeInStartZone: false,
-            stacks: 40,
+            stacks: 1.2,
             minStackAmount: 45,
             maxStackAmount: 52,
             stackable: false,
@@ -1652,7 +1853,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "armor",
             spriteCoordinates: { x: 5, y: 0 },
             includeInStartZone: false,
-            stacks: 40,
+            stacks: 1.5,
             minStackAmount: 2,
             maxStackAmount: 2,
             stackable: false,
@@ -1674,7 +1875,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "armor",
             spriteCoordinates: { x: 4, y: 0 },
             includeInStartZone: false,
-            stacks: 30,
+            stacks: 1,
             minStackAmount: 5,
             maxStackAmount: 5,
             stackable: false,
@@ -1694,31 +1895,34 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     let music = {
-            current: null,
-            menu: new Music("./audio/fantasy_title.ogg", startVolume),
-            calm: new Music("./audio/medieval_market_LOOP.ogg", startVolume),
-            combat: new Music("./audio/enemy_territory_LOOP.ogg", startVolume),
-            setCurrent: function(musicObj) {
-                this.current = musicObj;
-            },
-            setVolume: function(volume) {
-                this.menu.setVolume(volume);
-                this.calm.setVolume(volume);
-                this.combat.setVolume(volume);
-            },
-            crossFade: function(toMusicObj) {
-                if (this.current === toMusicObj) {
-                    return;
-                }
-                toMusicObj.fadeIn();
-                if (this.current != null) {
-                    this.current.fadeOut(function() {
-                        music.setCurrent(toMusicObj);
-                    });
-                }
+        current: null,
+        menu: new Music("./audio/fantasy_title.ogg", startVolume),
+        calm: new Music("./audio/medieval_market_LOOP.ogg", startVolume),
+        combat: new Music("./audio/enemy_territory_LOOP.ogg", startVolume),
+        setCurrent: function(musicObj) {
+            this.current = musicObj;
+        },
+        setVolume: function(volume) {
+            this.menu.setVolume(volume);
+            this.calm.setVolume(volume);
+            this.combat.setVolume(volume);
+        },
+        crossFade: function(toMusicObj) {
+            if (this.current === toMusicObj) {
+                return;
+            }
+            toMusicObj.fadeIn();
+            if (this.current != null) {
+                this.current.fadeOut(function() {
+                    music.setCurrent(toMusicObj);
+                });
             }
         }
-        //#endregion OBJECTS
+    }
+
+    //#endregion OBJECTS after class initialization
+
+    //#endregion GAME SETTINGS
 
     //#region EVENT LISTENERS
     welcomeScreen.addEventListener("click", function() {
@@ -1785,11 +1989,20 @@ document.addEventListener("DOMContentLoaded", event => {
                     if (playersTurn) {
                         nextTurn();
                     }
+                } else if (inventoryActive) {
+                    hideInventory();
+                } else if (miniMap.enlarged) {
+                    miniMap.zoomToggle();
                 } else {
-                    if (menuActive) {
-                        menuButtonPressed();
-                    }
                     toggleMenu();
+                }
+            }
+            if (evt.key == "Enter") {
+                if (menuActive) {
+                    menuButtonPressed();
+                    hideMenu();
+                } else if (inventoryActive) {
+                    clickInventoryButton(invBtns[invBtnSelectedIndex].element, invBtns[invBtnSelectedIndex].content);
                 }
             }
             if (evt.key == "Escape") {
@@ -1813,6 +2026,8 @@ document.addEventListener("DOMContentLoaded", event => {
             if (evt.key == "w" || evt.key == "ArrowUp") {
                 if (menuActive) {
                     console.log("UP");
+                } else if (inventoryActive) {
+                    selectInventoryButtonUp();
                 } else {
                     moveSuccess = playerMove(0, -1, player.element, "up");
                     player.element.style.backgroundPosition = "0 -33.3333%";
@@ -1821,6 +2036,8 @@ document.addEventListener("DOMContentLoaded", event => {
             if (evt.key == "s" || evt.key == "ArrowDown") {
                 if (menuActive) {
                     console.log("DOWN");
+                } else if (inventoryActive) {
+                    selectInventoryButtonDown();
                 } else {
                     moveSuccess = playerMove(0, 1, player.element, "down");
                     player.element.style.backgroundPosition = "0 0";
@@ -1829,6 +2046,8 @@ document.addEventListener("DOMContentLoaded", event => {
             if (evt.key == "a" || evt.key == "ArrowLeft") {
                 if (menuActive) {
                     menuPrev();
+                } else if (inventoryActive) {
+                    selectInventoryButtonPrev();
                 } else {
                     moveSuccess = playerMove(-1, 0, player.element, "left");
                     player.element.style.backgroundPosition = "0 -100%";
@@ -1837,6 +2056,9 @@ document.addEventListener("DOMContentLoaded", event => {
             if (evt.key == "d" || evt.key == "ArrowRight") {
                 if (menuActive) {
                     menuNext();
+                } else if (inventoryActive) {
+                    selectInventoryButtonNext();
+
                 } else {
                     moveSuccess = playerMove(1, 0, player.element, "right");
                     player.element.style.backgroundPosition = "0 -66.6667%";
@@ -1846,6 +2068,7 @@ document.addEventListener("DOMContentLoaded", event => {
     }
     //#endregion EVENT LISTENERS
 
+    //#region MENU FUNCTIONS
     function toggleInventory() {
         inventoryActive = !inventoryActive;
         if (inventoryActive) {
@@ -1924,11 +2147,14 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function createInventoryItemsUI() {
+        invBtns = [];
+        invBtnSelectedIndex = 0;
         inventoryGrid.innerHTML = "";
         for (let i = 0; i < player.inventory.contents.length; i++) {
             const content = player.inventory.contents[i];
             inventoryItemButton(content);
         }
+        selectInventoryButton(0);
     }
 
     function inventoryItemButton(content) {
@@ -1943,15 +2169,112 @@ document.addEventListener("DOMContentLoaded", event => {
         }
 
         button.addEventListener("click", function() {
-            player.use(content.item);
-            if (content.item.stackable) {
-                button.innerHTML = `<span class="inventory__amount">${content.count}</span>`;
-            }
+            clickInventoryButton(this, content);
+        });
+        button.addEventListener("mouseover", function() {
+            setInventoryHoverInfo(content.item);
         });
 
+        invBtns.push({ element: button, content: content });
         inventoryGrid.append(button);
     }
 
+    function clickInventoryButton(button, content) {
+        player.use(content.item);
+        if (content.item.stackable) {
+            button.innerHTML = `<span class="inventory__amount">${content.count}</span>`;
+        }
+    }
+
+    function selectInventoryButton(index) {
+        if (invBtns.length === 0) {
+            return;
+        }
+        invBtns[invBtnSelectedIndex].element.classList.remove("js-active");
+        invBtnSelectedIndex = index;
+        invBtns[invBtnSelectedIndex].element.classList.add("js-active");
+        setInventoryHoverInfo(invBtns[invBtnSelectedIndex].content.item);
+    }
+
+    function selectInventoryButtonPrev() {
+        let index = invBtnSelectedIndex - 1;
+        if (index < 0) {
+            index = invBtns.length - 1;
+        }
+        selectInventoryButton(index);
+    }
+
+    function selectInventoryButtonNext() {
+        let index = invBtnSelectedIndex + 1;
+        if (index >= invBtns.length) {
+            index = 0;
+        }
+        selectInventoryButton(index);
+    }
+
+    function selectInventoryButtonUp() {
+        let index = invBtnSelectedIndex - 5;
+        if (index < 0) {
+            index = 0;
+        }
+        selectInventoryButton(index);
+    }
+
+    function selectInventoryButtonDown() {
+        let index = invBtnSelectedIndex + 5;
+        if (index >= invBtns.length) {
+            index = invBtns.length - 1;
+        }
+        selectInventoryButton(index);
+    }
+
+    function setInventoryHoverInfo(item) {
+        invInfo.image.style.backgroundPosition = `-${item.posX}% -${item.posY}%`;
+        invInfo.title.textContent = item.name;
+        let rows = `
+            <div class="inventory-info__row">
+                <p class="inventory-info__heading">Type:</p>
+                <span class="inventory-info__text">${item.type}</span>
+            </div>
+        `;
+        let value;
+        let ap = "";
+        switch (item.type) {
+            case "weapon":
+                value = "Damage";
+                ap = `
+                    <div class="inventory-info__row">
+                        <p class="inventory-info__heading">Move penalty:</p>
+                        <span class="inventory-info__text">${item.apMoveCost}</span>
+                    </div>
+                `;
+                ap += `
+                    <div class="inventory-info__row">
+                        <p class="inventory-info__heading">Attack penalty:</p>
+                        <span class="inventory-info__text">${item.apAttackCost}</span>
+                    </div>
+                `;
+                break;
+            case "armor":
+                value = "Defense";
+                break;
+
+            default:
+                value = "Amount";
+                break;
+        }
+        rows += `
+            <div class="inventory-info__row">
+                <p class="inventory-info__heading">${value}:</p>
+                <span class="inventory-info__text">${item.amount}</span>
+            </div>
+        `;
+        rows += ap;
+        invInfo.content.innerHTML = rows;
+    }
+    //#endregion MENU FUNCTIONS
+
+    //#region START MENU FUNCTIONS
     function disableButton(button) {
         button.classList.add("js-disabled");
         button.disabled = true;
@@ -1961,44 +2284,71 @@ document.addEventListener("DOMContentLoaded", event => {
         button.classList.remove("js-disabled");
         button.disabled = false;
     }
+    //#endregion START MENU FUNCTIONS
+
+    function lerp(from, to, t) {
+        const range = to - from;
+        const current = range * t + from;
+        return current;
+    }
 
     function newGame(playerName) {
         music.crossFade(music.calm);
-        currentWorld = worlds.outdoor;
-        dayTime = new Daytime(ticksPerSecond, 120, 60, 20, background, function(t) {
-            let opacity = 1 / (this.transitDuration * this.ticksPerSecond) * t;
-            if (this.isNight) {
-                player.setOverlayOpacity(opacity);
-            } else {
-                player.setOverlayOpacity(1 - opacity);
+        currentWorld = worlds.home;
+        dayTime = new Daytime(ticksPerSecond, 10, 10, 10, background, function(t) {
+            if (cycleDaylight) {
+                if (firstDaylight) {
+                    sun.style.display = "";
+                    player.setOverlayOpacity(0);
+                    sun.style.top = "-28%";
+                } else {
+                    let opacity = 1 / (this.transitDuration * this.ticksPerSecond) * t;
+                    if (this.isNight) {
+                        player.setOverlayOpacity(opacity);
+                        sun.style.top = lerp(-28, 100, opacity) + "%";
+                    } else {
+                        player.setOverlayOpacity(1 - opacity);
+                        sun.style.top = lerp(-28, 100, 1 - opacity) + "%";
+                        if (player.torchEquipped && opacity > 0.8) {
+                            player.setTorch(false);
+                        }
+                    }
+                }
+            } else if (cycleDaylight) {
+                sun.style.display = "none";
             }
         }, function() {
-            if (player.torchEquipped) {
-                const delay = this.transitDuration * 1000 / 3 * 2;
-                setTimeout(() => {
-                    player.setTorch(false);
-                }, delay);
+            if (cycleDaylight) {
+                sun.style.display = "";
+            } else {
+                sun.style.display = "none";
             }
             console.log("Day");
         }, function() {
+            firstDaylight = false;
+            if (cycleDaylight) {
+                sun.style.display = "";
+            } else {
+                sun.style.display = "none";
+            }
             console.log("Night");
         });
-        region = new Region(worlds.outdoor, background, zoneContainer, tileSize);
+        region = new Region(currentWorld, background, zoneContainer, tileSize);
         miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
         playerName = playerName == "" ? "Player 1" : playerName;
         const sfxArr = ["VOICE_Girl_4yo_Hurt_Long_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_04_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_05_mono.ogg"];
         player = new Player(playerName, "player", 150, 150, 100, 10, 0, ui, null, actions, actionPoints, sfxArr, new Inventory(), nightOverlay, gameOver);
         player.setStrength(new Item("start-sword", collectables.woodenSword));
         battleQueueElement.innerHTML = "";
-        buildMap();
+        buildMap(true);
         buildZone("0_0");
-        placePlayer(getCenterTileIndex());
+        placePlayer(currentZone.getCenterTile());
         addPlayerControls();
         setEvent();
 
         //Manual placement of dungeon
         // const tileObj = currentZone.getRandomTile();
-        // placeDungeon(currentWorld.gateWaysTo()[0], currentZone, tileObj);
+        // placeDungeon(currentWorld.placeGateways()[0], currentZone, tileObj);
         if (cheatsOn) {
             player.addCoins(cheatMoney);
         }
@@ -2014,23 +2364,47 @@ document.addEventListener("DOMContentLoaded", event => {
     function enterRegion(world) {
         //IMPORTANT! CLEAN UP HTML - Must be removed BEFORE setting the new world:
         region.removeBiomHTML();
+        battleQueueElement.innerHTML = "";
         //IMPORTANT! CLEAN UP HTML
+        currentWorld.region = region;
+        currentWorld.miniMap = miniMap;
+        currentWorld.startZoneId = currentZone.id;
         if (world.region == null) {
-            currentWorld.region = region;
-            currentWorld.miniMap = miniMap;
             region = new Region(world, background, zoneContainer, tileSize);
             miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
             currentWorld = world;
-            battleQueueElement.innerHTML = "";
-            buildMap();
-            buildZone("0_0");
-            placePlayer(getCenterTileIndex());
+            if (currentWorld.daylightCycle) {
+                cycleDaylight = true;
+                sun.style.display = "";
+            } else {
+                cycleDaylight = false;
+                sun.style.display = "none";
+            }
+            player.setOverlayOpacity(currentWorld.darkness);
+            buildMap(true);
+            buildZone(currentWorld.startZoneId);
+            placePlayer(currentZone.getTileObj(currentZone.gateway.exitTileId));
             setEvent();
-            gameStarted = true;
         } else {
             region = world.region;
+            region.initialize();
             miniMap = world.miniMap;
+            miniMap.initialize();
+            currentWorld = world;
+            if (currentWorld.daylightCycle) {
+                cycleDaylight = true;
+                sun.style.display = "";
+            } else {
+                cycleDaylight = false;
+                sun.style.display = "none";
+            }
+            player.setOverlayOpacity(currentWorld.darkness);
+            buildMap(false);
+            buildZone(currentWorld.startZoneId);
+            placePlayer(currentZone.getTileObj(currentZone.gateway.exitTileId));
+            setEvent();
         }
+        gameStarted = true;
     }
 
     function gameOver(playerObj) {
@@ -2060,7 +2434,7 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    function buildMap() {
+    function buildMap(isNewMap) {
         miniMap.reset();
         for (let y = region.size.up; y >= region.size.down; y--) {
             for (let x = region.size.left; x <= region.size.right; x++) {
@@ -2073,8 +2447,16 @@ document.addEventListener("DOMContentLoaded", event => {
                 }
             }
         }
-        placeDungeons();
-        placeEnemies(zoneEnemyCount(region.enemyPercentage));
+        // placeGateways();
+        currentWorld.placeGateways();
+
+        if (!isNewMap) {
+            return;
+        }
+
+        if (region.enemyPercentage > 0) {
+            placeEnemies(zoneEnemyCount(region.enemyPercentage));
+        }
 
         //INSERT ENEMIES MANUALLY FOR TESTING PURPOSES
         // const zone = region.getZone("0_0");
@@ -2133,7 +2515,9 @@ document.addEventListener("DOMContentLoaded", event => {
                     const rnd = Math.random() * 100;
                     if (rnd < 20) {
                         const rnd = randomInteger(0, currentWorld.obstacles.length);
-                        tileObj.setType(currentWorld.obstacles[rnd], "obstacle", true);
+                        if (rnd > 0) {
+                            tileObj.setType(currentWorld.obstacles[rnd], "obstacle", true);
+                        }
                     }
                 }
                 zone.tiles.push(tileObj);
@@ -2166,10 +2550,8 @@ document.addEventListener("DOMContentLoaded", event => {
                 }
             }
         }
-        if (currentZone.areaTransition != undefined) {
-            if (currentZone.areaTransition.cls == "dungeon") {
-                currentZone.areaTransition.createHTML();
-            }
+        if (currentZone.gateway != undefined) {
+            currentZone.gateway.createHTML();
         }
         currentZone.updateHTML();
     }
@@ -2304,7 +2686,7 @@ document.addEventListener("DOMContentLoaded", event => {
 
     function miniMapHTML(id, biom) {
         let activeClass = "fog-of-war";
-        if (cheatsOn) {
+        if (cheatsOn && cheatFogOfWar) {
             activeClass = "";
         }
         if (id == "0_0") {
@@ -2332,16 +2714,7 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    function getCenterTileIndex() {
-        if (currentZone.tiles.length == 0) {
-            console.log("Something is very wrong!");
-            return;
-        }
-        return Math.floor(currentZone.tiles.length / 2);
-    }
-
-    function placePlayer(tileIndex) {
-        let tileObj = currentZone.getTileObjFromIndex(tileIndex);
+    function placePlayer(tileObj) {
         if (tileObj.element == undefined) {
             console.log("No element attached to tileObj!");
             return;
@@ -2359,8 +2732,8 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         tileObj.setEmpty();
         tileObj.element.innerHTML = "";
+        tileObj.element.append(player.element);
         tileObj.object = player;
-        tileObj.element.append(tileObj.object.element);
         player.tileId = tileObj.id;
         if (itemInTile) {
             effect.flash.createHTML(player.element);
@@ -2385,31 +2758,40 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function placeCollectables(collectable) {
+        let counter = 0;
         collectable.totalStackAmount = 0;
-        for (let i = 0; i < collectable.stacks; i++) {
-            const zone = region.getRandomZone(collectable.includeInStartZone);
+        const collStacks = worlds.zoneCount(currentWorld) * collectable.stacks / 100;
+        for (let i = 0; i < collStacks; i++) {
+            const zone = region.getRandomZone();
             const tileObj = zone.getRandomTile();
             const item = new Item(collectable.type + "-" + i, collectable);
             tileObj.placeObject(item, "item", true);
             collectable.totalStackAmount += item.amount;
+            counter++;
         }
         //This needs to be deleted at some point.
         //For now, it is used for adjustments of collectables- amount/values
-        console.log(collectable.type + "'s total: " + collectable.totalStackAmount);
+        console.log(collectable.name + "'s total: " + counter + ", total value: " + collectable.totalStackAmount);
     }
 
-    function placeDungeons() {
-        for (let i = 0; i < currentWorld.gateWaysTo().length; i++) {
-            const zone = region.getRandomZone();
-            const tileObj = zone.getRandomTile();
-            placeDungeon(currentWorld.gateWaysTo()[i], zone, tileObj);
-        }
+    // function placeGateways() {
+    //     for (let i = 0; i < currentWorld.placeGateways().length; i++) {
+    //         const zone = region.getRandomZone();
+    //         const tileObj = zone.getRandomTile();
+    //         placeGateway(currentWorld.placeGateways()[i], zone, tileObj);
+    //     }
+    // }
+
+    function placeGateway(gateway, zone, tileObj, exitOffset) {
+        let gatewayObj = new Gate(gateway, tileObj, exitOffset);
+        zone.gateway = gatewayObj;
+        miniMap.tileAddClass(zone.id, gateway.type + "-entrance");
+        return gatewayObj;
     }
 
-    function placeDungeon(gateWay, zone, tileObj) {
-        let gateWayObj = new Gate(gateWay, tileObj);
-        zone.areaTransition = gateWayObj;
-        miniMap.tileAddClass(zone.id, gateWay.type);
+    function replaceGateway(gatewayObj, gateway, zone) {
+        zone.gateway = gatewayObj;
+        miniMap.tileAddClass(zone.id, gateway.type + "-entrance");
     }
 
     function randomEnemy(tileObj) {
@@ -2428,7 +2810,7 @@ document.addEventListener("DOMContentLoaded", event => {
         type.totalCount++;
     }
 
-    function changeZone(x, y, playerPos) {
+    function changeZone(x, y, tileIndex) {
         if (zoneLocked) {
             return;
         }
@@ -2450,7 +2832,7 @@ document.addEventListener("DOMContentLoaded", event => {
         miniMapActive(currentZone.id, false);
         buildZone(areaCoordinates.x + "_" + areaCoordinates.y);
         miniMapActive(currentZone.id, true);
-        placePlayer(playerPos);
+        placePlayer(currentZone.getTileObjFromIndex(tileIndex));
         setEvent();
     }
 

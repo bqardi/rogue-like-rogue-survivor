@@ -15,7 +15,7 @@
     --forest: #b0d1a7;
     --desert: #d1c395;
     --snow: #ebebeb;
-    --floor: #444444;
+    --dungeon: #444444;
 }
 
 body {
@@ -96,10 +96,20 @@ svg {
 }
 
 .header {
+    position: relative;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
     padding: 1rem 0;
+}
+
+.header .sun {
+    position: absolute;
+    z-index: -1;
+    width: 200px;
+    left: 0;
+    top: -28%;
+    transition-timing-function: linear;
 }
 
 .margin-top {
@@ -509,9 +519,10 @@ button {
     background-image: url(../images/paper-background.png);
 } */
 
-.floor .zone {
+
+/* .floor .zone {
     background-color: #15161a;
-}
+} */
 
 .zone__tile {
     position: relative;
@@ -543,7 +554,7 @@ button {
     background-position: 0 -200%;
 }
 
-.floor .zone__tile {
+.dungeon .zone__tile {
     background-position: 0 -300%;
 }
 
@@ -559,7 +570,7 @@ button {
     background-position: -100% -200%;
 }
 
-.floor .zone__pillar {
+.dungeon .zone__pillar {
     background-position: -100% -300%;
 }
 
@@ -575,7 +586,7 @@ button {
     background-position: -200% -200%;
 }
 
-.floor .zone__barrel {
+.dungeon .zone__barrel {
     background-position: -200% -300%;
 }
 
@@ -593,8 +604,20 @@ button {
     position: relative;
 }
 
+.gate.indoor {
+    background-image: url(../images/house.png);
+    background-size: 100%;
+}
+
+.gate.outdoor {
+    background-image: url(../images/dungeon-entrance-gate.png);
+    background-size: 100%;
+    background-position: 0 -300%;
+}
+
 .gate.dungeon {
     background-image: url(../images/dungeon-entrance-gate.png);
+    background-size: 100%;
 }
 
 .gate.dungeon.locked {
@@ -657,8 +680,9 @@ button {
     background-color: var(--snow);
 }
 
-.mini-map__tile.floor {
-    background-color: var(--floor);
+.mini-map__tile.dungeon {
+    background-color: var(--dungeon);
+    border: 1px solid #3b3b3b;
 }
 
 .list__item-icon.legend {
@@ -697,7 +721,7 @@ button {
     background-color: crimson;
 }
 
-.mini-map__tile.dungeon {
+.mini-map__tile.dungeon-entrance {
     background-image: url(../images/dungeon-entrance-gate.png);
     background-size: 100%;
 }
@@ -801,18 +825,20 @@ button {
 }
 
 .inventory {
-    min-width: 480px;
-    height: 68vh;
-    padding: 2rem 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
+    height: 70vh;
+    display: grid;
+    grid-template-columns: 250px 400px;
+    grid-template-rows: 40px 1fr;
+    gap: 1rem;
+    margin-left: 230px;
+    margin-bottom: 1.5rem;
     box-shadow: 5px 5px 20px black;
 }
 
 .inventory__title {
     font-size: 2rem;
+    text-align: center;
+    grid-column: span 2;
 }
 
 .inventory__content {
@@ -820,6 +846,31 @@ button {
     height: 100%;
     background-image: url(../images/paper-background.png);
     box-shadow: 2px 2px 20px rgba(41, 33, 14, 0.479) inset;
+}
+
+.inventory__info {
+    padding: 1rem;
+}
+
+.inventory-info__header {
+    height: 96px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.inventory-info__image {
+    width: 96px;
+    background-image: url(../images/collectables.png);
+    background-size: 700%;
+}
+
+.inventory-info__title {
+    align-self: center;
+}
+
+.inventory-info__row {
+    display: flex;
+    justify-content: space-between;
 }
 
 .inventory__grid {
@@ -838,6 +889,12 @@ button {
     background-color: rgb(167, 145, 90);
     background-image: url(../images/collectables.png);
     box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+}
+
+.inventory__item.js-active {
+    border: 1px solid crimson;
+    background-color: rgb(180, 150, 72);
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.5);
 }
 
 .inventory__item:hover {
