@@ -384,13 +384,14 @@ button {
 }
 
 .ui__title {
-    margin-bottom: 0.5rem;
+    margin-bottom: -0.5rem;
 }
 
 .ui-icon {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     background-image: url(../images/collectables.png);
+    background-size: 700%;
 }
 
 .ui-icon.location {
@@ -703,6 +704,12 @@ button {
     background-color: var(--snow);
 }
 
+.list__item-icon.outdoor {
+    background-image: url(../images/house.png);
+    background-repeat: no-repeat;
+    background-size: 100%;
+}
+
 .list__item-icon.dungeon {
     background-image: url(../images/dungeon-entrance-gate.png);
     background-repeat: no-repeat;
@@ -726,7 +733,13 @@ button {
     background-size: 100%;
 }
 
-.mini-map__tile.fog-of-war.dungeon {
+.mini-map__tile.indoor-entrance {
+    background-image: url(../images/house.png);
+    background-size: 100%;
+}
+
+.mini-map__tile.fog-of-war.indoor-entrance,
+.mini-map__tile.fog-of-war.dungeon-entrance {
     background-image: none;
 }
 
@@ -1091,8 +1104,8 @@ button {
 }
 
 .character-card__image {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     object-fit: cover;
     object-position: 0 0;
 }
@@ -1117,7 +1130,6 @@ button {
 .actions {
     min-height: 100px;
     display: flex;
-    justify-content: center;
     align-items: center;
     visibility: hidden;
 }
@@ -1131,10 +1143,37 @@ button {
     align-items: center;
 }
 
+.actions__ap-costs {
+    display: flex;
+    align-items: center;
+}
+
+.actions__ap-costs svg {
+    width: 20px;
+    height: 20px;
+    fill: goldenrod;
+}
+
 .ap-title {
     color: white;
     text-shadow: 0 0 5px black;
-    margin-right: 0.25rem;
+    margin: 0 0.5rem 0 0.25rem;
+}
+
+.ap-type {
+    margin-right: 1rem;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    font-family: Tahoma, sans-serif;
+}
+
+.ap-move {
+    color: crimson;
+}
+
+.ap-attack {
+    color: crimson;
 }
 
 .ap-image {

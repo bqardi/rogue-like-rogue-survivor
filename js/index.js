@@ -3,14 +3,19 @@ document.addEventListener("DOMContentLoaded", event => {
 
     //#region VARIABLES
 
-    //#region CHEATS/TEST SETTINGS
-    const cheatsOn = true;
+    //#region CHEATS/SETTINGS
+    const cheatsOn = false;
     const cheatKey = false;
     const cheatWeapon = false;
     const cheatFogOfWar = true;
     const cheatMoney = 0;
     const startVolume = 0.0;
-    //#endregion CHEATS/TEST SETTINGS
+    const dayTimeControls = {
+            dayDuration: 20,
+            nightDuration: 20,
+            transitDuration: 20,
+        }
+        //#endregion CHEATS/SETTINGS
 
     // Zone
     const background = document.getElementById("background");
@@ -938,6 +943,8 @@ document.addEventListener("DOMContentLoaded", event => {
             this.apElement = apElement;
             this.ap = this.apElement.querySelector("#ap");
             this.apImage = this.apElement.querySelector("#ap-image");
+            this.apMoveElement = this.apElement.querySelector("#ap-move");
+            this.apAttackElement = this.apElement.querySelector("#ap-attack");
             this.apPoints = [];
             this.onDeath = onDeath;
         }
@@ -1044,6 +1051,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 this.apPoints.push(apPoint);
             }
             this.actionPointHTMLUpdate();
+            this.apCostUpdate();
         }
         actionPointHTMLRemove() {
             this.ap.innerHTML = "";
@@ -1056,6 +1064,10 @@ document.addEventListener("DOMContentLoaded", event => {
                     apPoint.classList.add("empty");
                 }
             }
+        }
+        apCostUpdate() {
+            this.apMoveElement.textContent = this.apMoveCost + 1;
+            this.apAttackElement.textContent = this.apAttackCost + 1;
         }
         endTurn() {
             this.actionPointsTransfer = this.actionPoints;
@@ -1285,6 +1297,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.ui.strength.icon.style.backgroundPosition = `-${item.posX}% -${item.posY}%`;
             this.ui.strength.count.textContent = this.strength;
             this.updateTooltip();
+            this.apCostUpdate();
         }
         setArmor(item) {
             if (this.armorItem != undefined) {
@@ -1295,6 +1308,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.ui.armor.icon.style.backgroundPosition = `-${item.posX}% -${item.posY}%`;
             this.ui.armor.count.textContent = this.armor;
             this.updateTooltip();
+            this.apCostUpdate();
         }
         hasCoins(amount) {
             if (this.coins >= amount) {
@@ -2286,16 +2300,10 @@ document.addEventListener("DOMContentLoaded", event => {
     }
     //#endregion START MENU FUNCTIONS
 
-    function lerp(from, to, t) {
-        const range = to - from;
-        const current = range * t + from;
-        return current;
-    }
-
     function newGame(playerName) {
         music.crossFade(music.calm);
         currentWorld = worlds.home;
-        dayTime = new Daytime(ticksPerSecond, 10, 10, 10, background, function(t) {
+        dayTime = new Daytime(ticksPerSecond, dayTimeControls.dayDuration, dayTimeControls.nightDuration, dayTimeControls.transitDuration, background, function(t) {
             if (cycleDaylight) {
                 if (firstDaylight) {
                     sun.style.display = "";
@@ -2622,12 +2630,13 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function enemyTurn(enemyObj) {
-        if (battleQueue.length > 0) {
-            updatePathfindingGrid();
-            const moveDirection = shortestPathDirection(enemyObj.currentTile, player.currentTile);
-            const destinationTileObj = adjacentTile(enemyObj.currentTile, moveDirection);
-            enemyMove(enemyObj, moveDirection, destinationTileObj);
-        }
+        enemyObj.apCostUpdate();
+        updatePathfindingGrid();
+        const moveDirection = shortestPathDirection(enemyObj.currentTile, player.currentTile);
+        const destinationTileObj = adjacentTile(enemyObj.currentTile, moveDirection);
+        enemyMove(enemyObj, moveDirection, destinationTileObj);
+        // if (battleQueue.length > 0) {
+        // }
     }
 
     function enemyMove(enemyObj, direction, destinationTileObj) {
@@ -2991,7 +3000,6 @@ document.addEventListener("DOMContentLoaded", event => {
             }, animationTime / 2);
         }, animationTime / 2);
     }
-    //#endregion ZONE
 
     //#region REUSABLE FUNCTIONS
     function randomInteger(min, max) {
@@ -3021,6 +3029,13 @@ document.addEventListener("DOMContentLoaded", event => {
         const theRest = str.slice(1, str.length);
         return firstLetter + theRest;
     }
+
+    function lerp(from, to, t) {
+        const range = to - from;
+        const current = range * t + from;
+        return current;
+    }
+
     //#endregion REUSABLE FUNCTIONS
 
     // *********************************************************************************************
