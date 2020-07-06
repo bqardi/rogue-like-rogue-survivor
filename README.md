@@ -4,10 +4,11 @@ A Rogue like game called Rogue Survivor
 ### Short explanation
 The idea for this game is that you have this character that you can move around (with W, A, S, D or the arrow keys on the keyboard) in a grid (dynamically created. Everything is intended to be dynamic).
 If you move outside the grid edges you will move your character to the "next zone". The size of this entire region is also created dynamically.
-Loot, as well as enemies and obstacles, aer placed randomly around the entire world. Dungeon entrances are also placed randomly.
+Loot, as well as enemies and obstacles, are placed randomly around the entire world. Dungeon entrances are also placed randomly.
 
 #### Collectable items (loot)
 To pick up loot, just walk over the tile with the loot
+UPDATE: Chests added with their own inventory and collecting the items inside the chests, will transfer them to the players inventory.
 - Coins (adds to your total amount of money/gold)
 - Health potions (adds to your life/health) UPDATE: Now added to inventory.
 - Armor (adds to your armor/shield) UPDATE: Now added to inventory.
@@ -67,15 +68,15 @@ CURRENTLY:
 - Turn based system (basics UPDATE: a little more advanced now)
 - Randomly choose the starting character
 - One action per turn, per character (UPDATE: each character (including the player), now has multiple (individual amounts) action points to spend for either moving or attacking.
-- Can attack opponent character (by moving into their tile), giving damage based on attacking characters strength
+- Can attack opponent character (by moving into their tile), giving damage based on attacking characters strength (UPDATE: damage is now also based on the weapon equipped and if primary or secondary attack is chosen).
 - Enemy AI tracks the player and moves towards the player one tile at a time
 - UI for the turn based system (FIXED)
 - Improving AI (especially so they don't move through obstacles (trees/rocks...), as they currently do) (FIXED)
 - Implemented the Breadth-First Search algorithm (this was simpler for me to understand in contrast to the popular A* algorithm) to get enemies to steer around obstacles, and still move towards (or chase, if you will) the player.
+- Possibility for escaping the battle (maybe if you are worried that you can't win the battle or just don't want to fight(?)) (IMPLEMENTED)
 
 TODO:
 - Choose the starting character based on some swiftness or speed parameter. Random if same value is shared between multiple characters
-- Possibility for escaping the battle (maybe if you are worried that you can't win the battle or just don't want to fight(?))
 - Possibility for evading attacks
 - Overall creating a story so the game has a purpose :smiley:
 
@@ -87,6 +88,7 @@ CURRENTLY:
 - Torches (to light up the area around the player when in dark areas, such as at night or inside a dungeon)
 
 TODO (?):
+- Double inventory or two inventories displayed at the same time. This is necessary for the ability to trade with a merchant, so the player can transfer items between the two inventories (buy/sell).
 - Maybe even creating switches in dungeons to switch on light
 - Adding NPC's to interact with (quest-givers/merchants/???)
 - Survival feature(?). This is a very big MAYBE, since this is a major feature to implement and most likely I won't be implementing it, but for future reference I've added it and maybe I will implement...
