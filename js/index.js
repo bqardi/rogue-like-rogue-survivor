@@ -1,21 +1,67 @@
 document.addEventListener("DOMContentLoaded", event => {
-    //#region GAME SETTINGS
-
     //#region VARIABLES
 
     //#region CHEATS/SETTINGS
-    const cheatsOn = false;
+
+    const cheatsOn = true;
     const cheatKey = false;
     const cheatWeapon = false;
     const cheatFogOfWar = true;
     const cheatMoney = 0;
     const startVolume = 0.0;
+
+    //Minimum dayDuration + nightDuration = 72, (55, 17) = 1 ticks per minute and change to nighttime at 18:19
     const dayTimeControls = {
-            dayDuration: 20,
-            nightDuration: 20,
-            transitDuration: 20,
-        }
-        //#endregion CHEATS/SETTINGS
+        dayDuration: 550,
+        nightDuration: 170,
+        transitDuration: 60,
+    }
+
+    let timeControls = {
+        day: 1,
+        hour: 0,
+        minute: 0,
+        totalMinutes: 0,
+        tick: 0,
+        ticksPerGameMinute: 0,
+        dayElement: document.getElementById("day"),
+        timeElement: document.getElementById("time"),
+        addTick() {
+            this.tick++;
+            if (this.tick >= this.ticksPerGameMinute) {
+                this.tick = 0;
+                this.minute++;
+                this.totalMinutes++;
+                if (this.minute >= 60) {
+                    this.hour++;
+                    this.minute = 0;
+                    if (this.hour >= 24) {
+                        this.nextDay();
+                    }
+                }
+                this.dayElement.textContent = this.day;
+                this.timeElement.textContent = this.formatTime;
+            }
+        },
+        nextDay() {
+            this.day++;
+            this.hour = 0;
+            this.minute = 0;
+            this.tick = 0;
+            this.totalMinutes = 0;
+        },
+        get formatHour() {
+            return ("0" + this.hour).slice(-2);
+        },
+        get formatMinute() {
+            return ("0" + this.minute).slice(-2);
+        },
+        get formatTime() {
+            return this.formatHour + ":" + this.formatMinute;
+        },
+    }
+
+    //#endregion CHEATS/SETTINGS
 
     // Zone
     const background = document.getElementById("background");
@@ -24,7 +70,6 @@ document.addEventListener("DOMContentLoaded", event => {
     const miniMapZoom = document.getElementById("mini-map-enlarger");
     const actions = document.getElementById("actions");
     const settings = document.getElementById("settings");
-    const nightOverlay = document.getElementById("night-overlay");
 
     // Start screen elements
     const welcomeScreen = document.getElementById("welcome-screen");
@@ -75,25 +120,36 @@ document.addEventListener("DOMContentLoaded", event => {
     let firstDaylight = true;
 
     //Animation frame tick/timer variables
-    const ticksPerSecond = 10;
+    const ticksPerSecond = 20;
     const tickTime = 1 / ticksPerSecond;
-    let tick = 0;
+    let dayTimeTick = 0;
     let tTime = 0;
 
     //Inventory
-    const inventory = document.getElementById("inventory");
+    const playerInventory = document.getElementById("inventory");
     const inventoryGrid = document.getElementById("inventory-grid");
+    const secondaryInventory = document.getElementById("inventory-secondary");
+    const secondaryInventoryGrid = document.getElementById("inventory-secondary-grid");
 
     const invInfo = {
+        main: document.getElementById("inv-info"),
         image: document.getElementById("inv-info-image"),
         title: document.getElementById("inv-info-title"),
         content: document.getElementById("inv-info-content"),
     }
 
-    let invBtnSelectedIndex = 0;
     let invBtns = [];
+    let invBtnSelectedIndex = 0;
+    let inv2ndBtns = [];
+    let inv2ndBtnSelectedIndex = 0;
+    let uniqueIndex = -1;
 
     //UI
+    const infoCenter = document.getElementById("info-center");
+    const messageDelay = 300;
+    const messageDuration = 8000;
+    const messageFadeDuration = 300;
+
     const ui = {
         life: {
             icon: document.getElementById("life-icon"),
@@ -128,11 +184,24 @@ document.addEventListener("DOMContentLoaded", event => {
 
     let player;
 
-    const actionPoints = {
+    const playerAnimTime = {
+        move: 150,
+        attack: 150,
+    }
+
+    const playerStats = {
+        health: 30,
+        strength: 0,
+        armor: 0,
+    }
+
+    const playerAP = {
         current: 5,
         start: 5,
         max: 10,
     }
+
+    const attackElements = document.querySelectorAll(".attack-element");
 
     let playerIsMoving = false;
     let playersTurn = true;
@@ -153,9 +222,9 @@ document.addEventListener("DOMContentLoaded", event => {
 
     //#endregion VARIABLES
 
-    //#region OBJECTS before class initialization
+    //#region OBJECTS used in CLASSES
 
-    let enemyType = {
+    const enemyType = {
         skeleton: {
             name: "Skeleton",
             cls: "skeleton",
@@ -220,7 +289,7 @@ document.addEventListener("DOMContentLoaded", event => {
                     player.removeCoins(5);
                 } else {
                     player.removeCoins(player.coins);
-                    player.takeDamage(this.strength); // Damage is done on the classes, and this line gives an extra amount of damage.
+                    // player.takeDamage(this.strength.value); // Damage is done on the classes, and this line gives an extra amount of damage.
                 }
             },
             enemyDeath: function(enemy) {
@@ -230,13 +299,26 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     const worlds = {
-        zoneCount: function(world) {
+        zoneCount(world) {
             const worldHeight = world.size.up + 1 + world.size.down;
             const worldwidth = world.size.left + 1 + world.size.right;
             return worldwidth * worldHeight;
         },
-        tileCount: function(world) {
+        tileCount(world) {
             return world.zoneSize * world.zoneSize;
+        },
+        reset(world) {
+            world.region = null;
+            world.miniMap = null;
+            world.gatewayObjs = [];
+        },
+        resetAll() {
+            for (let i = 0; i < Object.keys(this).length; i++) {
+                const key = Object.keys(this)[i];
+                if (this[key].gatewayObjs !== undefined) {
+                    this.reset(this[key]);
+                }
+            }
         },
         home: {
             name: "Home",
@@ -259,7 +341,6 @@ document.addEventListener("DOMContentLoaded", event => {
                 if (this.gatewayObjs.length > 0) {
                     for (let i = 0; i < this.gatewayObjs.length; i++) {
                         const gatewayObj = this.gatewayObjs[i];
-                        console.log(gatewayObj);
                         replaceGateway(gatewayObj.gate, gatewayObj.gateway, gatewayObj.zone);
                     }
                     return;
@@ -290,7 +371,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 down: 11,
                 left: 14,
             },
-            zoneSize: 7,
+            zoneSize: 9,
             startZoneId: "0_0",
             gatewayObjs: [],
             placeGateways: function() {
@@ -489,9 +570,10 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    //#endregion OBJECTS before class initialization
+    //#endregion OBJECTS used in CLASSES
 
     //#region CLASSES
+
     class SFX {
         constructor(audioFile, volume, playInstantly = true) {
             this.audioFile = audioFile;
@@ -580,6 +662,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.bioms = world.bioms;
             this.enemyPercentage = world.enemyPercentage;
             this.zones = [];
+            this.safeZones = [];
             this.enemies = [];
             this.backgroundElement = backgroundElement;
             this.element = element;
@@ -603,6 +686,22 @@ document.addEventListener("DOMContentLoaded", event => {
         addZone(zone) {
             this.zones.push(zone);
         }
+        setSafeZones(amount) {
+            const startZone = this.getZone("0_0");
+            startZone.setSafe();
+            this.safeZones.push(startZone);
+            for (let i = 0; i < amount; i++) {
+                if (this.zones.length == 0) {
+                    return null;
+                }
+                let rnd = randomInteger(0, this.zones.length);
+                if (this.zones.length > 1 && this.zones[rnd].id != "0_0") {
+                    rnd = randomInteger(0, this.zones.length);
+                }
+                this.zones[rnd].setSafe();
+                this.safeZones.push(this.zones[rnd]);
+            }
+        }
         getZone(id) {
             for (let i = 0; i < this.zones.length; i++) {
                 const zone = this.zones[i];
@@ -618,6 +717,30 @@ document.addEventListener("DOMContentLoaded", event => {
             let rnd = randomInteger(0, this.zones.length);
             if (!includeStartZone && this.zones.length > 1) {
                 while (this.zones[rnd].id == "0_0") {
+                    rnd = randomInteger(0, this.zones.length);
+                }
+            }
+            return this.zones[rnd];
+        }
+        getRandomSafeZone(includeStartZone = false) {
+            if (this.safeZones.length == 0) {
+                return null;
+            }
+            let rnd = randomInteger(0, this.safeZones.length);
+            if (!includeStartZone && this.safeZones.length > 1) {
+                while (this.safeZones[rnd].id == "0_0") {
+                    rnd = randomInteger(0, this.safeZones.length);
+                }
+            }
+            return this.safeZones[rnd];
+        }
+        getRandomUnsafeZone() {
+            if (this.zones.length == 0) {
+                return null;
+            }
+            let rnd = randomInteger(0, this.zones.length);
+            if (this.zones.length > 1) {
+                while (this.zones[rnd].safe) {
                     rnd = randomInteger(0, this.zones.length);
                 }
             }
@@ -646,6 +769,11 @@ document.addEventListener("DOMContentLoaded", event => {
             const rnd = randomInteger(0, this.enemies.length);
             return enemies[rnd];
         }
+        reset() {
+            this.zones = [];
+            this.safeZones = [];
+            this.enemies = [];
+        }
     }
 
     class Zone {
@@ -658,6 +786,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.initialize();
             this.edgeClass = null;
             this.gateway;
+            this.safe = false;
         }
         initialize() {
             if (this.id == "0_0") {
@@ -666,6 +795,9 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         explore() {
             this.explored = true;
+        }
+        setSafe() {
+            this.safe = true;
         }
         addTile(tile) {
             this.tiles.push(tile);
@@ -846,6 +978,10 @@ document.addEventListener("DOMContentLoaded", event => {
             const miniMapTile = document.getElementById("minimap_" + id);
             miniMapTile.classList.add(cls);
         }
+        tileRemoveClass(id, cls) {
+            const miniMapTile = document.getElementById("minimap_" + id);
+            miniMapTile.classList.remove(cls);
+        }
     }
 
     class Gate {
@@ -903,9 +1039,6 @@ document.addEventListener("DOMContentLoaded", event => {
             this.tileObj.element.append(this.element);
             this.createTooltip();
         }
-        updateHTML() {
-
-        }
         unlock() {
             if (this.locked) {
                 this.locked = false;
@@ -929,8 +1062,9 @@ document.addEventListener("DOMContentLoaded", event => {
             this.moveTime = moveTime;
             this.attackTime = attackTime;
             this.life = life;
-            this.totalLife = life;
+            // this.totalLife = life;
             this.strength = strength;
+            // this.baseStrength = strength;
             this.tileId = tileId;
             this.actionPoints = actionPoints.current;
             this.actionPointStart = actionPoints.start;
@@ -943,10 +1077,14 @@ document.addEventListener("DOMContentLoaded", event => {
             this.apElement = apElement;
             this.ap = this.apElement.querySelector("#ap");
             this.apImage = this.apElement.querySelector("#ap-image");
-            this.apMoveElement = this.apElement.querySelector("#ap-move");
-            this.apAttackElement = this.apElement.querySelector("#ap-attack");
+            // this.apMoveElement = this.apElement.querySelector("#ap-move");
+            // this.apAttackElement = this.apElement.querySelector("#ap-attack");
+            this.apAttackElement = this.apElement.querySelector("#attack-damage");
             this.apPoints = [];
             this.onDeath = onDeath;
+            this.baseMoveCost = 0;
+            this.baseAttackCost = 0;
+            this.moveCost = 1;
         }
         get currentTile() {
             return currentZone.getTileObj(this.tileId);
@@ -954,12 +1092,14 @@ document.addEventListener("DOMContentLoaded", event => {
         createTooltip() {
             this.tooltip = new Tooltip(this.name, this.texts, this.element);
             this.element.classType = this;
-            this.element.addEventListener("mouseover", function(evt) {
-                evt.currentTarget.classType.showTooltip();
-            });
-            this.element.addEventListener("mouseout", function(evt) {
-                evt.currentTarget.classType.tooltip.hide();
-            });
+            // this.element.addEventListener("mouseover", function(evt) {
+            //     evt.currentTarget.classType.showTooltip();
+            // });
+            // this.element.addEventListener("mouseout", function(evt) {
+            //     evt.currentTarget.classType.tooltip.hide();
+            // });
+            this.element.addEventListener("mouseover", (evt) => this.showTooltip(evt));
+            this.element.addEventListener("mouseout", (evt) => this.tooltip.hide(evt));
         }
         updateTooltip() {
             this.tooltip.setContent(this.texts);
@@ -967,51 +1107,40 @@ document.addEventListener("DOMContentLoaded", event => {
         showTooltip() {
             this.tooltip.showAbove();
         }
-        apMove() {
+        sufficientAP(apCost) {
             if (this.actionPoints == 0) {
-                return -1;
+                return false;
             }
-            const apCost = 1 + this.apMoveCost;
             if ((this.actionPoints - apCost) < 0) {
+                return false;
+            }
+            return true;
+        }
+        apMove() {
+            if (!this.sufficientAP(this.totalMoveCost)) {
                 return -1;
             }
-            this.actionPoints -= apCost;
+            this.actionPoints -= this.totalMoveCost;
             this.actionPointHTMLUpdate();
             return this.actionPoints;
         }
         apAttack() {
-            if (this.actionPoints == 0) {
+            if (!this.sufficientAP(this.totalAttackCost)) {
                 return -1;
             }
-            const apCost = 1 + this.apAttackCost;
-            if ((this.actionPoints - apCost) < 0) {
-                return -1;
-            }
-            this.actionPoints -= apCost;
+            this.actionPoints -= this.totalAttackCost;
             this.actionPointHTMLUpdate();
             return this.actionPoints;
         }
-        get apMoveCost() {
-            let weaponCost = 0;
+        get totalMoveCost() {
             let armorCost = 0;
-            if (this.weaponItem) {
-                weaponCost = this.weaponItem.apMoveCost;
-            }
             if (this.armorItem) {
                 armorCost = this.armorItem.apMoveCost;
             }
-            return weaponCost + armorCost;
+            return armorCost + this.baseMoveCost + this.moveCost;
         }
-        get apAttackCost() {
-            let weaponCost = 0;
-            let armorCost = 0;
-            if (this.weaponItem) {
-                weaponCost = this.weaponItem.apAttackCost;
-            }
-            if (this.armorItem) {
-                armorCost = this.armorItem.apAttackCost;
-            }
-            return weaponCost + armorCost;
+        get totalAttackCost() {
+            return this.baseAttackCost + this.weaponAttackCost;
         }
         actionPointAdd(amount) {
             this.actionPoints += amount;
@@ -1042,32 +1171,46 @@ document.addEventListener("DOMContentLoaded", event => {
             for (let i = 0; i < this.actionPointMax; i++) {
                 let apPoint = document.createElement("DIV");
                 apPoint.classList.add("ap-point");
-                if (i < this.actionPoints) {
-                    let apPointFill = document.createElement("DIV");
-                    apPointFill.classList.add("fill");
-                    apPoint.append(apPointFill);
-                }
+                // if (i < this.actionPoints) {
+                //     let apPointFill = document.createElement("DIV");
+                //     apPointFill.classList.add("fill");
+                //     apPoint.append(apPointFill);
+                // }
+                let apPointFill = document.createElement("DIV");
+                apPointFill.classList.add("fill");
+                apPoint.append(apPointFill);
+
                 this.ap.append(apPoint);
                 this.apPoints.push(apPoint);
             }
             this.actionPointHTMLUpdate();
-            this.apCostUpdate();
+            // this.apCostUpdate();
         }
         actionPointHTMLRemove() {
             this.ap.innerHTML = "";
             this.apElement.classList.remove("js-active");
         }
-        actionPointHTMLUpdate() {
+        actionPointHTMLUpdate(isAttackAP = false) {
             for (let i = 0; i < this.apPoints.length; i++) {
                 const apPoint = this.apPoints[i];
+                apPoint.classList.remove("empty");
+                apPoint.classList.remove("cost");
+                let cost = 0;
+                if (isAttackAP) {
+                    cost = this.totalAttackCost;
+                } else {
+                    cost = this.totalMoveCost;
+                }
+                // this.apAttackElement.textContent = cost;
+                const extraPoints = this.actionPoints - cost;
                 if (i >= this.actionPoints) {
                     apPoint.classList.add("empty");
+                } else if (extraPoints < 0) {
+                    apPoint.classList.add("deficient");
+                } else if (i >= extraPoints) {
+                    apPoint.classList.add("cost");
                 }
             }
-        }
-        apCostUpdate() {
-            this.apMoveElement.textContent = this.apMoveCost + 1;
-            this.apAttackElement.textContent = this.apAttackCost + 1;
         }
         endTurn() {
             this.actionPointsTransfer = this.actionPoints;
@@ -1079,16 +1222,15 @@ document.addEventListener("DOMContentLoaded", event => {
             this.element.style.animationDuration = `${this.attackTime}ms`;
         }
         addLife(amount) {
-            this.life += amount;
-            if (this.life <= 0) {
-                this.life = 0;
+            this.life.add(amount);
+            if (this.life.value <= 0) {
                 this.isDead = true;
                 this.tooltip.remove();
                 this.onDeath(this);
             }
-            if (this.life > this.totalLife) {
-                this.life = this.totalLife;
-            }
+            // if (this.life.value > this.life.baseValue) {
+            //     return false;
+            // }
             this.updateHealthBar();
         }
         takeDamage(damage) {
@@ -1145,7 +1287,7 @@ document.addEventListener("DOMContentLoaded", event => {
             if (this.isDead) {
                 this.removeCard();
             } else {
-                this.cardHealthBar.style.width = `${this.life / this.totalLife * 100}%`
+                this.cardHealthBar.style.width = `${this.life.value / this.life.baseValue * 100}%`
             }
         }
         setActive() {
@@ -1189,17 +1331,24 @@ document.addEventListener("DOMContentLoaded", event => {
             this.killCount = 0;
             this.inBattle = false;
             this.torchEquipped = false;
+            this.torchSize = 20;
             this.overlay;
             this.torchOverlay;
             this.nightOverlay;
             this.tooltip;
             this.keys = [];
+            this.isFleeing = false;
+            this.fleeCost = this.actionPointStart;
+            this.fleeElement = document.getElementById("combat-flee");
+            this.fleeCostElement = document.getElementById("combat-flee-cost");
+            this.moveElement = document.getElementById("combat-move");
+            this.moveCostElement = document.getElementById(`combat-move-cost`);
             this.initialize();
         }
         initialize() {
-            this.ui.life.count.textContent = this.life;
-            this.ui.strength.count.textContent = this.strength;
-            this.ui.armor.count.textContent = this.armor;
+            this.ui.life.count.textContent = this.life.value;
+            this.ui.strength.count.textContent = this.strength.value;
+            this.ui.armor.count.textContent = this.armor.value;
             this.element = document.createElement("DIV");
             this.element.classList.add("player");
             this.element.classList.add("animation");
@@ -1222,6 +1371,8 @@ document.addEventListener("DOMContentLoaded", event => {
             this.overlay.append(this.nightOverlay);
 
             this.element.append(this.overlay);
+
+            this.setTorchSize();
             this.createTooltipContent();
             this.createTooltip();
             this.updateUI();
@@ -1250,6 +1401,14 @@ document.addEventListener("DOMContentLoaded", event => {
         setTorchOverlayOpacity(opacity) {
             this.torchOverlay.style.opacity = opacity;
         }
+        increaseTorchSize() {
+            this.torchSize += 5;
+            this.setTorchSize();
+            return this.torchSize;
+        }
+        setTorchSize() {
+            this.torchOverlay.style.transform = `scale(${this.torchSize})`;
+        }
         setNightOverlayOpacity(opacity) {
             this.nightOverlay.style.opacity = opacity;
         }
@@ -1263,13 +1422,13 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         createTooltipContent() {
             this.texts = [
-                tooltipElm("Life: ", this.life),
-                tooltipElm("Damage: ", this.strength),
-                tooltipElm("Armor: ", this.armor),
+                tooltipElm("Life: ", this.life.value),
+                tooltipElm("Damage: ", this.strength.value),
+                tooltipElm("Armor: ", this.armor.value),
                 tooltipElm("Movement speed: ", this.moveTime),
                 tooltipElm("Action points: ", ""),
-                tooltipElm("Move cost: ", 1 + this.apMoveCost, "list"),
-                tooltipElm("Attack cost: ", 1 + this.apAttackCost, "list"),
+                tooltipElm("Move cost: ", this.totalMoveCost, "list"),
+                tooltipElm("Attack cost: ", this.totalAttackCost, "list"),
                 tooltipElm("Start: ", this.actionPointStart, "list"),
                 tooltipElm("Max: ", this.actionPointMax, "list"),
             ];
@@ -1280,35 +1439,96 @@ document.addEventListener("DOMContentLoaded", event => {
             super.updateTooltip();
         }
         setInteractTime() {
-            this.element.style.animationDuration = `${this.interactTime}ms`;
+            this.element.style.animationDuration = `${this.moveTime}ms`;
             this.updateTooltip();
         }
         addLife(amount) {
             super.addLife(amount);
-            this.ui.life.count.textContent = this.life;
+            this.ui.life.count.textContent = this.life.value;
             this.updateTooltip();
         }
-        setStrength(item) {
+        setWeaponItem(item) {
             if (this.weaponItem != undefined) {
                 this.inventory.addItem(this.weaponItem);
             }
             this.weaponItem = item;
-            this.strength = item.amount;
             this.ui.strength.icon.style.backgroundPosition = `-${item.posX}% -${item.posY}%`;
-            this.ui.strength.count.textContent = this.strength;
+            // this.fleeCost = this.weaponItem.fleeCost;
+            this.fleeCostElement.textContent = this.fleeCost;
+            this.weaponItem.button.update();
+            this.setPrimaryWeapon();
             this.updateTooltip();
-            this.apCostUpdate();
+            // this.apCostUpdate();
+        }
+        setPrevZone(zone) {
+            this.zone = zone;
+        }
+        setConfirmation(fleeConfirm) {
+            this.fleeConfirm = fleeConfirm;
+        }
+        confirmation(caller, confirmed) {
+            caller.isFleeing = false;
+            if (confirmed) {
+                caller.fleeSuccessCallback(caller.zone);
+            }
+            caller.fleeConfirm.hide();
+        }
+        confirmToggleButton() {
+            this.fleeConfirm.toggleButtons();
+        }
+        confirmationPressed() {
+            this.fleeConfirm.buttonPressed();
+        }
+        combatFlee(fleeSuccessCallback) {
+            if (!this.sufficientAP(this.fleeCost)) {
+                return;
+            }
+            this.fleeSuccessCallback = fleeSuccessCallback;
+            this.isFleeing = true;
+            this.fleeConfirm.show(this);
+        }
+        setMove() {
+            // this.moveCost = this.weaponItem.moveCost;
+            this.resetWeaponButtons();
+            this.moveElement.classList.add("js-active");
+            this.actionPointHTMLUpdate();
+            this.moveCostElement.textContent = this.totalMoveCost;
+        }
+        setPrimaryWeapon() {
+            this.weaponAttackCost = this.weaponItem.primaryCost;
+            this.strength.set(this.weaponItem.primaryDamage);
+            this.ui.strength.count.textContent = this.strength.value;
+            this.apAttackElement.textContent = this.strength.value;
+            this.resetWeaponButtons();
+            this.weaponItem.button.primary();
+            this.actionPointHTMLUpdate(true);
+            this.updateTooltip();
+        }
+        setSecondaryWeapon() {
+            this.weaponAttackCost = this.weaponItem.secondaryCost;
+            this.strength.set(this.weaponItem.secondaryDamage);
+            this.ui.strength.count.textContent = this.strength.value;
+            this.apAttackElement.textContent = this.strength.value;
+            this.weaponItem.button.secondary();
+            this.resetWeaponButtons();
+            this.actionPointHTMLUpdate(true);
+            this.updateTooltip();
+        }
+        resetWeaponButtons() {
+            this.fleeElement.classList.remove("js-active");
+            this.moveElement.classList.remove("js-active");
+            this.weaponItem.button.resetButtons();
         }
         setArmor(item) {
             if (this.armorItem != undefined) {
                 this.inventory.addItem(this.armorItem);
             }
             this.armorItem = item;
-            this.armor = item.amount;
+            this.armor.set(item.amount);
             this.ui.armor.icon.style.backgroundPosition = `-${item.posX}% -${item.posY}%`;
-            this.ui.armor.count.textContent = this.armor;
+            this.ui.armor.count.textContent = this.armor.value;
             this.updateTooltip();
-            this.apCostUpdate();
+            // this.apCostUpdate();
         }
         hasCoins(amount) {
             if (this.coins >= amount) {
@@ -1328,7 +1548,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.killCount++;
         }
         takeDamage(amount) {
-            super.takeDamage(amount - this.armor);
+            super.takeDamage(amount - this.armor.value);
         }
         addKey(key) {
             this.inventory.addItem(key);
@@ -1342,10 +1562,7 @@ document.addEventListener("DOMContentLoaded", event => {
             return true;
         }
         collect(item) {
-            item.onCollect(item);
-        }
-        use(item) {
-            item.onUse(item);
+            item.onCollect();
         }
     }
 
@@ -1383,8 +1600,8 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         createTooltipContent() {
             this.texts = [
-                tooltipElm("Life: ", this.life),
-                tooltipElm("Damage: ", this.strength),
+                tooltipElm("Life: ", this.life.value),
+                tooltipElm("Damage: ", this.strength.value),
                 tooltipElm("Movement speed: ", this.moveTime),
                 tooltipElm("AP start: ", this.actionPointStart),
                 tooltipElm("AP max: ", this.actionPointMax),
@@ -1407,9 +1624,9 @@ document.addEventListener("DOMContentLoaded", event => {
             let barText = document.createElement("SPAN");
             healthbar.classList.add("healthbar");
             bar.classList.add("bar");
-            bar.style.width = `${this.life / this.totalLife * 100}%`;
+            bar.style.width = `${this.life.value / this.life.baseValue * 100}%`;
             barText.classList.add("bar__text");
-            barText.textContent = `${this.life} / ${this.totalLife}`;
+            barText.textContent = `${this.life.value} / ${this.life.baseValue}`;
             healthbar.append(bar);
             healthbar.append(barText);
             enemyHTML.append(healthbar);
@@ -1422,9 +1639,9 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         takeDamage(damage) {
             super.takeDamage(damage);
-            this.elmBar.style.width = `${this.life / this.totalLife * 100}%`;
-            this.elmBarText.textContent = `${this.life} / ${this.totalLife}`;
-            if (this.life <= 0) {
+            this.elmBar.style.width = `${this.life.value / this.life.baseValue * 100}%`;
+            this.elmBarText.textContent = `${this.life.value} / ${this.life.baseValue}`;
+            if (this.life.value <= 0) {
                 this.currentTile.removeObject(this.element);
                 return true;
             }
@@ -1433,36 +1650,196 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
+    class WeaponButton {
+        constructor(primaryName, primaryCost, primaryDamage, secondaryName, secondaryCost, secondaryDamage, attackElements) {
+            // this.fleeCost = fleeCost;
+            // this.moveCost = moveCost;
+            // this.totalMoveCost = this.moveCost;
+            this.primaryName = primaryName;
+            this.primaryCost = primaryCost;
+            this.primaryDamage = primaryDamage;
+            this.secondaryName = secondaryName;
+            this.secondaryCost = secondaryCost;
+            this.secondaryDamage = secondaryDamage;
+            this.attackElements = attackElements;
+
+            // this.fleeCostElement = document.getElementById("combat-flee-cost");
+            this.primaryNameElement = document.getElementById(`combat-primary-name`);
+            this.primaryCostElement = document.getElementById(`combat-primary-cost`);
+            this.primaryDamageElement = document.getElementById(`combat-primary-damage`);
+            this.secondaryNameElement = document.getElementById(`combat-secondary-name`);
+            this.secondaryCostElement = document.getElementById(`combat-secondary-cost`);
+            this.secondaryDamageElement = document.getElementById(`combat-secondary-damage`);
+
+            // this.moveElement = document.getElementById("combat-move");
+            // this.moveCostElement = document.getElementById(`combat-move-cost`);
+            // this.moveCostElement.textContent = this.moveCost;
+
+            // this.fleeElement = document.getElementById("combat-flee");
+            this.primaryElement = document.getElementById(`combat-primary`);
+            this.secondaryElement = document.getElementById(`combat-secondary`);
+
+            this.primaryNameElement.textContent = this.primaryName;
+            this.secondaryNameElement.textContent = this.secondaryName;
+        }
+        update() {
+                this.primaryCostElement.textContent = this.primaryCost;
+                this.secondaryCostElement.textContent = this.secondaryCost;
+                this.primaryDamageElement.textContent = this.primaryDamage;
+                this.secondaryDamageElement.textContent = this.secondaryDamage;
+            }
+            // move() {
+            //     this.currentFnc = this.move;
+            //     this.setElementState(this.moveElement);
+            // }
+        primary() {
+            // this.currentFnc = this.primary;
+            this.resetButtons();
+            this.primaryElement.classList.add("js-active");
+            this.primaryElement.classList.add("js-selected");
+            this.secondaryElement.classList.remove("js-selected");
+        }
+        secondary() {
+            // this.currentFnc = this.secondary;
+            this.resetButtons();
+            this.secondaryElement.classList.add("js-active");
+            this.secondaryElement.classList.add("js-selected");
+            this.primaryElement.classList.remove("js-selected");
+        }
+        resetButtons() {
+            // this.fleeElement.classList.remove("js-active");
+            // this.moveElement.classList.remove("js-active");
+            for (let i = 0; i < this.attackElements.length; i++) {
+                const attackElement = this.attackElements[i];
+                attackElement.classList.remove("js-active");
+            }
+        }
+    }
+
+    class Confirmation {
+        constructor(title, text, buttonConfirmText, buttonCancelText, callback) {
+            this.callback = callback;
+            this.element = document.getElementById("confirm-box");
+            this.titleElement = document.getElementById("confirm-title");
+            this.textElement = document.getElementById("confirm-text");
+            this.confirmButtonElement = document.getElementById("confirm");
+            this.cancelButtonElement = document.getElementById("cancel");
+
+            this.titleElement.textContent = title;
+            this.textElement.innerHTML = text;
+            this.confirmButtonElement.textContent = buttonConfirmText;
+            this.cancelButtonElement.textContent = buttonCancelText;
+
+            this.confirmButtonElement.addEventListener("click", evt => this.confirm(evt));
+            this.cancelButtonElement.addEventListener("click", evt => this.cancel(evt));
+        }
+        show(caller) {
+            this.caller = caller;
+            this.element.classList.remove("js-hidden");
+        }
+        hide() {
+            this.element.classList.add("js-hidden");
+        }
+        toggleButtons() {
+            this.confirmButtonElement.classList.toggle("js-active");
+            this.cancelButtonElement.classList.toggle("js-active");
+        }
+        buttonPressed() {
+            if (this.confirmButtonElement.classList.contains("js-active")) {
+                this.confirm();
+            } else {
+                this.cancel();
+            }
+        }
+        confirm() {
+            this.hide();
+            this.callback(this.caller, true);
+        }
+        cancel() {
+            this.hide();
+            this.callback(this.caller, false);
+        }
+    }
+
+    // class AttackSword extends Attack{
+    //     constructor(type, fleeCost, swingCost, swingDamage, stabCost, stabDamage){
+    //         super(fleeCost);
+    //         this.swingElement = document.getElementById("combat-primary");
+    //         this.swingDamageElement = document.getElementById("combat-primary-damage");
+    //         this.stabElement = document.getElementById("combat-secondary");
+    //         this.stabDamageElement = document.getElementById("combat-secondary-damage");
+    //         this.setSwingCost(swingCost);
+    //         this.setSwingDamage(swingDamage);
+    //         this.setStabCost(stabCost);
+    //         this.setStabDamage(stabDamage);
+    //     }
+    //     setSwingCost(cost){
+    //         this.swingCost = cost;
+    //         this.swingElement.textContent = this.swingCost;
+    //     }
+    //     setSwingDamage(damage){
+    //         this.swingDamage = damage;
+    //         this.swingDamageElement.textContent = this.swingDamage;
+    //     }
+    //     setStabCost(cost){
+    //         this.stabCost = cost;
+    //         this.stabElement.textContent = this.stabCost;
+    //     }
+    //     setStabDamage(damage){
+    //         this.stabDamage = damage;
+    //         this.stabDamageElement.textContent = this.stabDamage;
+    //     }
+    // }
+
     class Item {
         constructor(id, collectable) {
             this.id = id;
+            this.collectable = collectable;
             this.type = collectable.type;
             this.name = collectable.name;
             this.amount;
+            this.button = collectable.attack;
+            if (this.button != null) {
+                this.primaryName = this.button.primaryName;
+                this.primaryDamage = this.button.primaryDamage;
+                this.primaryCost = this.button.primaryCost;
+                this.secondaryName = this.button.secondaryName;
+                this.secondaryDamage = this.button.secondaryDamage;
+                this.secondaryCost = this.button.secondaryCost;
+            }
             this.posX = collectable.spriteCoordinates.x * 100;
             this.posY = collectable.spriteCoordinates.y * 100;
             this.equipable = collectable.equipable;
             this.stackable = collectable.stackable;
-            this.onCollect = collectable.onCollect;
-            this.onUse = collectable.onUse;
             this.apMoveCost = collectable.apMoveCost;
-            this.apAttackCost = collectable.apAttackCost;
             this.equipped = false;
-            this.initialize(collectable.minStackAmount, collectable.maxStackAmount);
+            this.initialize(collectable.minValue, collectable.maxValue);
         }
-        initialize(minStackAmount, maxStackAmount) {
-            this.amount = randomInteger(minStackAmount, maxStackAmount);
+        initialize(minValue, maxValue) {
+            this.amount = randomInteger(minValue, maxValue);
         }
         createHTML() {
-            let item = document.createElement("DIV");
-            item.classList.add("item");
-            item.style.backgroundPosition = `-${this.posX}% -${this.posY}%`;
-            item.classList.add("tile__object");
-            return item;
+            this.element = document.createElement("DIV");
+            this.element.classList.add("item");
+            this.element.style.backgroundPosition = `-${this.posX}% -${this.posY}%`;
+            this.element.classList.add("tile__object");
+            return this.element;
         }
         equip(isEquipped) {
             if (this.equipable) {
                 this.equipped = isEquipped;
+            }
+        }
+        onCollect() {
+            this.collectable.onCollect(this);
+            if (this.collectable.collectSFX) {
+                new SFX(this.collectable.collectSFX, sfxVolume);
+            }
+        }
+        onUse(inventory) {
+            this.collectable.onUse(this, inventory);
+            if (this.collectable.useSFX) {
+                new SFX(this.collectable.useSFX, sfxVolume);
             }
         }
     }
@@ -1502,7 +1879,8 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Inventory {
-        constructor() {
+        constructor(owner) {
+            this.owner = owner;
             this.contents = [];
         }
         addItem(item) {
@@ -1564,6 +1942,9 @@ document.addEventListener("DOMContentLoaded", event => {
                 }
             }
             return -1;
+        }
+        onUse(item) {
+            item.onUse(this);
         }
     }
 
@@ -1635,9 +2016,6 @@ document.addEventListener("DOMContentLoaded", event => {
             document.body.append(this.element);
             this.setContent(texts);
         }
-        setTexts(texts) {
-            this.texts = texts;
-        }
         setContent(texts) {
             let content = this.title;
             for (let i = 0; i < texts.length; i++) {
@@ -1669,7 +2047,57 @@ document.addEventListener("DOMContentLoaded", event => {
             this.element.classList.remove("js-active");
         }
         remove() {
-            this.element.parentNode.removeChild(this.element);
+            if (this.element) {
+                this.element.parentNode.removeChild(this.element);
+            }
+        }
+    }
+
+    class Chest {
+        constructor(tileObj, inventory) {
+            this.tileObj = tileObj;
+            this.inventory = inventory;
+        }
+        createHTML() {
+            this.element = document.createElement("DIV");
+            this.element.classList.add(this.inventory.owner);
+            this.element.classList.add("tile__object");
+            return this.element;
+        }
+    }
+
+    class Attribute {
+        constructor(value, isRange) {
+            this.value = value;
+            this.isRange = isRange;
+            this.baseValue = value;
+            this.temp;
+        }
+        set(value) {
+            this.value = value;
+            if (this.isRange && this.value > this.baseValue) {
+                this.reset();
+            }
+            if (this.isRange && this.value < 0) {
+                this.set(0);
+            }
+        }
+        add(amount = 1) {
+            let value = this.value;
+            value += amount;
+            this.set(value);
+        }
+        remove(amount = 1) {
+            this.add(-amount);
+        }
+        save() {
+            this.temp = this.value;
+        }
+        recall() {
+            this.value = this.temp;
+        }
+        reset() {
+            this.value = this.baseValue;
         }
     }
 
@@ -1687,7 +2115,7 @@ document.addEventListener("DOMContentLoaded", event => {
 
     //#endregion CLASSES
 
-    //#region OBJECTS after class initialization
+    //#region OBJECTS
 
     let effect = {
         explosion: {
@@ -1730,6 +2158,27 @@ document.addEventListener("DOMContentLoaded", event => {
                 new SFX("./audio/sfx/" + soundFile, sfxVolume);
             }
         },
+        floating: {
+            name: "Floating number",
+            class: "floating-number",
+            speed: 20,
+            duration: 1500,
+            createHTML: function(element, value) {
+                let fx = document.createElement("DIV");
+                fx.classList.add("effect");
+                fx.classList.add(this.class);
+                fx.classList.add("tile__object");
+                fx.style.animationDuration = `${this.duration}ms`;
+                fx.innerHTML = value;
+                element.append(fx);
+                setTimeout(() => {
+                    element.removeChild(fx);
+                }, this.duration);
+            },
+            soundEffect(soundFile) {
+                // new SFX("./audio/sfx/" + soundFile, sfxVolume);
+            }
+        },
     }
 
     let collectables = {
@@ -1739,17 +2188,20 @@ document.addEventListener("DOMContentLoaded", event => {
             spriteCoordinates: { x: 3, y: 3 },
             includeInStartZone: true,
             stacks: 15,
-            minStackAmount: 10,
-            maxStackAmount: 30,
+            minValue: 10,
+            maxValue: 30,
             stackable: true,
             equipable: false,
             apMoveCost: 0,
-            apAttackCost: 0,
-            onCollect: function(item) {
-                new SFX("./audio/sfx/CHAIN_Drop_03_mono.ogg", sfxVolume);
+            inventoryItem: false,
+            spawnPropability: 40,
+            collectSFX: "./audio/sfx/CHAIN_Drop_03_mono.ogg",
+            useSFX: "./audio/sfx/CHAIN_Drop_03_mono.ogg",
+            attack: null,
+            onCollect(item) {
                 player.addCoins(item.amount);
             },
-            onUse: function(item) {
+            onUse(item, inventory) {
 
             }
         },
@@ -1759,20 +2211,33 @@ document.addEventListener("DOMContentLoaded", event => {
             spriteCoordinates: { x: 3, y: 4 },
             includeInStartZone: false,
             stacks: 10,
-            minStackAmount: 10,
-            maxStackAmount: 50,
+            minValue: 10,
+            maxValue: 10,
             stackable: true,
             equipable: false,
             apMoveCost: 0,
-            apAttackCost: 0,
-            onCollect: function(item) {
-                new SFX("./audio/sfx/EAT_Swallow_mono.ogg", sfxVolume);
+            inventoryItem: true,
+            spawnPropability: 20,
+            collectSFX: "./audio/sfx/EAT_Swallow_mono.ogg",
+            useSFX: "./audio/sfx/EAT_Swallow_mono.ogg",
+            attack: null,
+            onCollect(item) {
                 player.inventory.addItem(item);
             },
-            onUse: function(item) {
-                player.addLife(item.amount);
-                if (!player.inventory.removeItem(item)) {
-                    createInventoryItemsUI();
+            onUse(item, inventory) {
+                if (inventory.owner === "player") {
+                    if (player.life.value < player.life.baseValue) {
+                        player.addLife(item.amount);
+                        if (!player.inventory.removeItem(item)) {
+                            createInventoryItemsUI(player.inventory);
+                        }
+                    }
+                }
+                if (inventory.owner === "chest") {
+                    player.inventory.addItem(item);
+                    if (!inventory.removeItem(item)) {
+                        createInventoryItemsUI(inventory);
+                    }
                 }
             }
         },
@@ -1782,18 +2247,26 @@ document.addEventListener("DOMContentLoaded", event => {
             spriteCoordinates: { x: 6, y: 0 },
             includeInStartZone: false,
             stacks: 0.4,
-            minStackAmount: 1,
-            maxStackAmount: 1,
+            minValue: 1,
+            maxValue: 1,
             stackable: true,
             equipable: false,
             apMoveCost: 0,
-            apAttackCost: 0,
-            onCollect: function(item) {
-                new SFX("./audio/sfx/LOCK_Metal_Padlock_Unlock_Pop_01_mono.ogg", sfxVolume);
+            inventoryItem: true,
+            spawnPropability: 0,
+            collectSFX: "./audio/sfx/LOCK_Metal_Padlock_Unlock_Pop_01_mono.ogg",
+            useSFX: null,
+            attack: null,
+            onCollect(item) {
                 player.addKey(item);
             },
-            onUse: function(item) {
-
+            onUse(item, inventory) {
+                if (inventory.owner === "chest") {
+                    player.inventory.addItem(item);
+                    if (!inventory.removeItem(item)) {
+                        createInventoryItemsUI(inventory);
+                    }
+                }
             }
         },
         woodenSword: {
@@ -1802,20 +2275,31 @@ document.addEventListener("DOMContentLoaded", event => {
             spriteCoordinates: { x: 1, y: 2 },
             includeInStartZone: false,
             stacks: 2,
-            minStackAmount: 10,
-            maxStackAmount: 10,
+            minValue: 10,
+            maxValue: 10,
             stackable: false,
             equipable: true,
             apMoveCost: 0,
-            apAttackCost: 0,
-            onCollect: function(item) {
-                new SFX("./audio/sfx/BOW_Release_Arrow_mono.ogg", sfxVolume);
+            inventoryItem: true,
+            spawnPropability: 10,
+            collectSFX: "./audio/sfx/BOW_Release_Arrow_mono.ogg",
+            useSFX: null,
+            attack: new WeaponButton("Power", 2, 8, "Stab", 1, 3, attackElements),
+            onCollect(item) {
                 player.inventory.addItem(item);
             },
-            onUse: function(item) {
-                player.setStrength(item);
-                player.inventory.removeItem(item);
-                createInventoryItemsUI();
+            onUse(item, inventory) {
+                if (inventory.owner === "player") {
+                    player.setWeaponItem(item);
+                    player.inventory.removeItem(item);
+                    createInventoryItemsUI(player.inventory);
+                }
+                if (inventory.owner === "chest") {
+                    player.inventory.addItem(item);
+                    if (!inventory.removeItem(item)) {
+                        createInventoryItemsUI(inventory);
+                    }
+                }
             }
         },
         ironSword: {
@@ -1824,20 +2308,31 @@ document.addEventListener("DOMContentLoaded", event => {
             spriteCoordinates: { x: 3, y: 2 },
             includeInStartZone: false,
             stacks: 1.6,
-            minStackAmount: 21,
-            maxStackAmount: 28,
+            minValue: 21,
+            maxValue: 28,
             stackable: false,
             equipable: true,
             apMoveCost: 0,
-            apAttackCost: 1,
-            onCollect: function(item) {
-                new SFX("./audio/sfx/FRICTION_Metal_Bars_05_mono.ogg", sfxVolume);
+            inventoryItem: true,
+            spawnPropability: 8,
+            attack: new WeaponButton("Power", 2, 14, "Stab", 1, 6, attackElements),
+            collectSFX: "./audio/sfx/FRICTION_Metal_Bars_05_mono.ogg",
+            useSFX: null,
+            onCollect(item) {
                 player.inventory.addItem(item);
             },
-            onUse: function(item) {
-                player.setStrength(item);
-                player.inventory.removeItem(item);
-                createInventoryItemsUI();
+            onUse(item, inventory) {
+                if (inventory.owner === "player") {
+                    player.setWeaponItem(item);
+                    player.inventory.removeItem(item);
+                    createInventoryItemsUI(player.inventory);
+                }
+                if (inventory.owner === "chest") {
+                    player.inventory.addItem(item);
+                    if (!inventory.removeItem(item)) {
+                        createInventoryItemsUI(inventory);
+                    }
+                }
             }
         },
         ironAxe: {
@@ -1846,20 +2341,31 @@ document.addEventListener("DOMContentLoaded", event => {
             spriteCoordinates: { x: 2, y: 0 },
             includeInStartZone: false,
             stacks: 1.2,
-            minStackAmount: 45,
-            maxStackAmount: 52,
+            minValue: 45,
+            maxValue: 52,
             stackable: false,
             equipable: true,
-            apMoveCost: 1,
-            apAttackCost: 1,
-            onCollect: function(item) {
-                new SFX("./audio/sfx/FRICTION_Metal_Bars_02_mono.ogg", sfxVolume);
+            apMoveCost: 0,
+            inventoryItem: true,
+            spawnPropability: 4,
+            collectSFX: "./audio/sfx/FRICTION_Metal_Bars_02_mono.ogg",
+            useSFX: null,
+            attack: new WeaponButton("Power", 3, 24, "Dash", 2, 13, attackElements),
+            onCollect(item) {
                 player.inventory.addItem(item);
             },
-            onUse: function(item) {
-                player.setStrength(item);
-                player.inventory.removeItem(item);
-                createInventoryItemsUI();
+            onUse(item, inventory) {
+                if (inventory.owner === "player") {
+                    player.setWeaponItem(item);
+                    player.inventory.removeItem(item);
+                    createInventoryItemsUI(player.inventory);
+                }
+                if (inventory.owner === "chest") {
+                    player.inventory.addItem(item);
+                    if (!inventory.removeItem(item)) {
+                        createInventoryItemsUI(inventory);
+                    }
+                }
             }
         },
         smallShield: {
@@ -1868,20 +2374,31 @@ document.addEventListener("DOMContentLoaded", event => {
             spriteCoordinates: { x: 5, y: 0 },
             includeInStartZone: false,
             stacks: 1.5,
-            minStackAmount: 2,
-            maxStackAmount: 2,
+            minValue: 2,
+            maxValue: 2,
             stackable: false,
             equipable: true,
             apMoveCost: 0,
-            apAttackCost: 1,
-            onCollect: function(item) {
-                new SFX("./audio/sfx/TOOL_Toolbox_Close_mono.ogg", sfxVolume);
+            inventoryItem: true,
+            spawnPropability: 8,
+            collectSFX: "./audio/sfx/TOOL_Toolbox_Close_mono.ogg",
+            useSFX: null,
+            attack: null,
+            onCollect(item) {
                 player.inventory.addItem(item);
             },
-            onUse: function(item) {
-                player.setArmor(item);
-                player.inventory.removeItem(item);
-                createInventoryItemsUI();
+            onUse(item, inventory) {
+                if (inventory.owner === "player") {
+                    player.setArmor(item);
+                    player.inventory.removeItem(item);
+                    createInventoryItemsUI(player.inventory);
+                }
+                if (inventory.owner === "chest") {
+                    player.inventory.addItem(item);
+                    if (!inventory.removeItem(item)) {
+                        createInventoryItemsUI(inventory);
+                    }
+                }
             }
         },
         largeShield: {
@@ -1890,20 +2407,31 @@ document.addEventListener("DOMContentLoaded", event => {
             spriteCoordinates: { x: 4, y: 0 },
             includeInStartZone: false,
             stacks: 1,
-            minStackAmount: 5,
-            maxStackAmount: 5,
+            minValue: 5,
+            maxValue: 5,
             stackable: false,
             equipable: true,
             apMoveCost: 1,
-            apAttackCost: 1,
-            onCollect: function(item) {
-                new SFX("./audio/sfx/TOOL_Toolbox_Close_mono.ogg", sfxVolume);
+            inventoryItem: true,
+            spawnPropability: 5,
+            collectSFX: "./audio/sfx/TOOL_Toolbox_Close_mono.ogg",
+            useSFX: null,
+            attack: null,
+            onCollect(item) {
                 player.inventory.addItem(item);
             },
-            onUse: function(item) {
-                player.setArmor(item);
-                player.inventory.removeItem(item);
-                createInventoryItemsUI();
+            onUse(item, inventory) {
+                if (inventory.owner === "player") {
+                    player.setArmor(item);
+                    player.inventory.removeItem(item);
+                    createInventoryItemsUI(player.inventory);
+                }
+                if (inventory.owner === "chest") {
+                    player.inventory.addItem(item);
+                    if (!inventory.removeItem(item)) {
+                        createInventoryItemsUI(inventory);
+                    }
+                }
             }
         },
     }
@@ -1934,9 +2462,7 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    //#endregion OBJECTS after class initialization
-
-    //#endregion GAME SETTINGS
+    //#endregion OBJECTS
 
     //#region EVENT LISTENERS
     welcomeScreen.addEventListener("click", function() {
@@ -1989,34 +2515,57 @@ document.addEventListener("DOMContentLoaded", event => {
 
     document.addEventListener("keyup", function(evt) {
         if (gameStarted) {
-            if (evt.key == "m") {
-                miniMap.zoomToggle();
-            }
-            if (evt.key == "i") {
-                toggleInventory();
-            }
-            if (evt.key == "t") {
-                player.toggleTorch();
-            }
-            if (evt.key == "e") {
-                if (player.inBattle) {
-                    if (playersTurn) {
-                        nextTurn();
+            if (!player.isFleeing) {
+                if (player.inBattle && playersTurn) {
+                    if (evt.key == "1") {
+                        player.combatFlee(function(zone) {
+                            moveToZone(zone.id);
+                            placePlayer(zone.getRandomTile());
+                        });
                     }
-                } else if (inventoryActive) {
-                    hideInventory();
-                } else if (miniMap.enlarged) {
+                    if (evt.key == "2") {
+                        player.setMove();
+                    }
+                    if (evt.key == "3") {
+                        player.setPrimaryWeapon();
+                    }
+                    if (evt.key == "4") {
+                        player.setSecondaryWeapon();
+                    }
+                }
+                if (evt.key == "m") {
                     miniMap.zoomToggle();
-                } else {
-                    toggleMenu();
+                }
+                if (evt.key == "i") {
+                    if (!player.inBattle) {
+                        togglePlayerInventory();
+                    }
+                }
+                if (evt.key == "t") {
+                    player.toggleTorch();
+                }
+                if (evt.key == "e") {
+                    if (player.inBattle) {
+                        if (playersTurn) {
+                            nextTurn();
+                        }
+                    } else if (inventoryActive) {
+                        hideInventory();
+                    } else if (miniMap.enlarged) {
+                        miniMap.zoomToggle();
+                    } else {
+                        toggleMenu();
+                    }
                 }
             }
             if (evt.key == "Enter") {
                 if (menuActive) {
                     menuButtonPressed();
                     hideMenu();
-                } else if (inventoryActive) {
-                    clickInventoryButton(invBtns[invBtnSelectedIndex].element, invBtns[invBtnSelectedIndex].content);
+                } else if (inventoryActive && invBtns.length > 0) {
+                    clickInventoryButton(invBtns[invBtnSelectedIndex].element, invBtns[invBtnSelectedIndex].inventory, invBtns[invBtnSelectedIndex].content);
+                } else if (player.isFleeing) {
+                    player.confirmationPressed();
                 }
             }
             if (evt.key == "Escape") {
@@ -2024,6 +2573,9 @@ document.addEventListener("DOMContentLoaded", event => {
                 hideInventory();
                 if (miniMap.enlarged) {
                     miniMap.zoomToggle();
+                }
+                if (player.isFleeing) {
+                    player.confirmation(player, false);
                 }
             }
         } else {
@@ -2043,7 +2595,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 } else if (inventoryActive) {
                     selectInventoryButtonUp();
                 } else {
-                    moveSuccess = playerMove(0, -1, player.element, "up");
+                    playerMove(0, -1, player.element, "up");
                     player.element.style.backgroundPosition = "0 -33.3333%";
                 }
             }
@@ -2053,7 +2605,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 } else if (inventoryActive) {
                     selectInventoryButtonDown();
                 } else {
-                    moveSuccess = playerMove(0, 1, player.element, "down");
+                    playerMove(0, 1, player.element, "down");
                     player.element.style.backgroundPosition = "0 0";
                 }
             }
@@ -2062,8 +2614,10 @@ document.addEventListener("DOMContentLoaded", event => {
                     menuPrev();
                 } else if (inventoryActive) {
                     selectInventoryButtonPrev();
+                } else if (player.isFleeing) {
+                    player.confirmToggleButton();
                 } else {
-                    moveSuccess = playerMove(-1, 0, player.element, "left");
+                    playerMove(-1, 0, player.element, "left");
                     player.element.style.backgroundPosition = "0 -100%";
                 }
             }
@@ -2072,9 +2626,10 @@ document.addEventListener("DOMContentLoaded", event => {
                     menuNext();
                 } else if (inventoryActive) {
                     selectInventoryButtonNext();
-
+                } else if (player.isFleeing) {
+                    player.confirmToggleButton();
                 } else {
-                    moveSuccess = playerMove(1, 0, player.element, "right");
+                    playerMove(1, 0, player.element, "right");
                     player.element.style.backgroundPosition = "0 -66.6667%";
                 }
             }
@@ -2083,23 +2638,30 @@ document.addEventListener("DOMContentLoaded", event => {
     //#endregion EVENT LISTENERS
 
     //#region MENU FUNCTIONS
-    function toggleInventory() {
+    function togglePlayerInventory() {
         inventoryActive = !inventoryActive;
         if (inventoryActive) {
-            showInventory();
+            showInventory(player.inventory);
         } else {
             hideInventory();
         }
     }
 
-    function showInventory() {
-        inventory.classList.remove("js-hidden");
+    function showInventory(inventory) {
+        playerInventory.classList.remove("js-hidden");
         inventoryActive = true;
-        createInventoryItemsUI();
+        if (inventory.owner === "chest") {
+            playerInventory.classList.add("two-inventories");
+            secondaryInventory.classList.remove("js-hidden");
+        } else {
+            playerInventory.classList.remove("two-inventories");
+            secondaryInventory.classList.add("js-hidden");
+        }
+        createInventoryItemsUI(inventory);
     }
 
     function hideInventory() {
-        inventory.classList.add("js-hidden");
+        playerInventory.classList.add("js-hidden");
         inventoryActive = false;
     }
 
@@ -2146,7 +2708,7 @@ document.addEventListener("DOMContentLoaded", event => {
     function menuButtonPressed() {
         switch (menuButtons[menuButtonIndex].id) {
             case "menu-inventory":
-                toggleInventory();
+                togglePlayerInventory();
                 break;
             case "menu-map":
                 miniMap.zoomToggle();
@@ -2159,19 +2721,22 @@ document.addEventListener("DOMContentLoaded", event => {
                 break;
         }
     }
-
-    function createInventoryItemsUI() {
+    //TODO: Secondary inventory (secondaryInventoryGrid)
+    function createInventoryItemsUI(inventory) {
         invBtns = [];
         invBtnSelectedIndex = 0;
+        inv2ndBtns = [];
+        inv2ndBtnSelectedIndex = 0;
         inventoryGrid.innerHTML = "";
-        for (let i = 0; i < player.inventory.contents.length; i++) {
-            const content = player.inventory.contents[i];
-            inventoryItemButton(content);
+        secondaryInventoryGrid.innerHTML = "";
+        for (let i = 0; i < inventory.contents.length; i++) {
+            const content = inventory.contents[i];
+            inventoryGrid.append(inventoryItemButton(inventory, content));
         }
         selectInventoryButton(0);
     }
 
-    function inventoryItemButton(content) {
+    function inventoryItemButton(inventory, content) {
         const x = content.item.posX / 100 * 64;
         const y = content.item.posY / 100 * 64;
         const button = document.createElement("BUTTON");
@@ -2183,18 +2748,18 @@ document.addEventListener("DOMContentLoaded", event => {
         }
 
         button.addEventListener("click", function() {
-            clickInventoryButton(this, content);
+            clickInventoryButton(this, inventory, content);
         });
         button.addEventListener("mouseover", function() {
             setInventoryHoverInfo(content.item);
         });
 
-        invBtns.push({ element: button, content: content });
-        inventoryGrid.append(button);
+        invBtns.push({ element: button, inventory: inventory, content: content });
+        return button;
     }
 
-    function clickInventoryButton(button, content) {
-        player.use(content.item);
+    function clickInventoryButton(button, inventory, content) {
+        inventory.onUse(content.item);
         if (content.item.stackable) {
             button.innerHTML = `<span class="inventory__amount">${content.count}</span>`;
         }
@@ -2202,8 +2767,10 @@ document.addEventListener("DOMContentLoaded", event => {
 
     function selectInventoryButton(index) {
         if (invBtns.length === 0) {
+            invInfo.main.classList.add("empty");
             return;
         }
+        invInfo.main.classList.remove("empty");
         invBtns[invBtnSelectedIndex].element.classList.remove("js-active");
         invBtnSelectedIndex = index;
         invBtns[invBtnSelectedIndex].element.classList.add("js-active");
@@ -2251,42 +2818,58 @@ document.addEventListener("DOMContentLoaded", event => {
                 <span class="inventory-info__text">${item.type}</span>
             </div>
         `;
-        let value;
-        let ap = "";
         switch (item.type) {
             case "weapon":
-                value = "Damage";
-                ap = `
+                rows += `
                     <div class="inventory-info__row">
-                        <p class="inventory-info__heading">Move penalty:</p>
-                        <span class="inventory-info__text">${item.apMoveCost}</span>
+                        <p class="inventory-info__heading">${item.primaryName}:</p>
+                        <span class="inventory-info__text">${item.primaryDamage} / ${item.primaryCost} AP</span>
                     </div>
-                `;
-                ap += `
                     <div class="inventory-info__row">
-                        <p class="inventory-info__heading">Attack penalty:</p>
-                        <span class="inventory-info__text">${item.apAttackCost}</span>
+                        <p class="inventory-info__heading">${item.secondaryName}:</p>
+                        <span class="inventory-info__text">${item.secondaryDamage} / ${item.secondaryCost} AP</span>
                     </div>
                 `;
                 break;
             case "armor":
-                value = "Defense";
+                rows += `
+                    <div class="inventory-info__row">
+                        <p class="inventory-info__heading">Defense:</p>
+                        <span class="inventory-info__text">${item.amount}</span>
+                    </div>
+                    <div class="inventory-info__row">
+                        <p class="inventory-info__heading">Base move cost:</p>
+                        <span class="inventory-info__text">${player.baseMoveCost}</span>
+                    </div>
+                    <div class="inventory-info__row">
+                        <p class="inventory-info__heading">Base attack cost:</p>
+                        <span class="inventory-info__text">${player.baseAttackCost}</span>
+                    </div>
+                    <div class="inventory-info__row">
+                        <p class="inventory-info__heading">Move cost:</p>
+                        <span class="inventory-info__text">${item.apMoveCost}</span>
+                    </div>
+                    <div class="inventory-info__row">
+                        <p class="inventory-info__heading">Attack cost:</p>
+                        <span class="inventory-info__text">${item.apAttackCost}</span>
+                    </div>
+                `;
+                break;
+            case "life":
+                rows += `
+                    <div class="inventory-info__row">
+                        <p class="inventory-info__heading">Health amount:</p>
+                        <span class="inventory-info__text">${item.amount}</span>
+                    </div>
+                `;
                 break;
 
             default:
                 value = "Amount";
                 break;
         }
-        rows += `
-            <div class="inventory-info__row">
-                <p class="inventory-info__heading">${value}:</p>
-                <span class="inventory-info__text">${item.amount}</span>
-            </div>
-        `;
-        rows += ap;
         invInfo.content.innerHTML = rows;
     }
-    //#endregion MENU FUNCTIONS
 
     //#region START MENU FUNCTIONS
     function disableButton(button) {
@@ -2300,53 +2883,69 @@ document.addEventListener("DOMContentLoaded", event => {
     }
     //#endregion START MENU FUNCTIONS
 
+    //#endregion MENU FUNCTIONS
+
+    //#region GAME FUNCTIONS
+
     function newGame(playerName) {
         music.crossFade(music.calm);
         currentWorld = worlds.home;
         dayTime = new Daytime(ticksPerSecond, dayTimeControls.dayDuration, dayTimeControls.nightDuration, dayTimeControls.transitDuration, background, function(t) {
-            if (cycleDaylight) {
-                if (firstDaylight) {
-                    sun.style.display = "";
-                    player.setOverlayOpacity(0);
-                    sun.style.top = "-28%";
-                } else {
-                    let opacity = 1 / (this.transitDuration * this.ticksPerSecond) * t;
-                    if (this.isNight) {
-                        player.setOverlayOpacity(opacity);
-                        sun.style.top = lerp(-28, 100, opacity) + "%";
+                const sunUpPos = -40;
+                if (cycleDaylight) {
+                    if (firstDaylight) {
+                        sun.style.display = "";
+                        player.setOverlayOpacity(0);
+                        sun.style.top = sunUpPos + "%";
                     } else {
-                        player.setOverlayOpacity(1 - opacity);
-                        sun.style.top = lerp(-28, 100, 1 - opacity) + "%";
-                        if (player.torchEquipped && opacity > 0.8) {
-                            player.setTorch(false);
+                        let opacity = 1 / (this.transitDuration * this.ticksPerSecond) * t;
+                        if (this.isNight) {
+                            player.setOverlayOpacity(opacity);
+                            sun.style.top = lerp(sunUpPos, 100, opacity) + "%";
+                        } else {
+                            player.setOverlayOpacity(1 - opacity);
+                            sun.style.top = lerp(sunUpPos, 100, 1 - opacity) + "%";
+                            if (player.torchEquipped && opacity > 0.8) {
+                                player.setTorch(false);
+                            }
                         }
                     }
+                } else if (firstDaylight) {
+                    sun.style.display = "none";
                 }
-            } else if (cycleDaylight) {
-                sun.style.display = "none";
-            }
-        }, function() {
-            if (cycleDaylight) {
-                sun.style.display = "";
-            } else {
-                sun.style.display = "none";
-            }
-            console.log("Day");
-        }, function() {
-            firstDaylight = false;
-            if (cycleDaylight) {
-                sun.style.display = "";
-            } else {
-                sun.style.display = "none";
-            }
-            console.log("Night");
-        });
+            }, function() {
+                if (cycleDaylight) {
+                    sun.style.display = "";
+                } else {
+                    sun.style.display = "none";
+                }
+                console.log("Day, time: " + timeControls.formatTime);
+            },
+            function() {
+                firstDaylight = false;
+                if (cycleDaylight) {
+                    sun.style.display = "";
+                } else {
+                    sun.style.display = "none";
+                }
+                console.log("Night, time: " + timeControls.formatTime);
+            });
+        const gameDayDuration = (dayTime.dayDuration + dayTime.nightDuration) * ticksPerSecond;
+        const ticksPerGameMinute = gameDayDuration / 1440; // 24 * 60 = 1440 (game minutes per day)
+        timeControls.ticksPerGameMinute = ticksPerGameMinute;
         region = new Region(currentWorld, background, zoneContainer, tileSize);
         miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
         playerName = playerName == "" ? "Player 1" : playerName;
         const sfxArr = ["VOICE_Girl_4yo_Hurt_Long_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_04_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_05_mono.ogg"];
-        player = new Player(playerName, "player", 150, 150, 100, 10, 0, ui, null, actions, actionPoints, sfxArr, new Inventory(), nightOverlay, gameOver);
-        player.setStrength(new Item("start-sword", collectables.woodenSword));
+        player = new Player(playerName, "player", playerAnimTime.move, playerAnimTime.attack, new Attribute(playerStats.health, true), new Attribute(playerStats.strength, false), new Attribute(playerStats.armor, false), ui, null, actions, playerAP, sfxArr, new Inventory("player"), gameOver);
+        player.setWeaponItem(new Item("start-sword", collectables.woodenSword));
+        player.setConfirmation(new Confirmation(
+            "Flee?",
+            "Are you sure you want to flee from the fight?<br>(You will be taken to a random tile in the last known safe area).",
+            "Flee?",
+            "Cancel",
+            player.confirmation,
+        ));
         battleQueueElement.innerHTML = "";
         buildMap(true);
         buildZone("0_0");
@@ -2412,6 +3011,7 @@ document.addEventListener("DOMContentLoaded", event => {
             placePlayer(currentZone.getTileObj(currentZone.gateway.exitTileId));
             setEvent();
         }
+        message(`You have now entered: ${currentWorld.name}.`);
         gameStarted = true;
     }
 
@@ -2424,22 +3024,14 @@ document.addEventListener("DOMContentLoaded", event => {
                 gameOverScreen.classList.add("js-hidden");
                 startScreen.classList.remove("js-hidden");
                 stopEngine();
+                resetGame();
             }, 3000);
         }, 100);
     }
 
-    function enterGate(gate) {
-        if (gate.locked) {
-            if (player.removeKey()) {
-                gate.unlock();
-            } else {
-                console.log("Key is missing!");
-            }
-        } else {
-            console.log("Transitioning to " + gate.id);
-            enterRegion(gate.world);
-            playerIsMoving = false;
-        }
+    function resetGame() {
+        battleQueue = [];
+        worlds.resetAll();
     }
 
     function buildMap(isNewMap) {
@@ -2461,6 +3053,18 @@ document.addEventListener("DOMContentLoaded", event => {
         if (!isNewMap) {
             return;
         }
+
+        const safeZonePercentage = 5;
+        let safeZoneCount = region.zones.length / 100 * safeZonePercentage;
+        safeZoneCount = Math.ceil(safeZoneCount);
+
+        region.setSafeZones(safeZoneCount);
+
+        const shopPercentage = 50;
+        let shopCount = region.safeZones.length / 100 * shopPercentage;
+        shopCount = Math.ceil(shopCount);
+
+        placeChests(shopCount);
 
         if (region.enemyPercentage > 0) {
             placeEnemies(zoneEnemyCount(region.enemyPercentage));
@@ -2496,22 +3100,6 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    function zoneEnemyCount(percentage) {
-        let zoneCount = region.width * region.height;
-        zoneCount * percentage / 100;
-        zoneCount = Math.floor(zoneCount);
-        return zoneCount;
-    }
-
-    function edgeControl(x, y) {
-        let edge = "edge";
-        edge += y == region.size.up ? "-up" : "";
-        edge += y == region.size.down ? "-down" : "";
-        edge += x == region.size.left ? "-left" : "";
-        edge += x == region.size.right ? "-right" : "";
-        return edge;
-    }
-
     function newZone(id) {
         const rnd = randomInteger(0, currentWorld.bioms.length);
         region.setBiom(currentWorld.bioms[rnd], false);
@@ -2522,8 +3110,8 @@ document.addEventListener("DOMContentLoaded", event => {
                 if (x > 0 && x < region.zoneSize - 2 && y > 0 && y < region.zoneSize - 2) {
                     const rnd = Math.random() * 100;
                     if (rnd < 20) {
-                        const rnd = randomInteger(0, currentWorld.obstacles.length);
-                        if (rnd > 0) {
+                        if (currentWorld.obstacles.length > 0) {
+                            const rnd = randomInteger(0, currentWorld.obstacles.length);
                             tileObj.setType(currentWorld.obstacles[rnd], "obstacle", true);
                         }
                     }
@@ -2553,6 +3141,9 @@ document.addEventListener("DOMContentLoaded", event => {
                     battleQueue.push(tileObj.object);
                     enemiesInZone++;
                 }
+                if (tileObj.type == "chest") {
+                    tileObj.placeHTML(tileObj.object.createHTML());
+                }
                 if (tileObj.type == "item") {
                     tileObj.placeHTML(tileObj.object.createHTML());
                 }
@@ -2562,6 +3153,37 @@ document.addEventListener("DOMContentLoaded", event => {
             currentZone.gateway.createHTML();
         }
         currentZone.updateHTML();
+    }
+
+    function edgeControl(x, y) {
+        let edge = "edge";
+        edge += y == region.size.up ? "-up" : "";
+        edge += y == region.size.down ? "-down" : "";
+        edge += x == region.size.left ? "-left" : "";
+        edge += x == region.size.right ? "-right" : "";
+        return edge;
+    }
+
+    function enterGate(gate) {
+        if (gate.locked) {
+            if (player.removeKey()) {
+                gate.unlock();
+                miniMap.tileRemoveClass(currentZone.id, "locked");
+                miniMap.tileAddClass(currentZone.id, "unlocked");
+            } else {
+                console.log("Key is missing!");
+            }
+        } else {
+            enterRegion(gate.world);
+            playerIsMoving = false;
+        }
+    }
+
+    function zoneEnemyCount(percentage) {
+        let zoneCount = region.width * region.height;
+        zoneCount * percentage / 100;
+        zoneCount = Math.floor(zoneCount);
+        return zoneCount;
     }
 
     function setEvent() {
@@ -2575,12 +3197,15 @@ document.addEventListener("DOMContentLoaded", event => {
     function calmEvent() {
         zoneLocked = false;
         playersTurn = true;
-        battleQueue = [];
-        background.classList.remove("battle");
-        player.removeCard();
-        player.actionPointHTMLRemove();
         player.inBattle = false;
+        for (let i = 0; i < battleQueue.length; i++) {
+            const character = battleQueue[i];
+            character.removeCard();
+        }
+        battleQueue = [];
+        player.actionPointHTMLRemove();
         music.crossFade(music.calm);
+        background.classList.remove("battle");
     }
 
     function combatEvent() {
@@ -2594,6 +3219,8 @@ document.addEventListener("DOMContentLoaded", event => {
             character.createCardHTML(battleQueueElement);
         }
         player.inBattle = true;
+        player.setPrimaryWeapon();
+        player.setMove();
         music.crossFade(music.combat);
         takeTurn();
     }
@@ -2609,6 +3236,7 @@ document.addEventListener("DOMContentLoaded", event => {
         currentCharacter.actionPointsReset();
         if (currentCharacter == player) {
             playersTurn = true;
+            player.setMove();
         } else {
             playersTurn = false;
             enemyTurn(currentCharacter);
@@ -2630,7 +3258,7 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function enemyTurn(enemyObj) {
-        enemyObj.apCostUpdate();
+        // enemyObj.apCostUpdate();
         updatePathfindingGrid();
         const moveDirection = shortestPathDirection(enemyObj.currentTile, player.currentTile);
         const destinationTileObj = adjacentTile(enemyObj.currentTile, moveDirection);
@@ -2648,7 +3276,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 halfWayMove(enemyObj.element, enemyObj.attackTime, direction, function() {
                     effect.explosion.createHTML(destinationTileObj.element);
                     effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
-                    destinationTileObj.object.takeDamage(enemyObj.strength);
+                    destinationTileObj.object.takeDamage(enemyObj.strength.value);
                     enemyObj.specialAttack();
                 }, function() {
                     enemyObj.currentTile.element.classList.remove("attacking");
@@ -2681,15 +3309,6 @@ document.addEventListener("DOMContentLoaded", event => {
             }, 300);
         } else {
             enemyTurn(enemyObj);
-        }
-    }
-
-    function shuffleArray(arr) {
-        for (let i = arr.length - 1; i > 0; i--) {
-            const j = randomInteger(0, arr.length);
-            const temp = arr[i];
-            arr[i] = arr[j];
-            arr[j] = temp;
         }
     }
 
@@ -2752,55 +3371,82 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
+    function placeChests(amount) {
+        for (let i = 0; i < amount; i++) {
+            const zone = region.getRandomSafeZone(true);
+            const tileObj = zone.getRandomTile(true);
+            const chest = new Chest(tileObj, new Inventory("chest"));
+            placeChest(zone, chest);
+            let spawnPropability = 0;
+            const collectableObjs = Object.keys(collectables);
+            let collObjs = [];
+            for (let keyIndex = 0; keyIndex < collectableObjs.length; keyIndex++) {
+                const key = collectableObjs[keyIndex];
+                const collectable = collectables[key];
+                if (!collectable.inventoryItem) {
+                    continue;
+                }
+                spawnPropability += collectable.spawnPropability;
+                collObjs.push({ collectable: collectable, spawnPropability: spawnPropability });
+            }
+            let items = [];
+            let itemCount = randomInteger(1, 5);
+            let collectable;
+            for (let amount = 0; amount < itemCount; amount++) {
+                let rnd = randomInteger(0, spawnPropability);
+                for (let collectableObjIndex = 0; collectableObjIndex < collObjs.length; collectableObjIndex++) {
+                    const collectableObj = collObjs[collectableObjIndex];
+                    if (rnd < collectableObj.spawnPropability) {
+                        collectable = collectableObj.collectable;
+                        uniqueIndex++;
+                        const item = new Item(collectable.type + "-" + uniqueIndex, collectable);
+                        items.push(item);
+                        break;
+                    }
+                }
+            }
+            // for (let keyIndex = 0; keyIndex < collectableObjs.length; keyIndex++) {
+            //     const key = collectableObjs[keyIndex];
+            //     const collectable = collectables[key];
+            //     if (!collectable.inventoryItem) {
+            //         continue;
+            //     }
+            //     let rnd = randomInteger(0, spawnPropability);
+            //     for (let itemIndex = 0; itemIndex < 5; itemIndex++) {
+            //         uniqueIndex++;
+            //         const item = new Item(collectable.type + "-" + uniqueIndex, collectable);
+            //         items.push(item);
+            //     }
+            // }
+            fillChest(chest, items);
+        }
+    }
+
+    function fillChest(chest, items) {
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            chest.inventory.addItem(item);
+        }
+    }
+
+    function placeChest(zone, chest) {
+        chest.tileObj.setEmpty();
+        chest.tileObj.placeObject(chest, "chest", true);
+        miniMap.tileAddClass(zone.id, "chest");
+    }
+
     function placeEnemies(amount) {
         for (let i = 0; i < amount; i++) {
-            const zone = region.getRandomZone();
+            const zone = region.getRandomUnsafeZone();
             const tileObj = zone.getRandomTile(true);
             randomEnemy(tileObj);
         }
-        //This needs to be deleted at some point.
+        //TODO: This needs to be deleted at some point.
         //For now, it is used for adjustments of enemy amount/values
         for (let i = 0; i < currentWorld.enemyTypes.length; i++) {
             const nmeType = currentWorld.enemyTypes[i];
             console.log(nmeType.name + "'s: " + nmeType.totalCount);
         }
-    }
-
-    function placeCollectables(collectable) {
-        let counter = 0;
-        collectable.totalStackAmount = 0;
-        const collStacks = worlds.zoneCount(currentWorld) * collectable.stacks / 100;
-        for (let i = 0; i < collStacks; i++) {
-            const zone = region.getRandomZone();
-            const tileObj = zone.getRandomTile();
-            const item = new Item(collectable.type + "-" + i, collectable);
-            tileObj.placeObject(item, "item", true);
-            collectable.totalStackAmount += item.amount;
-            counter++;
-        }
-        //This needs to be deleted at some point.
-        //For now, it is used for adjustments of collectables- amount/values
-        console.log(collectable.name + "'s total: " + counter + ", total value: " + collectable.totalStackAmount);
-    }
-
-    // function placeGateways() {
-    //     for (let i = 0; i < currentWorld.placeGateways().length; i++) {
-    //         const zone = region.getRandomZone();
-    //         const tileObj = zone.getRandomTile();
-    //         placeGateway(currentWorld.placeGateways()[i], zone, tileObj);
-    //     }
-    // }
-
-    function placeGateway(gateway, zone, tileObj, exitOffset) {
-        let gatewayObj = new Gate(gateway, tileObj, exitOffset);
-        zone.gateway = gatewayObj;
-        miniMap.tileAddClass(zone.id, gateway.type + "-entrance");
-        return gatewayObj;
-    }
-
-    function replaceGateway(gatewayObj, gateway, zone) {
-        zone.gateway = gatewayObj;
-        miniMap.tileAddClass(zone.id, gateway.type + "-entrance");
     }
 
     function randomEnemy(tileObj) {
@@ -2813,10 +3459,48 @@ document.addEventListener("DOMContentLoaded", event => {
             console.log("Array is empty!");
             return;
         }
-        const enemy = new Enemy(type.name, "enemy", type.moveTime, type.attackTime, type.life, type.strength, tileObj.id, actions, type.actionPoints, type.sfxs, new Inventory(), type, type.enemyDeath);
+        const enemy = new Enemy(type.name, "enemy", type.moveTime, type.attackTime, new Attribute(type.life, true), new Attribute(type.strength, false), tileObj.id, actions, type.actionPoints, type.sfxs, new Inventory("enemy"), type, type.enemyDeath);
         tileObj.setEmpty();
         tileObj.placeObject(enemy, "enemy", true);
         type.totalCount++;
+    }
+
+    function placeCollectables(collectable) {
+        collectable.totalStackAmount = 0;
+        const collStacks = worlds.zoneCount(currentWorld) * collectable.stacks / 100;
+        for (let i = 0; i < collStacks; i++) {
+            const zone = region.getRandomZone();
+            const tileObj = zone.getRandomTile();
+            uniqueIndex++;
+            const item = new Item(collectable.type + "-" + uniqueIndex, collectable);
+            tileObj.placeObject(item, "item", true);
+            collectable.totalStackAmount += item.amount;
+        }
+        //TODO: This needs to be deleted at some point.
+        //For now, it is used for adjustments of collectables- amount/values
+        console.log(collectable.name + "'s total: " + uniqueIndex + ", total value: " + collectable.totalStackAmount);
+    }
+
+    function placeGateway(gateway, zone, tileObj, exitOffset) {
+        let gatewayObj = new Gate(gateway, tileObj, exitOffset);
+        zone.gateway = gatewayObj;
+        miniMap.tileAddClass(zone.id, gateway.type + "-entrance");
+        if (gatewayObj.locked) {
+            miniMap.tileAddClass(zone.id, "locked");
+        } else {
+            miniMap.tileAddClass(zone.id, "unlocked");
+        }
+        return gatewayObj;
+    }
+
+    function replaceGateway(gatewayObj, gateway, zone) {
+        zone.gateway = gatewayObj;
+        miniMap.tileAddClass(zone.id, gateway.type + "-entrance");
+        if (gatewayObj.locked) {
+            miniMap.tileAddClass(zone.id, "locked");
+        } else {
+            miniMap.tileAddClass(zone.id, "unlocked");
+        }
     }
 
     function changeZone(x, y, tileIndex) {
@@ -2838,11 +3522,151 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         areaCoordinates.y += y;
         areaCoordinates.x += x;
-        miniMapActive(currentZone.id, false);
-        buildZone(areaCoordinates.x + "_" + areaCoordinates.y);
-        miniMapActive(currentZone.id, true);
+        player.setPrevZone(currentZone);
+        moveToZone(areaCoordinates.x + "_" + areaCoordinates.y);
         placePlayer(currentZone.getTileObjFromIndex(tileIndex));
+    }
+
+    function moveToZone(id) {
+        miniMapActive(currentZone.id, false);
+        buildZone(id);
+        miniMapActive(currentZone.id, true);
         setEvent();
+    }
+
+    function playerMove(moveX, moveY, element, direction) {
+        let coordinate = currentZone.getTileObj(player.tileId).coordinates();
+        coordinate.x += moveX;
+        coordinate.y += moveY;
+        if (coordinate.y < 0) {
+            changeZone(0, 1, currentZone.tiles.length - region.zoneSize + coordinate.x);
+            return;
+        }
+        if (coordinate.y >= region.zoneSize) {
+            changeZone(0, -1, coordinate.x);
+            return;
+        }
+        if (coordinate.x < 0) {
+            changeZone(-1, 0, coordinate.y * region.zoneSize + region.zoneSize - 1);
+            return;
+        }
+        if (coordinate.x >= region.zoneSize) {
+            changeZone(1, 0, coordinate.y * region.zoneSize);
+            return;
+        }
+        let destinationTileObj = currentZone.getTileObj(coordinate.x + "_" + coordinate.y);
+        if (destinationTileObj.type == "obstacle") {
+            return;
+        }
+        playerIsMoving = true;
+        if (destinationTileObj.type == "gate") {
+            player.setInteractTime();
+            if (destinationTileObj.object.locked) {
+                halfWayMove(element, player.moveTime, direction, null, function() {
+                    playerIsMoving = false;
+                });
+            } else {
+                fullMove(element, player.moveTime, direction, null, function() {
+                    enterGate(destinationTileObj.object);
+                });
+            }
+            return;
+        }
+        if (destinationTileObj.type == "chest") {
+            player.setInteractTime();
+            halfWayMove(element, player.moveTime, direction, null, function() {
+                playerIsMoving = false;
+                showInventory(destinationTileObj.object.inventory);
+            });
+            return;
+        }
+        if (player.inBattle) {
+            if (destinationTileObj.type == "enemy") {
+                const apAttack = player.apAttack();
+                if (battleQueue.length > 0 && apAttack == -1) {
+                    playerIsMoving = false;
+                    return;
+                }
+                player.setAttackTime();
+                halfWayMove(element, player.attackTime, direction, function() {
+                    effect.floating.createHTML(destinationTileObj.element, player.strength.value);
+                    effect.explosion.createHTML(destinationTileObj.element);
+                    effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
+                    const enemyKilled = destinationTileObj.object.takeDamage(player.strength.value);
+                    if (enemyKilled) {
+                        player.enemyKill();
+                        enemiesInZone--;
+                        if (enemiesInZone <= 0) {
+                            enemiesInZone = 0;
+                            calmEvent();
+                        }
+                    }
+                }, function() {
+                    playerIsMoving = false;
+                    if (battleQueue.length > 0) {
+                        if (apAttack == 0) {
+                            nextTurn();
+                        }
+                    }
+                });
+                return;
+            }
+        }
+        const apMove = player.apMove();
+        if (battleQueue.length > 0 && apMove == -1) {
+            playerIsMoving = false;
+            return;
+        }
+        player.setMove();
+        player.setMoveTime();
+        fullMove(element, player.moveTime, direction, function() {
+            if (destinationTileObj.type == "item") {
+                effect.flash.createHTML(destinationTileObj.element);
+                player.collect(destinationTileObj.object);
+                destinationTileObj.removeObject(destinationTileObj.object.element);
+            }
+            destinationTileObj.object = player;
+            player.tileId = destinationTileObj.id;
+            destinationTileObj.element.append(player.element);
+        }, function() {
+            playerIsMoving = false;
+            if (battleQueue.length > 0) {
+                if (apMove == 0) {
+                    nextTurn();
+                }
+            }
+        });
+        return;
+    }
+
+    function fullMove(element, animationTime, direction, beforeDestinationReach, destinationReached) {
+        element.classList.add("animation-" + direction);
+        setTimeout(() => {
+            if (beforeDestinationReach) {
+                beforeDestinationReach();
+            }
+            element.classList.remove("animation-" + direction);
+            if (destinationReached) {
+                destinationReached();
+            }
+        }, animationTime);
+    }
+
+    function halfWayMove(element, animationTime, direction, halfWayThere, destinationReached) {
+        element.classList.add("animation-" + direction);
+        setTimeout(() => {
+            element.classList.add("animation-revert");
+            if (halfWayThere) {
+                halfWayThere();
+            }
+            setTimeout(() => {
+                element.classList.remove("animation-revert");
+                element.classList.remove("animation-" + direction);
+                if (destinationReached) {
+                    destinationReached();
+                }
+            }, animationTime / 2);
+        }, animationTime / 2);
     }
 
     function adjacentTile(currentTileObj, direction) {
@@ -2881,127 +3705,47 @@ document.addEventListener("DOMContentLoaded", event => {
         return currentZone.getTileObj(x + "_" + y);
     }
 
-    function playerMove(moveX, moveY, element, direction) {
-        let coordinate = currentZone.getTileObj(player.tileId).coordinates();
-        coordinate.x += moveX;
-        coordinate.y += moveY;
-        if (coordinate.y < 0) {
-            changeZone(0, 1, currentZone.tiles.length - region.zoneSize + coordinate.x);
-            return false;
-        }
-        if (coordinate.y >= region.zoneSize) {
-            changeZone(0, -1, coordinate.x);
-            return false;
-        }
-        if (coordinate.x < 0) {
-            changeZone(-1, 0, coordinate.y * region.zoneSize + region.zoneSize - 1);
-            return false;
-        }
-        if (coordinate.x >= region.zoneSize) {
-            changeZone(1, 0, coordinate.y * region.zoneSize);
-            return false;
-        }
-        let destinationTileObj = currentZone.getTileObj(coordinate.x + "_" + coordinate.y);
-        if (destinationTileObj.type == "obstacle") {
-            return false;
-        }
-        playerIsMoving = true;
-        if (destinationTileObj.type == "gate") {
-            player.setInteractTime();
-            if (destinationTileObj.object.locked) {
-                halfWayMove(element, player.interactTime, direction, null, function() {
-                    playerIsMoving = false;
-                });
-            }
-            enterGate(destinationTileObj.object);
-            return true;
-        }
-        if (destinationTileObj.type == "enemy") {
-            const apAttack = player.apAttack();
-            if (battleQueue.length > 0 && apAttack == -1) {
-                playerIsMoving = false;
-                return false;
-            }
-            player.setAttackTime();
-            halfWayMove(element, player.attackTime, direction, function() {
-                effect.explosion.createHTML(destinationTileObj.element);
-                effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
-                const enemyKilled = destinationTileObj.object.takeDamage(player.strength);
-                if (enemyKilled) {
-                    player.enemyKill();
-                    enemiesInZone--;
-                    if (enemiesInZone <= 0) {
-                        enemiesInZone = 0;
-                        calmEvent();
-                    }
-                }
-            }, function() {
-                playerIsMoving = false;
-                if (battleQueue.length > 0) {
-                    if (apAttack == 0) {
-                        nextTurn();
-                    }
-                }
-            });
-            return false;
-        }
-        const apMove = player.apMove();
-        if (battleQueue.length > 0 && apMove == -1) {
-            playerIsMoving = false;
-            return false;
-        }
-        player.setMoveTime();
-        fullMove(element, player.moveTime, direction, function() {
-            if (destinationTileObj.type == "item") {
-                effect.flash.createHTML(player.element);
-                player.collect(destinationTileObj.object);
-                destinationTileObj.setEmpty();
-            }
-            destinationTileObj.object = player;
-            player.tileId = destinationTileObj.id;
-            destinationTileObj.element.append(player.element);
-        }, function() {
-            playerIsMoving = false;
-            if (battleQueue.length > 0) {
-                if (apMove == 0) {
-                    nextTurn();
-                }
-            }
-        });
-        return true;
-    }
-
-    function fullMove(element, animationTime, direction, beforeDestinationReach, destinationReached) {
-        element.classList.add("animation-" + direction);
-        setTimeout(() => {
-            if (beforeDestinationReach) {
-                beforeDestinationReach();
-            }
-            element.classList.remove("animation-" + direction);
-            if (destinationReached) {
-                destinationReached();
-            }
-        }, animationTime);
-    }
-
-    function halfWayMove(element, animationTime, direction, halfWayThere, destinationReached) {
-        element.classList.add("animation-" + direction);
-        setTimeout(() => {
-            element.classList.add("animation-revert");
-            if (halfWayThere) {
-                halfWayThere();
-            }
-            setTimeout(() => {
-                element.classList.remove("animation-revert");
-                element.classList.remove("animation-" + direction);
-                if (destinationReached) {
-                    destinationReached();
-                }
-            }, animationTime / 2);
-        }, animationTime / 2);
-    }
+    //#endregion GAME FUNCTIONS
 
     //#region REUSABLE FUNCTIONS
+    let messagePool = [];
+
+    function message(msg) {
+        let obj = {}
+        obj.msgElm = document.createElement("P");
+        obj.msgElm.classList.add("info-center__message");
+        obj.msgElm.style.transition = `opacity ${messageFadeDuration}ms, visibility ${messageFadeDuration}ms`;
+        obj.msgElm.textContent = msg;
+        infoCenter.prepend(obj.msgElm);
+        obj.delay = setTimeout(() => {
+            obj.msgElm.classList.add("js-active");
+            obj.duration = setTimeout(() => {
+                obj.msgElm.classList.remove("js-active");
+                obj.fade = setTimeout(() => {
+                    messagePool.shift();
+                    infoCenter.removeChild(obj.msgElm);
+                }, messageFadeDuration);
+            }, messageDuration);
+        }, messageDelay);
+        if (messagePool.length === 4) {
+            clearTimeout(messagePool[0].delay);
+            clearTimeout(messagePool[0].duration);
+            clearTimeout(messagePool[0].fade);
+            infoCenter.removeChild(messagePool[0].msgElm);
+            messagePool.shift();
+        }
+        messagePool.push(obj);
+    }
+
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = randomInteger(0, arr.length);
+            const temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+    }
+
     function randomInteger(min, max) {
         return Math.floor(Math.random() * (max - min)) + min;
     }
@@ -3038,11 +3782,7 @@ document.addEventListener("DOMContentLoaded", event => {
 
     //#endregion REUSABLE FUNCTIONS
 
-    // *********************************************************************************************
-    // *********************************************************************************************
-    // ************************************** ANIMATION FRAME **************************************
-    // *********************************************************************************************
-    // *********************************************************************************************
+    //#region ANIMATION FRAME
 
     //Torch:
     function equipTorch() {
@@ -3068,9 +3808,9 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function updateDaytime() {
-        tick++;
-        if (dayTime.dayTimeControl(tick)) {
-            tick = 0;
+        dayTimeTick++;
+        if (dayTime.dayTimeControl(dayTimeTick)) {
+            dayTimeTick = 0;
         }
     }
 
@@ -3082,6 +3822,7 @@ document.addEventListener("DOMContentLoaded", event => {
             } else {
                 tTime = 0;
                 updateDaytime();
+                timeControls.addTick();
             }
         }
         equipTorch();
@@ -3116,11 +3857,9 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    // *********************************************************************************************
-    // *********************************************************************************************
-    // ************************** PATHFIDING Breadth-First Search algorithm ************************
-    // *********************************************************************************************
-    // *********************************************************************************************
+    //#endregion ANIMATION FRAME
+
+    //#region PATHFIDING Breadth-First Search algorithm
 
     function updatePathfindingGrid() {
         for (let x = 0; x < region.zoneSize; x++) {
@@ -3155,7 +3894,7 @@ document.addEventListener("DOMContentLoaded", event => {
             y: from.y,
             path: [],
             status: 'Start'
-        };
+        }
 
         // Initialize the queue with the start location already inside
         var queue = [location];
@@ -3199,7 +3938,7 @@ document.addEventListener("DOMContentLoaded", event => {
             }
         }
         return false;
-    };
+    }
 
     // This function will check a location's status
     // (a location is "valid" if it is on the grid, is not an "obstacle",
@@ -3226,7 +3965,7 @@ document.addEventListener("DOMContentLoaded", event => {
         } else {
             return 'Valid';
         }
-    };
+    }
 
 
     // Explores the grid from the given location in the given
@@ -3262,5 +4001,7 @@ document.addEventListener("DOMContentLoaded", event => {
         }
 
         return newLocation;
-    };
+    }
+
+    //#endregion PATHFIDING Breadth-First Search algorithm
 });

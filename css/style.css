@@ -2,8 +2,8 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    /* font-family: "Segoe UI", "Helvetica Neue", "Helvetica", Arial, sans-serif; */
-    font-family: 'IM Fell English SC', serif;
+    /* font-family: 'MedievalSharp', cursive; */
+    font-family: 'Grenze', serif;
 }
 
 :root {
@@ -93,6 +93,7 @@ svg {
     padding: 0 5vw;
     display: grid;
     grid-template-rows: 140px auto;
+    gap: 1rem;
 }
 
 .header {
@@ -100,7 +101,7 @@ svg {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    padding: 1rem 0;
+    padding: 1rem 0 0;
 }
 
 .header .sun {
@@ -108,8 +109,30 @@ svg {
     z-index: -1;
     width: 200px;
     left: 0;
-    top: -28%;
     transition-timing-function: linear;
+}
+
+.time {
+    position: absolute;
+    z-index: 11;
+    width: 100%;
+    height: 1rem;
+    left: 0;
+    top: 5px;
+    padding: 0 1.6rem;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.time__text {
+    color: #fff0cc;
+}
+
+.time__display {
+    color: #fff;
+    font-size: 1.2rem;
+    margin: 0 1rem 0 0.25rem;
 }
 
 .margin-top {
@@ -362,7 +385,7 @@ button {
 
 .main-game {
     display: grid;
-    grid-template-columns: 200px auto 1fr;
+    grid-template-columns: 360px auto 360px;
     justify-items: start;
     gap: 1rem;
 }
@@ -384,7 +407,7 @@ button {
 }
 
 .ui__title {
-    margin-bottom: -0.5rem;
+    margin-bottom: 0.5rem;
 }
 
 .ui-icon {
@@ -438,6 +461,38 @@ button {
 
 
 /* #endregion STATS */
+
+
+/* #region INFO CENTER */
+
+.info-center {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.info-center__message {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: antiquewhite;
+    border-radius: 0.25rem;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    font-size: 0.8rem;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.info-center__message.js-active {
+    opacity: 1;
+    visibility: visible;
+}
+
+
+/* #endregion INFO CENTER */
 
 
 /* #endregion UI */
@@ -535,6 +590,18 @@ button {
     align-items: center;
     background-image: url(../images/bioms.jpg);
     background-size: 300%;
+}
+
+.zone__shop .shop {
+    background-image: url(../images/character.png);
+    background-size: 100%;
+    background-position: 0 -600%;
+}
+
+.zone__chest .chest {
+    background-image: url(../images/treasure-chests.png);
+    background-size: 100%;
+    background-position: 0 0;
 }
 
 .tile__object {
@@ -647,6 +714,7 @@ button {
 }
 
 .mini-map {
+    width: 100%;
     padding-left: 1.5rem;
     padding-right: 1.5rem;
     display: flex;
@@ -710,10 +778,20 @@ button {
     background-size: 100%;
 }
 
+.list__item-icon.shop {
+    background-image: url(../images/character.png);
+    background-size: 100%;
+    background-position: 0 -600%;
+}
+
 .list__item-icon.dungeon {
     background-image: url(../images/dungeon-entrance-gate.png);
-    background-repeat: no-repeat;
     background-size: 100%;
+    background-position: 0 0;
+}
+
+.list__item-icon.dungeon.unlocked {
+    background-position: 0 -300%;
 }
 
 .list__item-icon.location,
@@ -728,9 +806,23 @@ button {
     background-color: crimson;
 }
 
+.mini-map__tile.shop {
+    background-image: url(../images/character.png);
+    background-size: 100%;
+    background-position: 0 -600%;
+}
+
 .mini-map__tile.dungeon-entrance {
     background-image: url(../images/dungeon-entrance-gate.png);
     background-size: 100%;
+}
+
+.mini-map__tile.dungeon-entrance.locked {
+    background-position: 0 0;
+}
+
+.mini-map__tile.dungeon-entrance.unlocked {
+    background-position: 0 -300%;
 }
 
 .mini-map__tile.indoor-entrance {
@@ -840,18 +932,28 @@ button {
 .inventory {
     height: 70vh;
     display: grid;
-    grid-template-columns: 250px 400px;
+    grid-template-columns: 0px 250px 400px;
     grid-template-rows: 40px 1fr;
     gap: 1rem;
-    margin-left: 230px;
     margin-bottom: 1.5rem;
     box-shadow: 5px 5px 20px black;
+}
+
+.inventory.two-inventories {
+    grid-template-columns: 400px 250px 400px;
+}
+
+.inventory__title.inventory-secondary__title {
+    font-size: 0;
+}
+
+.inventory.two-inventories .inventory__title.inventory-secondary__title {
+    font-size: initial;
 }
 
 .inventory__title {
     font-size: 2rem;
     text-align: center;
-    grid-column: span 2;
 }
 
 .inventory__content {
@@ -863,6 +965,10 @@ button {
 
 .inventory__info {
     padding: 1rem;
+}
+
+.inventory__info.empty {
+    display: none;
 }
 
 .inventory-info__header {
@@ -949,12 +1055,12 @@ button {
     position: absolute;
     width: 100%;
     height: 100%;
-    transform: scale(15);
     pointer-events: none;
 }
 
 .game .night-time-overlay .night-overlay {
     background-color: black;
+    transform: scale(100);
 }
 
 
@@ -1084,6 +1190,12 @@ button {
     padding: 0.5rem;
     margin-left: 0.5rem;
     right: 0;
+    height: 110px;
+    min-width: 92px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .character-card.character-player {
@@ -1111,6 +1223,7 @@ button {
 }
 
 .character-card__health {
+    width: 100%;
     height: 0.75rem;
     padding: 2px;
     background-color: black;
@@ -1129,9 +1242,14 @@ button {
 
 .actions {
     min-height: 100px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    visibility: hidden;
+}
+
+.actions-grid {
     display: flex;
     align-items: center;
-    visibility: hidden;
 }
 
 .actions.js-active {
@@ -1141,6 +1259,34 @@ button {
 .actions__ap {
     display: flex;
     align-items: center;
+    padding: 0.5rem 0;
+}
+
+
+/* .actions__info {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+} */
+
+.ap-image {
+    width: 96px;
+    height: 96px;
+    object-fit: cover;
+    object-position: 0 0;
+    margin-right: 0.25rem;
+}
+
+.actions__attack-icon {
+    width: 32px;
+    height: 32px;
+    fill: crimson;
+}
+
+.actions__attack-damage {
+    margin-left: 0.5rem;
+    font-size: 2rem;
+    color: white;
 }
 
 .actions__ap-costs {
@@ -1148,45 +1294,9 @@ button {
     align-items: center;
 }
 
-.actions__ap-costs svg {
-    width: 20px;
-    height: 20px;
-    fill: goldenrod;
-}
-
-.ap-title {
-    color: white;
-    text-shadow: 0 0 5px black;
-    margin: 0 0.5rem 0 0.25rem;
-}
-
-.ap-type {
-    margin-right: 1rem;
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-    font-family: Tahoma, sans-serif;
-}
-
-.ap-move {
-    color: crimson;
-}
-
-.ap-attack {
-    color: crimson;
-}
-
-.ap-image {
-    width: 64px;
-    height: 64px;
-    object-fit: cover;
-    object-position: 0 0;
-    margin-right: 0.25rem;
-}
-
 .ap-point {
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     border: 4px double gold;
     display: flex;
@@ -1203,8 +1313,160 @@ button {
     background-color: green;
 }
 
+.ap-point.deficient .fill {
+    background-color: crimson;
+}
+
+.ap-point.cost .fill {
+    background-color: blueviolet;
+}
+
 .ap-point.empty .fill {
     background-color: transparent;
+}
+
+.actions__combat {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    margin-right: 2.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #2a3535;
+    cursor: pointer;
+}
+
+.actions__combat.move-element {
+    background-color: #5a5946;
+}
+
+.actions__combat.attack-element {
+    background-color: #5f4343;
+}
+
+.actions__combat svg {
+    fill: goldenrod;
+}
+
+.actions__combat.golden-background {
+    background-image: none;
+}
+
+.actions__combat.golden-background:hover {
+    border-color: crimson;
+}
+
+.actions__combat:hover .actions__ap-cost.ap-point {
+    background-color: crimson;
+}
+
+.actions__combat.js-selected.golden-background {
+    border-color: crimson;
+}
+
+.actions__combat.js-selected .actions__ap-cost.ap-point {
+    background-color: crimson;
+}
+
+.actions__combat.js-active::before {
+    content: " ";
+    position: absolute;
+    width: 100%;
+    height: 130%;
+    border: 1px solid gold;
+    border-radius: 0.25rem;
+    transform: scale(1.5);
+    box-shadow: 0 0 10px 2px rgba(0, 0, 0, 0.25);
+}
+
+.actions__ap-cost {
+    position: absolute;
+    bottom: -18px;
+    left: -24px;
+    width: 36px;
+    height: 36px;
+    color: white;
+    background-image: none;
+    background-color: green;
+}
+
+.actions__damage {
+    position: absolute;
+    bottom: 10px;
+    right: -20px;
+    width: 28px;
+    height: 28px;
+    color: white;
+    background-image: none;
+    background-color: goldenrod;
+}
+
+.actions__title {
+    position: absolute;
+    bottom: -20px;
+    left: 18px;
+    font-size: 12px;
+}
+
+.actions__center {
+    position: absolute;
+    width: 100%;
+    top: -24px;
+    left: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.actions__key {
+    color: white;
+    background-image: none;
+    background-color: blueviolet;
+    padding: 0.1rem 0.5rem;
+}
+
+.confirm {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: default;
+}
+
+.confirm__box {
+    width: 350px;
+    height: 240px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.confirm__buttons {
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.confirm__button {
+    width: 49%;
+    height: 40px;
+    border: 1px solid goldenrod;
+}
+
+.confirm__button:hover {
+    border: 1px solid black;
+}
+
+.confirm__button.js-active {
+    color: white;
+    background-color: crimson;
 }
 
 
@@ -1216,7 +1478,7 @@ button {
 .effect {
     position: absolute;
     opacity: 0;
-    z-index: 29;
+    z-index: 129;
 }
 
 .effect.explosion {
@@ -1255,6 +1517,33 @@ button {
     }
     100% {
         transform: scale(0.5);
+        opacity: 0;
+    }
+}
+
+.effect.floating-number {
+    color: white;
+    font-size: 2rem;
+    text-shadow: 0 0 4px black;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    animation-name: floating;
+}
+
+@keyframes floating {
+    0% {
+        transform: translate(0, -20px);
+        opacity: 0;
+    }
+    5% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        transform: translate(0, -60px);
         opacity: 0;
     }
 }

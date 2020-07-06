@@ -7,7 +7,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="description" content="A Rogue like game called Rogue Survivor">
     <title>Rogue Survivor</title>
-    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Grenze:wght@300&display=swap" rel="stylesheet">
     <link rel="preload stylesheet" href="./css/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="./css/style.css"></noscript>
     <link rel="shortcut icon" href="./images/logo.png" type="image/png">
@@ -56,9 +57,16 @@
         </div>
         <div id="inventory" class="inventory-container transparent-background js-hidden">
             <div class="inventory golden-background">
+                <h2 class="inventory__title inventory-secondary__title">Merchant</h2>
                 <h2 class="inventory__title">Inventory</h2>
+                <h2 class="inventory__title">Player</h2>
+                <div id="inventory-secondary" class="inventory__content">
+                    <div id="inventory-secondary-grid" class="inventory__grid">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
                 <div class="inventory__content">
-                    <div id="inventory-info" class="inventory__info">
+                    <div id="inv-info" class="inventory__info">
                         <header class="inventory-info__header">
                             <div id="inv-info-image" class="inventory-info__image"></div>
                             <h3 id="inv-info-title" class="inventory-info__title">Title</h3>
@@ -124,6 +132,10 @@
                     </div> -->
                 </div>
                 <div class="game-board golden-background">
+                    <div class="time">
+                        <span class="time__text">Day: </span><span id="day" class="time__display">1</span>
+                        <span class="time__text">Time: </span><span id="time" class="time__display">00:00</span>
+                    </div>
                     <div id="zone-container" class="zone">
                         <!-- Dynamic content -->
                     </div>
@@ -154,8 +166,16 @@
                                     <p class="list__item-single">Home entrance</p>
                                 </div>
                                 <div class="list__item">
+                                    <div class="list__item-icon legend shop"></div>
+                                    <p class="list__item-single">Shop</p>
+                                </div>
+                                <div class="list__item">
                                     <div class="list__item-icon legend dungeon"></div>
                                     <p class="list__item-single">Dungeon entrance</p>
+                                </div>
+                                <div class="list__item">
+                                    <div class="list__item-icon legend dungeon unlocked"></div>
+                                    <p class="list__item-single">Unlocked Dungeon</p>
                                 </div>
                                 <h2 class="ui__title margin-top">Bioms</h2>
                                 <div class="list__item">
@@ -177,20 +197,58 @@
                         </div>
                         <p class="mini-map__text">Press [M] to enlarge</p>
                     </div>
+                    <div id="info-center" class="info-center">
+                        <!-- Dynamic content -->
+                    </div>
                 </div>
             </div>
-            <div id="actions" class="actions js-active">
-                <img id="ap-image" class="ap-image" src="./images/player-spritesheet.png" alt="Player">
-                <div class="actions__info">
-                    <div class="actions__ap-costs">
-                        <h2 class="ap-title">AP:</h2>
-                        <svg viewBox="0 0 24 24"><path d="M16 2A2 2 0 1 1 14 4A2 2 0 0 1 16 2M12.04 3A1.5 1.5 0 1 1 10.54 4.5A1.5 1.5 0 0 1 12.04 3M9.09 4.5A1 1 0 1 1 8.09 5.5A1 1 0 0 1 9.09 4.5M7.04 6A1 1 0 1 1 6.04 7A1 1 0 0 1 7.04 6M14.53 12A2.5 2.5 0 0 0 17 9.24A2.6 2.6 0 0 0 14.39 7H11.91A6 6 0 0 0 6.12 11.4A2 2 0 0 0 6.23 12.8A6.8 6.8 0 0 1 6.91 15.76A6.89 6.89 0 0 1 6.22 18.55A1.92 1.92 0 0 0 6.3 20.31A3.62 3.62 0 0 0 10.19 21.91A3.5 3.5 0 0 0 12.36 16.63A2.82 2.82 0 0 1 11.91 15S11.68 12 14.53 12Z"></path></svg>
-                        <div id="ap-move" class="ap-type ap-move"></div>
-                        <svg viewBox="0 0 24 24"><path d="M6.2,2.44L18.1,14.34L20.22,12.22L21.63,13.63L19.16,16.1L22.34,19.28C22.73,19.67 22.73,20.3 22.34,20.69L21.63,21.4C21.24,21.79 20.61,21.79 20.22,21.4L17,18.23L14.56,20.7L13.15,19.29L15.27,17.17L3.37,5.27V2.44H6.2M15.89,10L20.63,5.26V2.44H17.8L13.06,7.18L15.89,10M10.94,15L8.11,12.13L5.9,14.34L3.78,12.22L2.37,13.63L4.84,16.1L1.66,19.29C1.27,19.68 1.27,20.31 1.66,20.7L2.37,21.41C2.76,21.8 3.39,21.8 3.78,21.41L7,18.23L9.44,20.7L10.85,19.29L8.73,17.17L10.94,15Z"></path></svg>
-                        <div id="ap-attack" class="ap-type ap-attack">Attack:</div>
+            <div id="actions" class="actions golden-background js-active">
+                <div class="actions-grid">
+                    <img id="ap-image" class="ap-image" src="./images/player-spritesheet.png" alt="Player">
+                    <div class="actions__info">
+                        <div class="actions__ap-costs">
+                            <svg class="actions__attack-icon" viewBox="0 0 24 24"><path d="M6.2,2.44L18.1,14.34L20.22,12.22L21.63,13.63L19.16,16.1L22.34,19.28C22.73,19.67 22.73,20.3 22.34,20.69L21.63,21.4C21.24,21.79 20.61,21.79 20.22,21.4L17,18.23L14.56,20.7L13.15,19.29L15.27,17.17L3.37,5.27V2.44H6.2M15.89,10L20.63,5.26V2.44H17.8L13.06,7.18L15.89,10M10.94,15L8.11,12.13L5.9,14.34L3.78,12.22L2.37,13.63L4.84,16.1L1.66,19.29C1.27,19.68 1.27,20.31 1.66,20.7L2.37,21.41C2.76,21.8 3.39,21.8 3.78,21.41L7,18.23L9.44,20.7L10.85,19.29L8.73,17.17L10.94,15Z"></path></svg>
+                            <div id="attack-damage" class="actions__attack-damage">99</div>
+                        </div>
+                        <div id="ap" class="actions__ap">
+                            <!-- Dynamic content -->
+                        </div>
                     </div>
-                    <div id="ap" class="actions__ap">
-                        <!-- Dynamic content -->
+                </div>
+                <div class="actions-grid">
+                    <div id="combat-flee" class="actions__combat golden-background">
+                        <div id="combat-flee-cost" class="actions__ap-cost ap-point">99</div>
+                        <div class="actions__title">Flee</div>
+                        <div class="actions__center">
+                            <div class="actions__key golden-background">1</div>
+                        </div>
+                        <svg viewBox="0 0 24 24"><path d="M16.5,5.5A2,2 0 0,0 18.5,3.5A2,2 0 0,0 16.5,1.5A2,2 0 0,0 14.5,3.5A2,2 0 0,0 16.5,5.5M12.9,19.4L13.9,15L16,17V23H18V15.5L15.9,13.5L16.5,10.5C17.89,12.09 19.89,13 22,13V11C20.24,11.03 18.6,10.11 17.7,8.6L16.7,7C16.34,6.4 15.7,6 15,6C14.7,6 14.5,6.1 14.2,6.1L9,8.3V13H11V9.6L12.8,8.9L11.2,17L6.3,16L5.9,18L12.9,19.4M4,9A1,1 0 0,1 3,8A1,1 0 0,1 4,7H7V9H4M5,5A1,1 0 0,1 4,4A1,1 0 0,1 5,3H10V5H5M3,13A1,1 0 0,1 2,12A1,1 0 0,1 3,11H7V13H3Z"></path></svg>
+                    </div>
+                    <div id="combat-move" class="actions__combat move-element golden-background">
+                        <div class="actions__title">Move</div>
+                        <div id="combat-move-cost" class="actions__ap-cost ap-point">99</div>
+                        <div class="actions__center">
+                            <div class="actions__key golden-background">2</div>
+                        </div>
+                        <svg viewBox="0 0 24 24"><path d="M16 2A2 2 0 1 1 14 4A2 2 0 0 1 16 2M12.04 3A1.5 1.5 0 1 1 10.54 4.5A1.5 1.5 0 0 1 12.04 3M9.09 4.5A1 1 0 1 1 8.09 5.5A1 1 0 0 1 9.09 4.5M7.04 6A1 1 0 1 1 6.04 7A1 1 0 0 1 7.04 6M14.53 12A2.5 2.5 0 0 0 17 9.24A2.6 2.6 0 0 0 14.39 7H11.91A6 6 0 0 0 6.12 11.4A2 2 0 0 0 6.23 12.8A6.8 6.8 0 0 1 6.91 15.76A6.89 6.89 0 0 1 6.22 18.55A1.92 1.92 0 0 0 6.3 20.31A3.62 3.62 0 0 0 10.19 21.91A3.5 3.5 0 0 0 12.36 16.63A2.82 2.82 0 0 1 11.91 15S11.68 12 14.53 12Z"></path></svg>
+                    </div>
+                    <div id="combat-primary" class="actions__combat attack-element golden-background js-selected">
+                        <div id="combat-primary-name" class="actions__title">Power</div>
+                        <div id="combat-primary-cost" class="actions__ap-cost ap-point">99</div>
+                        <div id="combat-primary-damage" class="actions__damage ap-point">99</div>
+                        <div class="actions__center">
+                            <div class="actions__key golden-background">3</div>
+                        </div>
+                        <svg viewBox="0 0 24 24"><path d="M6.2,2.44L18.1,14.34L20.22,12.22L21.63,13.63L19.16,16.1L22.34,19.28C22.73,19.67 22.73,20.3 22.34,20.69L21.63,21.4C21.24,21.79 20.61,21.79 20.22,21.4L17,18.23L14.56,20.7L13.15,19.29L15.27,17.17L3.37,5.27V2.44H6.2M15.89,10L20.63,5.26V2.44H17.8L13.06,7.18L15.89,10M10.94,15L8.11,12.13L5.9,14.34L3.78,12.22L2.37,13.63L4.84,16.1L1.66,19.29C1.27,19.68 1.27,20.31 1.66,20.7L2.37,21.41C2.76,21.8 3.39,21.8 3.78,21.41L7,18.23L9.44,20.7L10.85,19.29L8.73,17.17L10.94,15Z"></path></svg>
+                    </div>
+                    <div id="combat-secondary" class="actions__combat attack-element golden-background">
+                        <div id="combat-secondary-name" class="actions__title">Stab</div>
+                        <div id="combat-secondary-cost" class="actions__ap-cost ap-point">99</div>
+                        <div id="combat-secondary-damage" class="actions__damage ap-point">99</div>
+                        <div class="actions__center">
+                            <div class="actions__key golden-background">4</div>
+                        </div>
+                        <svg viewBox="0 0 24 24"><path d="M6.92,5H5L14,14L15,13.06M19.96,19.12L19.12,19.96C18.73,20.35 18.1,20.35 17.71,19.96L14.59,16.84L11.91,19.5L10.5,18.09L11.92,16.67L3,7.75V3H7.75L16.67,11.92L18.09,10.5L19.5,11.91L16.83,14.58L19.95,17.7C20.35,18.1 20.35,18.73 19.96,19.12Z"></path></svg>
                     </div>
                 </div>
             </div>
@@ -218,6 +276,18 @@
                 <span class="game-menu-name-inner game-menu-label">Torch</span>
             </span>
         </button>
+    </div>
+    <div id="confirm-box" class="confirm js-hidden">
+        <div class="confirm__box golden-background">
+            <div class="confirm__info">
+                <h2 id="confirm-title" class="confirm__title">Title</h2>
+                <p id="confirm-text" class="confirm__text">Text</p>
+            </div>
+            <div class="confirm__buttons">
+                <button id="confirm" class="confirm__button js-active">Confirm</button>
+                <button id="cancel" class="confirm__button">Cancel</button>
+            </div>
+        </div>
     </div>
 </body>
 
