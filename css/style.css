@@ -239,6 +239,10 @@ button {
     background-color: transparent;
 }
 
+.overflow-hidden {
+    overflow: hidden;
+}
+
 
 /* #region MENU SCREENs */
 
@@ -394,11 +398,17 @@ button {
     position: relative;
     display: flex;
     justify-content: center;
-    overflow: hidden;
+    padding: 2rem;
 }
 
 
 /* #region UI */
+
+.ui {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
 
 .ui__item {
     display: flex;
@@ -465,12 +475,17 @@ button {
 
 /* #region INFO CENTER */
 
+.info-field {
+    padding: 0.5rem;
+}
+
 .info-center {
     width: 100%;
-    height: 100%;
+    min-height: 40px;
+    max-height: 100px;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    overflow: auto;
 }
 
 .info-center__message {
@@ -568,6 +583,12 @@ button {
     border-left-color: var(--edge-color);
 }
 
+.zone.edge-up-down-left-right {
+    padding: 0;
+    border-style: solid;
+    border-color: var(--edge-color);
+}
+
 
 /* .forest .zone,
 .desert .zone,
@@ -592,6 +613,31 @@ button {
     background-size: 300%;
 }
 
+.zone__tile:hover {
+    box-shadow: 0 0 0 2px black;
+}
+
+.dungeon .zone__tile:hover {
+    box-shadow: 0 0 0 2px greenyellow;
+}
+
+
+/* .building .zone__tile:hover {
+    box-shadow: 0 0 0 2px black;
+}
+
+.forest .zone__tile:hover {
+    box-shadow: 0 0 0 2px black;
+}
+
+.desert .zone__tile:hover {
+    box-shadow: 0 0 0 2px black;
+}
+
+.snow .zone__tile:hover {
+    box-shadow: 0 0 0 2px black;
+} */
+
 .zone__shop .shop {
     background-image: url(../images/character.png);
     background-size: 100%;
@@ -604,10 +650,93 @@ button {
     background-position: 0 0;
 }
 
+.zone-transition {
+    --zone-button-offset: 25px;
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.zone-transition__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: goldenrod;
+    cursor: pointer;
+}
+
+
+/* .zone-transition__icon:hover {
+    background-color: gold;
+} */
+
+.zone-transition.up {
+    bottom: calc(100% - var(--zone-button-offset));
+}
+
+.zone-transition.down {
+    top: calc(100% - var(--zone-button-offset));
+}
+
+.zone-transition.left {
+    height: 100%;
+    top: 0;
+    right: calc(100% - var(--zone-button-offset) - 4px);
+}
+
+.zone-transition.right {
+    height: 100%;
+    top: 0;
+    left: calc(100% - var(--zone-button-offset));
+}
+
 .tile__object {
     width: 100%;
     height: 100%;
     position: absolute;
+}
+
+.zone__tile:not(.zone__empty).path {
+    filter: brightness(1.2);
+    box-shadow: 0 0 4px 2px gold;
+}
+
+.zone__tile.zone__obstacle.path {
+    filter: brightness(0.9);
+    box-shadow: none;
+}
+
+.zone__tile.zone__enemy.path {
+    box-shadow: 0 0 4px 2px red;
+}
+
+.zone__empty.path::before {
+    content: "•";
+    font-size: 3rem;
+}
+
+.building .zone__empty.path::before {
+    color: white;
+}
+
+.forest .zone__empty.path::before {
+    color: white;
+}
+
+.desert .zone__empty.path::before {
+    color: black;
+}
+
+.snow .zone__empty.path::before {
+    color: black;
+}
+
+.dungeon .zone__empty.path::before {
+    color: gold;
 }
 
 .forest .zone__tile {

@@ -147,7 +147,7 @@ document.addEventListener("DOMContentLoaded", event => {
     //UI
     const infoCenter = document.getElementById("info-center");
     const messageDelay = 300;
-    const messageDuration = 8000;
+    const messageDuration = 18000;
     const messageFadeDuration = 300;
 
     const ui = {
@@ -912,18 +912,22 @@ document.addEventListener("DOMContentLoaded", event => {
             this.type = type;
             this.object = object;
             this.occupied = occupied;
+            this.setElementClassType();
         }
         placeHTML(objectHTML) {
             this.element.append(objectHTML);
+        }
+        setElementClassType() {
+            if (this.element) {
+                this.element.className = `zone__tile zone__${this.type}`;
+            }
         }
         removeObject(objectElement) {
             this.element.removeChild(objectElement);
             this.object = null;
             this.type = "empty";
             this.occupied = false;
-            if (this.element) {
-                this.element.className = "zone__tile zone__empty";
-            }
+            this.setElementClassType();
         }
         coordinates() {
             let coordinate = this.id.split("_");
@@ -1092,12 +1096,6 @@ document.addEventListener("DOMContentLoaded", event => {
         createTooltip() {
             this.tooltip = new Tooltip(this.name, this.texts, this.element);
             this.element.classType = this;
-            // this.element.addEventListener("mouseover", function(evt) {
-            //     evt.currentTarget.classType.showTooltip();
-            // });
-            // this.element.addEventListener("mouseout", function(evt) {
-            //     evt.currentTarget.classType.tooltip.hide();
-            // });
             this.element.addEventListener("mouseover", (evt) => this.showTooltip(evt));
             this.element.addEventListener("mouseout", (evt) => this.tooltip.hide(evt));
         }
@@ -1222,19 +1220,18 @@ document.addEventListener("DOMContentLoaded", event => {
             this.element.style.animationDuration = `${this.attackTime}ms`;
         }
         addLife(amount) {
+            if (this.isDead) {
+                return;
+            }
             this.life.add(amount);
             if (this.life.value <= 0) {
                 this.isDead = true;
-                this.tooltip.remove();
                 this.onDeath(this);
             }
-            // if (this.life.value > this.life.baseValue) {
-            //     return false;
-            // }
             this.updateHealthBar();
         }
         takeDamage(damage) {
-            if (damage <= 0) {
+            if (this.isDead || damage <= 0) {
                 return;
             }
             this.addLife(-damage);
@@ -1636,6 +1633,12 @@ document.addEventListener("DOMContentLoaded", event => {
             this.createTooltipContent();
             this.createTooltip();
             return enemyHTML;
+        }
+        addLife(amount) {
+            super.addLife(amount);
+            if (this.life.value <= 0) {
+                this.tooltip.remove();
+            }
         }
         takeDamage(damage) {
             super.takeDamage(damage);
@@ -2584,6 +2587,8 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     });
 
+    zoneContainer.addEventListener("mouseout", pathsRemove);
+
     function addPlayerControls() {
         document.addEventListener("keydown", function(evt) {
             if (evt.repeat || !playersTurn || playerIsMoving) {
@@ -2595,8 +2600,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 } else if (inventoryActive) {
                     selectInventoryButtonUp();
                 } else {
-                    playerMove(0, -1, player.element, "up");
-                    player.element.style.backgroundPosition = "0 -33.3333%";
+                    playerMove("up");
                 }
             }
             if (evt.key == "s" || evt.key == "ArrowDown") {
@@ -2605,8 +2609,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 } else if (inventoryActive) {
                     selectInventoryButtonDown();
                 } else {
-                    playerMove(0, 1, player.element, "down");
-                    player.element.style.backgroundPosition = "0 0";
+                    playerMove("down");
                 }
             }
             if (evt.key == "a" || evt.key == "ArrowLeft") {
@@ -2617,8 +2620,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 } else if (player.isFleeing) {
                     player.confirmToggleButton();
                 } else {
-                    playerMove(-1, 0, player.element, "left");
-                    player.element.style.backgroundPosition = "0 -100%";
+                    playerMove("left");
                 }
             }
             if (evt.key == "d" || evt.key == "ArrowRight") {
@@ -2629,11 +2631,10 @@ document.addEventListener("DOMContentLoaded", event => {
                 } else if (player.isFleeing) {
                     player.confirmToggleButton();
                 } else {
-                    playerMove(1, 0, player.element, "right");
-                    player.element.style.backgroundPosition = "0 -66.6667%";
+                    playerMove("right");
                 }
             }
-        })
+        });
     }
     //#endregion EVENT LISTENERS
 
@@ -2939,6 +2940,7 @@ document.addEventListener("DOMContentLoaded", event => {
         const sfxArr = ["VOICE_Girl_4yo_Hurt_Long_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_04_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_05_mono.ogg"];
         player = new Player(playerName, "player", playerAnimTime.move, playerAnimTime.attack, new Attribute(playerStats.health, true), new Attribute(playerStats.strength, false), new Attribute(playerStats.armor, false), ui, null, actions, playerAP, sfxArr, new Inventory("player"), gameOver);
         player.setWeaponItem(new Item("start-sword", collectables.woodenSword));
+        resetConfirmBox();
         player.setConfirmation(new Confirmation(
             "Flee?",
             "Are you sure you want to flee from the fight?<br>(You will be taken to a random tile in the last known safe area).",
@@ -2968,9 +2970,20 @@ document.addEventListener("DOMContentLoaded", event => {
         startEngine();
     }
 
+    function resetConfirmBox() {
+        let oldConfirmBox = document.getElementById("confirm-box");
+        let newConfirmBox = oldConfirmBox.cloneNode(true);
+        oldConfirmBox.parentNode.replaceChild(newConfirmBox, oldConfirmBox);
+    }
+
     function enterRegion(world) {
         //IMPORTANT! CLEAN UP HTML - Must be removed BEFORE setting the new world:
         region.removeBiomHTML();
+        const tooltips = document.querySelectorAll(".tooltip");
+        for (let i = tooltips.length - 1; i >= 0; i--) {
+            const tooltip = tooltips[i];
+            tooltip.parentNode.removeChild(tooltip);
+        }
         battleQueueElement.innerHTML = "";
         //IMPORTANT! CLEAN UP HTML
         currentWorld.region = region;
@@ -3032,6 +3045,12 @@ document.addEventListener("DOMContentLoaded", event => {
     function resetGame() {
         battleQueue = [];
         worlds.resetAll();
+        const tooltips = document.querySelectorAll(".tooltip");
+        const tooltipParent = tooltips[0].parentNode;
+        for (let i = tooltips.length - 1; i >= 0; i--) {
+            const tooltip = tooltips[i];
+            tooltipParent.removeChild(tooltip);
+        }
     }
 
     function buildMap(isNewMap) {
@@ -3134,7 +3153,8 @@ document.addEventListener("DOMContentLoaded", event => {
         enemiesInZone = 0;
         for (let i = 0; i < currentZone.tiles.length; i++) {
             const tileObj = currentZone.tiles[i];
-            region.element.append(tileObj.createHTML());
+            const tileObjHTML = tileObj.createHTML();
+            region.element.append(tileObjHTML);
             if (tileObj.object != null) {
                 if (tileObj.type == "enemy") {
                     tileObj.placeHTML(tileObj.object.createHTML());
@@ -3148,6 +3168,20 @@ document.addEventListener("DOMContentLoaded", event => {
                     tileObj.placeHTML(tileObj.object.createHTML());
                 }
             }
+            tileObjHTML.addEventListener("click", function() {
+                if (playerIsMoving) {
+                    return;
+                }
+                const destinationTile = currentZone.getTileObj(this.id);
+                playerAI(destinationTile);
+            });
+            tileObjHTML.addEventListener("mouseover", function() {
+                if (playerIsMoving) {
+                    return;
+                }
+                const destinationTile = currentZone.getTileObj(this.id);
+                path(destinationTile);
+            });
         }
         if (currentZone.gateway != undefined) {
             currentZone.gateway.createHTML();
@@ -3258,13 +3292,10 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function enemyTurn(enemyObj) {
-        // enemyObj.apCostUpdate();
         updatePathfindingGrid();
         const moveDirection = shortestPathDirection(enemyObj.currentTile, player.currentTile);
         const destinationTileObj = adjacentTile(enemyObj.currentTile, moveDirection);
         enemyMove(enemyObj, moveDirection, destinationTileObj);
-        // if (battleQueue.length > 0) {
-        // }
     }
 
     function enemyMove(enemyObj, direction, destinationTileObj) {
@@ -3534,61 +3565,121 @@ document.addEventListener("DOMContentLoaded", event => {
         setEvent();
     }
 
-    function playerMove(moveX, moveY, element, direction) {
+    function playerAI(destinationTile) {
+        if (player.currentTile == destinationTile) {
+            return;
+        }
+        updatePathfindingGrid(true);
+        const moveDirection = shortestPathDirection(player.currentTile, destinationTile);
+        const destinationType = playerMove(moveDirection);
+        playerIsMoving = true;
+        setTimeout(() => {
+            if (destinationType == "new tile") {
+                playerAI(destinationTile);
+            } else {
+                playerIsMoving = false;
+            }
+        }, player.moveTime + 25);
+    }
+
+    function path(destinationTile) {
+        updatePathfindingGrid(true);
+        if (player.currentTile == destinationTile) {
+            pathsRemove();
+            return;
+        }
+        let tileObj = player.currentTile;
+        const arr = findShortestPath(tileObj.coordinates(), destinationTile.coordinates(), pathFindingGrid);
+        pathsRemove();
+        for (let i = 0; i < arr.length; i++) {
+            if (player.inBattle && i >= player.actionPoints) {
+                break;
+            }
+            const tileDir = arr[i];
+            tileObj = adjacentTile(tileObj, tileDir);
+            tileObj.element.classList.add("path");
+        }
+    }
+
+    function pathsRemove() {
+        const paths = document.querySelectorAll(".path");
+        for (let i = 0; i < paths.length; i++) {
+            const pathElement = paths[i];
+            pathElement.classList.remove("path");
+        }
+    }
+
+    function playerMove(direction) {
         let coordinate = currentZone.getTileObj(player.tileId).coordinates();
-        coordinate.x += moveX;
-        coordinate.y += moveY;
+        if (direction == "up") {
+            coordinate.y -= 1;
+            player.element.style.backgroundPosition = "0 -33.3333%";
+        }
+        if (direction == "down") {
+            coordinate.y += 1;
+            player.element.style.backgroundPosition = "0 0";
+        }
+        if (direction == "right") {
+            coordinate.x += 1;
+            player.element.style.backgroundPosition = "0 -66.6667%";
+        }
+        if (direction == "left") {
+            coordinate.x -= 1;
+            player.element.style.backgroundPosition = "0 -100%";
+        }
         if (coordinate.y < 0) {
             changeZone(0, 1, currentZone.tiles.length - region.zoneSize + coordinate.x);
-            return;
+            return "new zone";
         }
         if (coordinate.y >= region.zoneSize) {
             changeZone(0, -1, coordinate.x);
-            return;
+            return "new zone";
         }
         if (coordinate.x < 0) {
             changeZone(-1, 0, coordinate.y * region.zoneSize + region.zoneSize - 1);
-            return;
+            return "new zone";
         }
         if (coordinate.x >= region.zoneSize) {
             changeZone(1, 0, coordinate.y * region.zoneSize);
-            return;
+            return "new zone";
         }
         let destinationTileObj = currentZone.getTileObj(coordinate.x + "_" + coordinate.y);
         if (destinationTileObj.type == "obstacle") {
-            return;
+            return "obstacle";
         }
         playerIsMoving = true;
         if (destinationTileObj.type == "gate") {
             player.setInteractTime();
             if (destinationTileObj.object.locked) {
-                halfWayMove(element, player.moveTime, direction, null, function() {
+                halfWayMove(player.element, player.moveTime, direction, function() {
+                    enterGate(destinationTileObj.object);
+                }, function() {
                     playerIsMoving = false;
                 });
             } else {
-                fullMove(element, player.moveTime, direction, null, function() {
+                fullMove(player.element, player.moveTime, direction, null, function() {
                     enterGate(destinationTileObj.object);
                 });
             }
-            return;
+            return "gate";
         }
         if (destinationTileObj.type == "chest") {
             player.setInteractTime();
-            halfWayMove(element, player.moveTime, direction, null, function() {
+            halfWayMove(player.element, player.moveTime, direction, null, function() {
                 playerIsMoving = false;
                 showInventory(destinationTileObj.object.inventory);
             });
-            return;
+            return "chest";
         }
         if (player.inBattle) {
             if (destinationTileObj.type == "enemy") {
                 const apAttack = player.apAttack();
                 if (battleQueue.length > 0 && apAttack == -1) {
                     playerIsMoving = false;
-                    return;
+                    return "ap zero";
                 }
                 player.setAttackTime();
-                halfWayMove(element, player.attackTime, direction, function() {
+                halfWayMove(player.element, player.attackTime, direction, function() {
                     effect.floating.createHTML(destinationTileObj.element, player.strength.value);
                     effect.explosion.createHTML(destinationTileObj.element);
                     effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
@@ -3609,25 +3700,30 @@ document.addEventListener("DOMContentLoaded", event => {
                         }
                     }
                 });
-                return;
+                return "enemy";
             }
         }
         const apMove = player.apMove();
         if (battleQueue.length > 0 && apMove == -1) {
             playerIsMoving = false;
-            return;
+            return "ap zero";
         }
         player.setMove();
         player.setMoveTime();
-        fullMove(element, player.moveTime, direction, function() {
+        fullMove(player.element, player.moveTime, direction, function() {
             if (destinationTileObj.type == "item") {
                 effect.flash.createHTML(destinationTileObj.element);
                 player.collect(destinationTileObj.object);
                 destinationTileObj.removeObject(destinationTileObj.object.element);
             }
-            destinationTileObj.object = player;
+            const prevTileObj = player.currentTile;
             player.tileId = destinationTileObj.id;
+            destinationTileObj.placeObject(player, "player", true);
             destinationTileObj.element.append(player.element);
+            prevTileObj.object = null;
+            prevTileObj.type = "empty";
+            prevTileObj.occupied = false;
+            prevTileObj.setElementClassType();
         }, function() {
             playerIsMoving = false;
             if (battleQueue.length > 0) {
@@ -3636,7 +3732,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 }
             }
         });
-        return;
+        return "new tile";
     }
 
     function fullMove(element, animationTime, direction, beforeDestinationReach, destinationReached) {
@@ -3727,13 +3823,13 @@ document.addEventListener("DOMContentLoaded", event => {
                 }, messageFadeDuration);
             }, messageDuration);
         }, messageDelay);
-        if (messagePool.length === 4) {
-            clearTimeout(messagePool[0].delay);
-            clearTimeout(messagePool[0].duration);
-            clearTimeout(messagePool[0].fade);
-            infoCenter.removeChild(messagePool[0].msgElm);
-            messagePool.shift();
-        }
+        // if (messagePool.length === 4) {
+        //     clearTimeout(messagePool[0].delay);
+        //     clearTimeout(messagePool[0].duration);
+        //     clearTimeout(messagePool[0].fade);
+        //     infoCenter.removeChild(messagePool[0].msgElm);
+        //     messagePool.shift();
+        // }
         messagePool.push(obj);
     }
 
@@ -3861,12 +3957,37 @@ document.addEventListener("DOMContentLoaded", event => {
 
     //#region PATHFIDING Breadth-First Search algorithm
 
-    function updatePathfindingGrid() {
+    function updatePathfindingGrid(ignoreCollectables = false) {
         for (let x = 0; x < region.zoneSize; x++) {
             pathFindingGrid[x] = [];
             for (let y = 0; y < region.zoneSize; y++) {
-                if (currentZone.getTileObj(x + "_" + y).occupied) {
-                    pathFindingGrid[x][y] = 'Obstacle';
+                const tileObj = currentZone.getTileObj(x + "_" + y);
+                if (tileObj.occupied) {
+                    if (ignoreCollectables && tileObj.object) {
+                        switch (tileObj.object.type) {
+                            case "coin":
+                                pathFindingGrid[x][y] = 'Empty';
+                                break;
+                            case "life":
+                                pathFindingGrid[x][y] = 'Empty';
+                                break;
+                            case "key":
+                                pathFindingGrid[x][y] = 'Empty';
+                                break;
+                            case "weapon":
+                                pathFindingGrid[x][y] = 'Empty';
+                                break;
+                            case "armor":
+                                pathFindingGrid[x][y] = 'Empty';
+                                break;
+
+                            default:
+                                pathFindingGrid[x][y] = 'Obstacle';
+                                break;
+                        }
+                    } else {
+                        pathFindingGrid[x][y] = 'Obstacle';
+                    }
                 } else {
                     pathFindingGrid[x][y] = 'Empty';
                 }

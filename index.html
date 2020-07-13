@@ -104,40 +104,70 @@
             </header>
             <div class="main-game">
                 <div class="ui full-width golden-background">
-                    <h2 class="ui__title">Stats</h2>
-                    <div class="ui__item">
-                        <div id="life-icon" class="ui-icon life"></div>
-                        <p id="life-count" class="list__item-count">0</p>
+                    <div class="ui__inner">
+                        <h2 class="ui__title">Stats</h2>
+                        <div class="ui__item">
+                            <div id="life-icon" class="ui-icon life"></div>
+                            <p id="life-count" class="list__item-count">0</p>
+                        </div>
+                        <div class="ui__item">
+                            <div id="strength-icon" class="ui-icon strength"></div>
+                            <p id="strength-count" class="list__item-count">0</p>
+                        </div>
+                        <div class="ui__item">
+                            <div id="armor-icon" class="ui-icon armor"></div>
+                            <p id="armor-count" class="list__item-count">0</p>
+                        </div>
+                        <h2 class="ui__title margin-top">Inventory</h2>
+                        <div class="ui__item">
+                            <div id="coin-icon" class="ui-icon coin"></div>
+                            <p id="coin-count" class="list__item-count">0</p>
+                        </div>
+                        <div class="ui__item">
+                            <div id="backpack-icon" class="ui-icon backpack"></div>
+                            <p id="backpack" class="list__item-text">Press [I]</p>
+                        </div>
+                        <!-- <div class="ui__item">
+                            <div id="key-icon" class="ui-icon key"></div>
+                            <p id="key-count" class="list__item-count">0</p>
+                        </div> -->
                     </div>
-                    <div class="ui__item">
-                        <div id="strength-icon" class="ui-icon strength"></div>
-                        <p id="strength-count" class="list__item-count">0</p>
-                    </div>
-                    <div class="ui__item">
-                        <div id="armor-icon" class="ui-icon armor"></div>
-                        <p id="armor-count" class="list__item-count">0</p>
-                    </div>
-                    <h2 class="ui__title margin-top">Inventory</h2>
-                    <div class="ui__item">
-                        <div id="coin-icon" class="ui-icon coin"></div>
-                        <p id="coin-count" class="list__item-count">0</p>
-                    </div>
-                    <div class="ui__item">
-                        <div id="backpack-icon" class="ui-icon backpack"></div>
-                        <p id="backpack" class="list__item-text">Press [I]</p>
-                    </div>
-                    <!-- <div class="ui__item">
-                        <div id="key-icon" class="ui-icon key"></div>
-                        <p id="key-count" class="list__item-count">0</p>
-                    </div> -->
+                    <fieldset class="info-field golden-background">
+                        <legend>Information</legend>
+                        <div id="info-center" class="info-center">
+                            <!-- Dynamic content -->
+                        </div>
+                    </fieldset>
                 </div>
                 <div class="game-board golden-background">
                     <div class="time">
                         <span class="time__text">Day: </span><span id="day" class="time__display">1</span>
                         <span class="time__text">Time: </span><span id="time" class="time__display">00:00</span>
                     </div>
-                    <div id="zone-container" class="zone">
-                        <!-- Dynamic content -->
+                    <div class="zone-transition up">
+                        <div class="zone-transition__icon golden-button">
+                            <svg class="golden-button__icon" viewBox="0 0 24 24"><path d="M16.59,9.42L12,4.83L7.41,9.42L6,8L12,2L18,8L16.59,9.42M16.59,15.42L12,10.83L7.41,15.42L6,14L12,8L18,14L16.59,15.42M16.59,21.42L12,16.83L7.41,21.42L6,20L12,14L18,20L16.59,21.42Z"></path></svg>
+                        </div>
+                    </div>
+                    <div class="zone-transition down">
+                        <div class="zone-transition__icon golden-button">
+                            <svg class="golden-button__icon" viewBox="0 0 24 24"><path d="M7.41,14.58L12,19.17L16.59,14.58L18,16L12,22L6,16L7.41,14.58M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58M7.41,2.58L12,7.17L16.59,2.58L18,4L12,10L6,4L7.41,2.58Z"></path></svg>
+                        </div>
+                    </div>
+                    <div class="zone-transition left">
+                        <div class="zone-transition__icon golden-button">
+                            <svg class="golden-button__icon" viewBox="0 0 24 24"><path d="M9.42,7.41L4.83,12L9.42,16.59L8,18L2,12L8,6L9.42,7.41M15.42,7.41L10.83,12L15.42,16.59L14,18L8,12L14,6L15.42,7.41M21.42,7.41L16.83,12L21.42,16.59L20,18L14,12L20,6L21.42,7.41Z"></path></svg>
+                        </div>
+                    </div>
+                    <div class="zone-transition right">
+                        <div class="zone-transition__icon golden-button">
+                            <svg class="golden-button__icon" viewBox="0 0 24 24"><path d="M14.58,16.59L19.17,12L14.58,7.41L16,6L22,12L16,18L14.58,16.59M8.58,16.59L13.17,12L8.58,7.41L10,6L16,12L10,18L8.58,16.59M2.58,16.59L7.17,12L2.58,7.41L4,6L10,12L4,18L2.58,16.59Z"></path></svg>
+                        </div>
+                    </div>
+                    <div class="overflow-hidden">
+                        <div id="zone-container" class="zone">
+                            <!-- Dynamic content -->
+                        </div>
                     </div>
                 </div>
                 <div class="mini-map golden-background">
@@ -196,9 +226,6 @@
                             </div>
                         </div>
                         <p class="mini-map__text">Press [M] to enlarge</p>
-                    </div>
-                    <div id="info-center" class="info-center">
-                        <!-- Dynamic content -->
                     </div>
                 </div>
             </div>
