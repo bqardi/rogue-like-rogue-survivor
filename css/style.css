@@ -59,14 +59,16 @@ svg {
 .game>.biom.biom-forest,
 .game>.biom.biom-desert,
 .game>.biom.biom-snow,
-.game>.biom.biom-dungeon {
+.game>.biom.biom-dungeon,
+.game>.biom.biom-building {
     visibility: hidden;
 }
 
 .game.forest>img.biom-forest,
 .game.desert>img.biom-desert,
 .game.snow>img.biom-snow,
-.game.dungeon>img.biom-dungeon {
+.game.dungeon>img.biom-dungeon,
+.game.building>img.biom-building {
     visibility: visible;
 }
 
@@ -647,21 +649,39 @@ button {
 .zone__chest .chest {
     background-image: url(../images/treasure-chests.png);
     background-size: 100%;
-    background-position: 0 0;
+}
+
+.zone-transition-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 12;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
 }
 
 .zone-transition {
-    --zone-button-offset: 25px;
+    --zone-button-offset: -15px;
     position: absolute;
     display: flex;
     justify-content: center;
     align-items: center;
+    pointer-events: all;
+}
+
+.zone-transition.js-hidden {
+    display: none;
 }
 
 .zone-transition__icon {
     width: 40px;
     height: 40px;
     border-radius: 50%;
+    margin-right: 0;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -675,23 +695,27 @@ button {
 } */
 
 .zone-transition.up {
-    bottom: calc(100% - var(--zone-button-offset));
+    /* bottom: calc(100% - var(--zone-button-offset)); */
+    top: var(--zone-button-offset);
 }
 
 .zone-transition.down {
-    top: calc(100% - var(--zone-button-offset));
+    /* top: calc(100% - var(--zone-button-offset)); */
+    bottom: var(--zone-button-offset);
 }
 
 .zone-transition.left {
-    height: 100%;
+    /* height: 100%;
     top: 0;
-    right: calc(100% - var(--zone-button-offset) - 4px);
+    right: calc(100% - var(--zone-button-offset)); */
+    left: var(--zone-button-offset);
 }
 
 .zone-transition.right {
-    height: 100%;
+    /* height: 100%;
     top: 0;
-    left: calc(100% - var(--zone-button-offset));
+    left: calc(100% - var(--zone-button-offset)); */
+    right: var(--zone-button-offset);
 }
 
 .tile__object {
@@ -832,14 +856,38 @@ button {
 /* #region MINI MAP */
 
 #settings {
-    margin-left: 0.5rem;
+    margin-left: 2rem;
 }
 
 .settings {
     width: 100%;
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     margin-bottom: 1rem;
+}
+
+.settings-icon {
+    width: 48px;
+    height: 48px;
+    background-image: url(../images/collectables.png);
+    background-size: 700%;
+}
+
+.settings-icon:hover {
+    filter: saturate(1.5);
+    color: gold;
+    cursor: pointer;
+}
+
+.settings-icon-svg {
+    width: 24px;
+    height: 24px;
+}
+
+.button--icon-only {
+    border: none;
+    background-color: transparent;
 }
 
 .mini-map {
@@ -1068,6 +1116,10 @@ button {
     box-shadow: 5px 5px 20px black;
 }
 
+.inventory__header {
+    position: relative;
+}
+
 .inventory.two-inventories {
     grid-template-columns: 400px 250px 400px;
 }
@@ -1083,6 +1135,24 @@ button {
 .inventory__title {
     font-size: 2rem;
     text-align: center;
+}
+
+.inventory__button {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    padding: 0 0.5rem;
+    border: 4px double goldenrod;
+    border-radius: 5px;
+    background-color: #115e11;
+    color: gold;
+    transition: all 300ms;
+}
+
+.inventory__button:hover {
+    background-color: #137a13;
+    color: gold;
 }
 
 .inventory__content {
@@ -1151,6 +1221,254 @@ button {
 }
 
 .inventory__amount {
+    position: absolute;
+    bottom: -0.5rem;
+    left: -0.5rem;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid black;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: saddlebrown;
+}
+
+
+/* #endregion INVENTORY */
+
+
+/* #region INVENTORY */
+
+.gem-crafting-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 98;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.25);
+}
+
+.gem-crafting {
+    height: 70vh;
+    min-height: 660px;
+    display: grid;
+    grid-template-columns: 300px 600px;
+    grid-template-rows: 40px 1fr;
+    gap: 1rem;
+    box-shadow: 5px 5px 20px black;
+}
+
+.gem-crafting__title {
+    font-size: 2rem;
+    text-align: center;
+}
+
+.gem-crafting__content {
+    overflow-y: auto;
+    height: 100%;
+    background-image: url(../images/paper-background.png);
+    box-shadow: 2px 2px 20px rgba(41, 33, 14, 0.479) inset;
+}
+
+.gem-crafting__heading {
+    padding: 8px 16px 0;
+}
+
+.gem-crafting__info {
+    background-image: url(../images/staff.png);
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: left;
+    display: grid;
+    gap: 8px;
+    margin-left: 4px;
+    padding: 30% 0 10% 25%;
+    grid-template-rows: repeat(3, 1fr);
+}
+
+.gem-crafting-info__header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.gem-crafting-image {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    background-image: url(../images/collectables.png);
+    background-size: 700%;
+    border: 4px double goldenrod;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 2px 2px 5px 0 rgba(0, 0, 0, 0.25), inset 4px 4px 8px 0 rgba(0, 0, 0, 0.25);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.gem-crafting-image:hover {
+    border: 4px solid orange;
+}
+
+.gem-amount {
+    position: absolute;
+    top: -5px;
+    left: 10px;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.gem-next {
+    position: absolute;
+    bottom: 2px;
+    right: 5px;
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: gold;
+}
+
+.gem-button {
+    position: absolute;
+    background-color: transparent;
+    border: none;
+}
+
+.gem-button svg {
+    width: 40px;
+    height: 40px;
+    transition: filter 300ms;
+}
+
+.gem-button:hover svg {
+    filter: saturate(2);
+}
+
+.gem-subtract {
+    left: -42px;
+}
+
+.gem-add {
+    right: -42px;
+}
+
+.gem-subtract svg {
+    fill: crimson;
+}
+
+.gem-add svg {
+    fill: green;
+}
+
+.gem-crafting__rows {
+    display: grid;
+}
+
+.gem-crafting-header {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+.gem-crafting-ui {
+    display: flex;
+    align-items: center;
+}
+
+.gem-crafting-ui-image {
+    width: 64px;
+    height: 64px;
+    background-image: url(../images/collectables.png);
+    background-size: 700%;
+}
+
+.gem-crafting-row {
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    border-top: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+    cursor: pointer;
+    transition: all 300ms;
+}
+
+.gem-crafting-row svg {
+    transform: scale(1);
+    transition: transform 500ms;
+}
+
+.gem-crafting-row:hover {
+    border-top: 1px solid gold;
+    border-bottom: 1px solid gold;
+    background-color: rgba(218, 165, 32, 0.25);
+}
+
+.gem-crafting-row:hover svg {
+    transform: scale(1.8);
+}
+
+.gem-crafting-row.js-selected {
+    border-top: 1px solid orange;
+    border-bottom: 1px solid orange;
+    background-color: rgba(218, 165, 32, 0.5);
+}
+
+.gem-crafting-row-image.offense svg {
+    fill: gold;
+}
+
+.gem-crafting-row-image.defense svg {
+    fill: lightskyblue;
+}
+
+.gem-crafting-row-image.special svg {
+    fill: crimson;
+}
+
+.gem-crafting-row__content {
+    padding-left: 16px;
+}
+
+.gem-crafting-info__title {
+    align-self: center;
+}
+
+.gem-crafting__grid {
+    display: grid;
+    grid-template-columns: repeat(5, 64px);
+    grid-auto-rows: 64px;
+    gap: 0.75rem;
+    padding: 1rem;
+}
+
+.gem-crafting__item {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border: 1px solid goldenrod;
+    background-color: rgb(167, 145, 90);
+    background-image: url(../images/collectables.png);
+    box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+}
+
+.gem-crafting__item.js-active {
+    border: 1px solid crimson;
+    background-color: rgb(180, 150, 72);
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.5);
+}
+
+.gem-crafting__item:hover {
+    filter: contrast(140%);
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.gem-crafting__amount {
     position: absolute;
     bottom: -0.5rem;
     left: -0.5rem;
@@ -1412,8 +1730,8 @@ button {
     fill: crimson;
 }
 
-.actions__attack-damage {
-    margin-left: 0.5rem;
+.actions__attack-value {
+    margin: 0 1.5rem 0 0.5rem;
     font-size: 2rem;
     color: white;
 }
@@ -1466,6 +1784,13 @@ button {
     cursor: pointer;
 }
 
+.actions__combat.golden-background.disabled,
+.actions__combat.golden-background.disabled:hover {
+    border-color: black;
+    filter: contrast(0.5) opacity(0.5);
+    cursor: default;
+}
+
 .actions__combat.move-element {
     background-color: #5a5946;
 }
@@ -1486,18 +1811,6 @@ button {
     border-color: crimson;
 }
 
-.actions__combat:hover .actions__ap-cost.ap-point {
-    background-color: crimson;
-}
-
-.actions__combat.js-selected.golden-background {
-    border-color: crimson;
-}
-
-.actions__combat.js-selected .actions__ap-cost.ap-point {
-    background-color: crimson;
-}
-
 .actions__combat.js-active::before {
     content: " ";
     position: absolute;
@@ -1511,8 +1824,8 @@ button {
 
 .actions__ap-cost {
     position: absolute;
-    bottom: -18px;
-    left: -24px;
+    bottom: -14px;
+    left: -28px;
     width: 36px;
     height: 36px;
     color: white;
@@ -1531,11 +1844,25 @@ button {
     background-color: goldenrod;
 }
 
+.actions__armor {
+    position: absolute;
+    bottom: 10px;
+    right: -20px;
+    width: 28px;
+    height: 28px;
+    color: white;
+    background-image: none;
+    background-color: dodgerblue;
+}
+
 .actions__title {
     position: absolute;
     bottom: -20px;
-    left: 18px;
+    left: 10px;
+    right: 0;
     font-size: 12px;
+    text-align: center;
+    white-space: nowrap;
 }
 
 .actions__center {
@@ -1553,6 +1880,15 @@ button {
     background-image: none;
     background-color: blueviolet;
     padding: 0.1rem 0.5rem;
+}
+
+.actions__cooldown {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 0;
+    background-color: lawngreen;
+    opacity: 0.5;
 }
 
 .confirm {
@@ -1605,9 +1941,24 @@ button {
 /* #region EFFECT */
 
 .effect {
-    position: absolute;
+    position: fixed;
     opacity: 0;
+    pointer-events: none;
     z-index: 129;
+}
+
+.effect .turn-length {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    color: white;
+    background-color: green;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .effect.explosion {
@@ -1627,6 +1978,62 @@ button {
     100% {
         transform: scale(1.5);
         opacity: 0;
+    }
+}
+
+.effect.timed.burning {
+    background-image: url(../images/fire-animated.png);
+    background-size: 100%;
+    background-position: 0 0;
+    animation-name: timed;
+    animation-iteration-count: infinite;
+    animation-timing-function: step-end;
+    opacity: 0.75;
+    transform: scale(0.75);
+    position: absolute;
+    top: -35%;
+    left: -35%;
+}
+
+@keyframes timed {
+    0% {
+        background-position: 0 0;
+    }
+    8.333% {
+        background-position: 0 -100%;
+    }
+    16.667% {
+        background-position: 0 -200%;
+    }
+    25% {
+        background-position: 0 -300%;
+    }
+    33.333% {
+        background-position: 0 -400%;
+    }
+    41.667% {
+        background-position: 0 -500%;
+    }
+    50% {
+        background-position: 0 -600%;
+    }
+    58.333% {
+        background-position: 0 -700%;
+    }
+    66.667% {
+        background-position: 0 -800%;
+    }
+    75% {
+        background-position: 0 -900%;
+    }
+    83.333% {
+        background-position: 0 -1000%;
+    }
+    91.667% {
+        background-position: 0 -1100%;
+    }
+    100% {
+        background-position: 0 -1200%;
     }
 }
 
@@ -1658,11 +2065,12 @@ button {
     justify-content: center;
     align-items: flex-start;
     animation-name: floating;
+    animation-timing-function: ease-out;
 }
 
 @keyframes floating {
     0% {
-        transform: translate(0, -20px);
+        transform: translate(var(--floating-start-x), -20px);
         opacity: 0;
     }
     5% {
@@ -1672,7 +2080,90 @@ button {
         opacity: 1;
     }
     100% {
-        transform: translate(0, -60px);
+        transform: translate(var(--floating-end-x), -120px);
+        opacity: 0;
+    }
+}
+
+.effect.spell {
+    position: fixed;
+    background-size: contain;
+    background-repeat: no-repeat;
+    opacity: 1;
+}
+
+.effect.spell.ranged {
+    animation-name: ranged;
+}
+
+.effect.spell.self {
+    animation-name: self;
+}
+
+.effect.spell.pulse {
+    animation-name: pulse;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+.effect.spell.dome-shield {
+    background-image: url(../images/dome-shield.png);
+    animation-timing-function: linear;
+    transform: scale(1.35);
+    opacity: 0.7;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1.35);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1.4);
+        opacity: 0.9;
+    }
+}
+
+.effect.fireball {
+    background-image: url(../images/fireball.png);
+    animation-timing-function: ease-in;
+    transform: scale(0.5);
+}
+
+@keyframes ranged {
+    0% {
+        transform: translate(0, 0) scale(0.5);
+    }
+    90% {
+        transform: translate(var(--spell-x), var(--spell-y));
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--spell-x), var(--spell-y)) scale(1.25);
+        opacity: 0;
+    }
+}
+
+.effect.ice-nova {
+    background-image: url(../images/ice-nova.png);
+    transform: scale(1) rotate(0deg);
+    animation-timing-function: linear;
+}
+
+@keyframes self {
+    0% {
+        transform: scale(1) rotate(0deg);
+        opacity: 0;
+    }
+    1% {
+        transform: scale(4) rotate(7deg);
+        opacity: 0.9;
+    }
+    50% {
+        transform: scale(4) rotate(360deg);
+    }
+    100% {
+        transform: scale(2) rotate(720deg);
         opacity: 0;
     }
 }
@@ -1682,6 +2173,16 @@ button {
 
 
 /* #region TOOLTIP */
+
+.tooltip-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 12;
+    pointer-events: none;
+}
 
 .tooltip {
     position: fixed;
@@ -1742,13 +2243,27 @@ button {
     position: fixed;
     justify-content: center;
     align-items: flex-start;
-    border-radius: 0.25rem;
     display: none;
 }
 
-.game-menu.js-active {
+.game-menu.js-calm,
+.game-menu.js-combat {
     display: flex;
     z-index: 110;
+}
+
+.game-menu-container {
+    display: none;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.game-menu.js-calm .game-menu-calm {
+    display: flex;
+}
+
+.game-menu.js-combat .game-menu-combat {
+    display: flex;
 }
 
 .game-menu.golden-background {
@@ -1767,6 +2282,14 @@ button {
     filter: brightness(120%);
 }
 
+.game-menu-button:disabled {
+    filter: grayscale(1);
+}
+
+.game-menu-button:disabled:hover {
+    box-shadow: none;
+}
+
 .game-menu-button.js-active {
     border: 2px solid crimson;
 }
@@ -1774,6 +2297,18 @@ button {
 .game-menu-shortcut {
     position: absolute;
     top: -0.75rem;
+    left: 0.25rem;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.game-menu-cost {
+    position: absolute;
+    top: -1rem;
     left: 0.25rem;
     width: 1.6rem;
     height: 1.6rem;
@@ -1802,6 +2337,12 @@ button {
 .game-menu-label {
     color: white;
     background-color: brown;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.game-menu-label-cost {
+    color: white;
+    background-color: green;
     box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
