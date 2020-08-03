@@ -60,7 +60,8 @@
                 <h2 class="inventory__title">Item details</h2>
                 <div class="inventory__header">
                     <h2 class="primary-title inventory__title">Inventory</h2>
-                    <button id="inventory-take-all" class="inventory__button">Take all</button>
+                    <button id="inventory-take-all" class="inventory__button inventory__green">Take all</button>
+                    <button id="inventory-toggle" class="inventory__button inventory__golden">Show Player inventory</button>
                 </div>
                 <div id="inventory-secondary" class="inventory__content">
                     <div id="inventory-secondary-grid" class="inventory__grid">
@@ -68,17 +69,24 @@
                     </div>
                 </div>
                 <div class="inventory__content">
-                    <div id="inv-info" class="inventory__info">
-                        <header class="inventory-info__header">
-                            <div id="inv-info-image" class="inventory-info__image"></div>
-                            <h3 id="inv-info-title" class="inventory-info__title">Title</h3>
-                        </header>
-                        <div id="inv-info-content">
-                            <!-- Dynamic content -->
-                            <div class="inventory-info__row">
-                                <p class="inventory-info__heading">Title:</p>
-                                <span class="inventory-info__text">Something</span>
+                    <div class="inventory__inner">
+                        <div id="inv-info" class="inventory__info">
+                            <header class="inventory-info__header">
+                                <div id="inv-info-image" class="inventory-info__image"></div>
+                                <h3 id="inv-info-title" class="inventory-info__title">Title</h3>
+                            </header>
+                            <div id="inv-info-content">
+                                <!-- Dynamic content -->
+                                <div class="inventory-info__row">
+                                    <p class="inventory-info__heading">Title:</p>
+                                    <span class="inventory-info__text">Something</span>
+                                </div>
                             </div>
+                        </div>
+                        <div id="inv-price" class="inventory-price">
+                            <div class="ui-icon ui-icon--big" style="background-position: -300% -300%"></div>
+                            <h3 class="price inventory-price__title">Price</h3>
+                            <span class="inventory-price__text">(Default price)</span>
                         </div>
                     </div>
                 </div>
@@ -429,6 +437,22 @@
             <div class="confirm__buttons">
                 <button id="confirm" class="confirm__button js-active">Confirm</button>
                 <button id="cancel" class="confirm__button">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <div id="quest" class="dialog quest js-hidden">
+        <div class="quest__box golden-background">
+            <div class="quest__inner">
+                <div class="image quest__image"></div>
+                <div class="quest__content">
+                    <h2 class="title quest__title">Title</h2>
+                    <p class="description quest__text">Description</p>
+                </div>
+            </div>
+            <div class="quest__buttons">
+                <button class="cancel quest__button">Not now</button>
+                <button class="accept quest__button quest__button-green">Accept</button>
+                <button class="next quest__button quest__button-blue">Next -></button>
             </div>
         </div>
     </div>

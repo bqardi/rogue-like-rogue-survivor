@@ -1,32 +1,36 @@
 document.addEventListener("DOMContentLoaded", event => {
     //#region SETTINGS
-    const startVolume = 0.0;
-    const tileSize = 48;
-    const torchEquipTime = 0.3;
-    const ticksPerSecond = 20;
-    const messageDelay = 300;
-    const messageDuration = 8000;
-    const messageFadeDuration = 300;
-    const collectableSpawnFactor = 0.4;
+    const START_VOLUME = 0.0;
+    const TILE_SIZE = 48;
+    const TORCH_EQUIP_TIME = 0.3;
+    const TICKS_PER_SECOND = 20;
+    const MESSAGE_DELAY = 300;
+    const MESSAGE_DURATION = 8000;
+    const MESSAGE_FADE_DURATION = 300;
+    const COLLECTABLE_SPAWN_FACTOR = 0.4;
     //#endregion SETTINGS
 
     //#region CHEATS
 
-    const cheatsOn = false;
+    const cheatsOn = true;
     const cheatKey = false;
     const cheatWeapon = false;
     const cheatFogOfWar = true;
-    const cheatMoney = 0;
     const enemiesAtStart = 0;
-    const cheatRedGem = 200;
-    const cheatBlueGem = 100;
-    const cheatGreenGem = 100;
+    const cheatMoney = 99999999;
+    const cheatRedGem = 2000;
+    const cheatBlueGem = 1000;
+    const cheatGreenGem = 1000;
 
     //#endregion CHEATS
 
     //#region VARIABLES
 
-    //Minimum dayDuration + nightDuration = 72, (55, 17) = 1 ticks per minute and change to nighttime at 18:19
+    // Quests
+    let questID = 0;
+    let chainID = 0;
+
+    // Minimum dayDuration + nightDuration = 72, (55, 17) = 1 ticks per minute and change to nighttime at 18:19
     const dayTimeControls = {
         dayDuration: 550,
         nightDuration: 170,
@@ -134,7 +138,7 @@ document.addEventListener("DOMContentLoaded", event => {
     let firstDaylight = true;
 
     //Animation frame tick/timer variables
-    const tickTime = 1 / ticksPerSecond;
+    const tickTime = 1 / TICKS_PER_SECOND;
     let dayTimeTick = 0;
     let tTime = 0;
 
@@ -145,6 +149,34 @@ document.addEventListener("DOMContentLoaded", event => {
     const secondaryInventory = document.getElementById("inventory-secondary");
     const secondaryInventoryGrid = document.getElementById("inventory-secondary-grid");
     const inventoryTakeAll = document.getElementById("inventory-take-all");
+    const invPrice = document.getElementById("inv-price");
+    const invPriceText = invPrice.querySelector(".price");
+    const inventoryPlayerMerchantToggle = document.getElementById("inventory-toggle");
+
+    let merchantObj = {
+        active: false,
+        playerActive: false,
+        inventory: null,
+        buyFactor: 0.8,
+        sellFactor: 1.2,
+        activate(inventory) {
+            this.active = true;
+            this.playerActive = false;
+            this.inventory = inventory;
+        },
+        deactivate() {
+            this.active = false;
+            this.playerActive = false;
+            this.inventory = null;
+        },
+        itemPrice(item, buyFromPlayer) {
+            let price = Math.round(item.price * this.sellFactor);
+            if (buyFromPlayer) {
+                price = Math.round(item.price * this.buyFactor);
+            }
+            return price;
+        }
+    };
 
     //Gem Crafting
     const gemCrafting = document.getElementById("gem-crafting");
@@ -223,7 +255,7 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     const playerStats = {
-        health: 30,
+        health: 60,
         strength: 0,
         armor: 0,
     }
@@ -257,7 +289,7 @@ document.addEventListener("DOMContentLoaded", event => {
     let battleInProgress = false;
 
     //Audio settings
-    let sfxVolume = startVolume;
+    let sfxVolume = START_VOLUME;
 
     //#endregion VARIABLES
 
@@ -274,8 +306,8 @@ document.addEventListener("DOMContentLoaded", event => {
                 fx.classList.add("effect");
                 fx.classList.add(this.class);
                 fx.classList.add("tile__object");
-                fx.style.width = `${tileSize}px`;
-                fx.style.height = `${tileSize}px`;
+                fx.style.width = `${TILE_SIZE}px`;
+                fx.style.height = `${TILE_SIZE}px`;
                 fx.style.animationDuration = `${this.duration}ms`;
                 element.append(fx);
                 tileObj.setBusy();
@@ -303,8 +335,8 @@ document.addEventListener("DOMContentLoaded", event => {
                 this.fx.classList.add(this.class);
                 this.fx.classList.add(type);
                 this.fx.classList.add("tile__object");
-                this.fx.style.width = `${tileSize}px`;
-                this.fx.style.height = `${tileSize}px`;
+                this.fx.style.width = `${TILE_SIZE}px`;
+                this.fx.style.height = `${TILE_SIZE}px`;
                 this.fx.style.animationDuration = `${this.duration}ms`;
                 this.element.append(this.fx);
                 return this.fx;
@@ -328,8 +360,8 @@ document.addEventListener("DOMContentLoaded", event => {
                 fx.classList.add("effect");
                 fx.classList.add(this.class);
                 fx.classList.add("tile__object");
-                fx.style.width = `${tileSize}px`;
-                fx.style.height = `${tileSize}px`;
+                fx.style.width = `${TILE_SIZE}px`;
+                fx.style.height = `${TILE_SIZE}px`;
                 fx.style.animationDuration = `${this.duration}ms`;
                 element.append(fx);
                 tileObj.setBusy();
@@ -355,8 +387,8 @@ document.addEventListener("DOMContentLoaded", event => {
                 fx.classList.add("effect");
                 fx.classList.add(this.class);
                 fx.classList.add("tile__object");
-                fx.style.width = `${tileSize}px`;
-                fx.style.height = `${tileSize}px`;
+                fx.style.width = `${TILE_SIZE}px`;
+                fx.style.height = `${TILE_SIZE}px`;
                 fx.style.cssText += `--floating-start-x:${randomInteger(-8, 8)}px;`;
                 fx.style.cssText += `--floating-end-x:${randomInteger(-48, 48)}px;`;
                 fx.style.animationDuration = `${this.duration}ms`;
@@ -386,8 +418,8 @@ document.addEventListener("DOMContentLoaded", event => {
                 fx.classList.add(type);
                 fx.classList.add(name);
                 fx.classList.add("tile__object");
-                fx.style.width = `${tileSize}px`;
-                fx.style.height = `${tileSize}px`;
+                fx.style.width = `${TILE_SIZE}px`;
+                fx.style.height = `${TILE_SIZE}px`;
                 if (turnLength > 0) {
                     this.turnLengthElm = document.createElement("DIV");
                     this.turnLengthElm.classList.add("turn-length");
@@ -442,7 +474,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
             },
             enemyDeath: function(enemy) {
-                enemyKill();
+                enemyKill(enemy);
                 effect.floating.createHTML(enemy.currentTile, "Arrrgh!");
             }
         },
@@ -450,7 +482,7 @@ document.addEventListener("DOMContentLoaded", event => {
             name: "Skeleton",
             cls: "skeleton",
             life: 20,
-            strength: 5,
+            strength: 15,
             totalCount: 0,
             moveTime: 200,
             attackTime: 200,
@@ -471,7 +503,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
             },
             enemyDeath: function(enemy) {
-                enemyKill();
+                enemyKill(enemy);
                 effect.floating.createHTML(enemy.currentTile, "Arrrgh!");
             }
         },
@@ -479,7 +511,7 @@ document.addEventListener("DOMContentLoaded", event => {
             name: "Orc",
             cls: "orc",
             life: 50,
-            strength: 8,
+            strength: 24,
             totalCount: 0,
             moveTime: 300,
             attackTime: 200,
@@ -500,7 +532,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
             },
             enemyDeath: function(enemy) {
-                enemyKill();
+                enemyKill(enemy);
                 effect.floating.createHTML(enemy.currentTile, "Arrrgh!");
             }
         },
@@ -508,7 +540,7 @@ document.addEventListener("DOMContentLoaded", event => {
             name: "Goblin",
             cls: "goblin",
             life: 12,
-            strength: 2,
+            strength: 6,
             totalCount: 0,
             moveTime: 150,
             attackTime: 180,
@@ -537,7 +569,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
             },
             enemyDeath: function(enemy) {
-                enemyKill();
+                enemyKill(enemy);
                 effect.floating.createHTML(enemy.currentTile, "Arrrgh!");
             }
         },
@@ -562,6 +594,29 @@ document.addEventListener("DOMContentLoaded", event => {
                 const key = Object.keys(this)[i];
                 if (this[key].gatewayObjs !== undefined) {
                     this.reset(this[key]);
+                }
+            }
+        },
+        updateQuestObjectives(world) {
+            if (world.questObjectives.length > 0) {
+                for (let i = 0; i < world.questObjectives.length; i++) {
+                    const objective = world.questObjectives[i];
+                    const merchant = objective.merchant;
+                    if (getQuestState(merchant)) {
+                        miniMap.tileAddClass(objective.zoneID, "quest-active");
+                    } else {
+                        miniMap.tileRemoveClass(objective.zoneID, "quest-active");
+                    }
+                }
+            }
+        },
+        updateManagers(world, chainID) {
+            if (world.questObjectives.length > 0) {
+                for (let i = 0; i < world.questObjectives.length; i++) {
+                    const objective = world.questObjectives[i];
+                    if (objective.merchant.questManager.chainID == chainID) {
+                        objective.merchant.removeManager();
+                    }
                 }
             }
         },
@@ -601,6 +656,7 @@ document.addEventListener("DOMContentLoaded", event => {
             enemyTypes: [],
             daylightCycle: false,
             darkness: 0,
+            questObjectives: [],
         },
         outdoor: {
             name: "La La Land",
@@ -644,6 +700,7 @@ document.addEventListener("DOMContentLoaded", event => {
             enemyTypes: [enemyType.skeleton, enemyType.orc, enemyType.goblin],
             daylightCycle: true,
             darkness: 0,
+            questObjectives: [],
         },
         kartansLair: {
             name: "Kartans Lair",
@@ -686,6 +743,7 @@ document.addEventListener("DOMContentLoaded", event => {
             enemyTypes: [enemyType.skeleton, enemyType.orc, enemyType.goblin],
             daylightCycle: false,
             darkness: 0.75,
+            questObjectives: [],
         },
         dungeonOfMachlain: {
             name: "The Dungeon of Machlain",
@@ -728,6 +786,7 @@ document.addEventListener("DOMContentLoaded", event => {
             enemyTypes: [enemyType.skeleton, enemyType.orc, enemyType.goblin],
             daylightCycle: false,
             darkness: 0.75,
+            questObjectives: [],
         },
         orchsCave: {
             name: "Orchs cave",
@@ -770,6 +829,7 @@ document.addEventListener("DOMContentLoaded", event => {
             enemyTypes: [enemyType.orc],
             daylightCycle: false,
             darkness: 0.75,
+            questObjectives: [],
         },
         piratesLair: {
             name: "Pirates Lair",
@@ -812,6 +872,7 @@ document.addEventListener("DOMContentLoaded", event => {
             enemyTypes: [enemyType.skeleton, enemyType.goblin],
             daylightCycle: false,
             darkness: 0.75,
+            questObjectives: [],
         }
     }
 
@@ -1664,6 +1725,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.fleeCost = this.actionPointStart;
             this.activeSlot = null;
             this.magicArmor = 0;
+            this.quests = [];
             this.fleeElement = document.getElementById("combat-flee");
             this.fleeCostElement = document.getElementById("combat-flee-cost");
             this.moveElement = document.getElementById("combat-move");
@@ -1701,6 +1763,27 @@ document.addEventListener("DOMContentLoaded", event => {
             this.createTooltipContent();
             this.createTooltip();
             this.updateUI();
+        }
+        addQuest(quest) {
+            this.quests.push(quest);
+        }
+        removeQuest(quest) {
+            for (let i = this.quests.length - 1; i >= 0; i--) {
+                const thisQuest = this.quests[i];
+                if (thisQuest.id == quest.id) {
+                    this.quests.splice(i, 1);
+                    return true;
+                }
+            }
+            return false;
+        }
+        removeQuests(chainID) {
+            for (let i = this.quests.length - 1; i >= 0; i--) {
+                const foundQuest = this.quests[i];
+                if (foundQuest.chainID == chainID) {
+                    this.quests.splice(i, 1);
+                }
+            }
         }
         setTorch(equip) {
             if (equip) {
@@ -1968,8 +2051,23 @@ document.addEventListener("DOMContentLoaded", event => {
             this.coins -= amount;
             this.ui.coins.count.textContent = this.coins;
         }
-        enemyKill() {
+        enemyKill(enemy) {
             this.killCount++;
+            for (let i = 0; i < this.quests.length; i++) {
+                const quest = this.quests[i];
+                if (quest.objective.detail.countUp) {
+                    if (quest.objective.detail.countUp(quest.objective, enemy.name)) {
+                        worlds.updateQuestObjectives(currentWorld);
+                        for (let merchants = 0; merchants < currentWorld.questObjectives.length; merchants++) {
+                            const objective = currentWorld.questObjectives[merchants];
+                            const merchant = objective.merchant;
+                            if (objective.zoneID == currentZone.id) {
+                                setQuestState(merchant);
+                            }
+                        }
+                    }
+                }
+            }
         }
         takeDamage(amount) {
             super.takeDamage(amount - this.armor.value - this.magicArmor);
@@ -2347,8 +2445,10 @@ document.addEventListener("DOMContentLoaded", event => {
             this.posY = collectable.spriteCoordinates.y * 100;
             this.equipable = collectable.equipable;
             this.stackable = collectable.stackable;
+            this.price = collectable.price;
             this.apMoveCost = collectable.apMoveCost;
             this.equipped = false;
+            this.isQuestItem = false;
             this.initialize(collectable.minValue, collectable.maxValue);
         }
         initialize(minValue, maxValue) {
@@ -2418,6 +2518,25 @@ document.addEventListener("DOMContentLoaded", event => {
         constructor(owner) {
             this.owner = owner;
             this.contents = [];
+            this.questItems = [];
+        }
+        addQuestItem(item) {
+            this.questItems.push(item);
+            return this.addItem(item);
+        }
+        removeQuestItem(item) {
+            let index = -1;
+            for (let i = 0; i < this.questItems.length; i++) {
+                const questItem = this.questItems[i];
+                if (questItem.id == item.id) {
+                    index = i;
+                }
+            }
+            if (index == -1) {
+                return false;
+            }
+            this.questItems.splice(index, 1);
+            return this.removeItem(item);
         }
         addItem(item) {
             let content = null;
@@ -2447,9 +2566,7 @@ document.addEventListener("DOMContentLoaded", event => {
             return content;
         }
         createContent(item) {
-            const obj = new Object();
-            obj.item = item;
-            obj.count = 1;
+            const obj = { item: item, count: 1 };
             this.contents.push(obj);
             return obj;
         }
@@ -2600,17 +2717,53 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Chest {
-        constructor(typeIndex, tileObj, inventory) {
-            this.typeIndex = typeIndex;
-            this.tileObj = tileObj;
+        constructor(spritePos, inventory) {
+            this.spritePos = spritePos;
             this.inventory = inventory;
         }
         createHTML() {
             this.element = document.createElement("DIV");
             this.element.classList.add(this.inventory.owner);
             this.element.classList.add("tile__object");
-            this.element.style.backgroundPosition = `0 ${this.typeIndex * -100}%`;
+            this.element.style.backgroundPosition = `0 ${this.spritePos * -100}%`;
             return this.element;
+        }
+    }
+
+    class Merchant extends Chest {
+        constructor(spritePos, inventory) {
+            super(spritePos, inventory);
+            this.questManager = null;
+            this.questState = false;
+        }
+        createHTML() {
+            this.element = document.createElement("DIV");
+            this.element.classList.add(this.inventory.owner);
+            this.element.classList.add("tile__object");
+            this.element.style.backgroundPosition = `0 ${this.spritePos * -100}%`;
+            return this.element;
+        }
+        addManager(questManager) {
+            this.questManager = questManager;
+        }
+        removeManager() {
+            this.questManager = null;
+        }
+        setQuestState(hasActiveQuest) {
+            if (hasActiveQuest) {
+                if (this.element) {
+                    this.element.classList.add("quest-active");
+                }
+                this.questState = true;
+            } else {
+                if (this.element) {
+                    this.element.classList.remove("quest-active");
+                }
+                this.questState = false;
+            }
+        }
+        get isQuestManager() {
+            return this.questManager != null;
         }
     }
 
@@ -2684,7 +2837,7 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class SpellGem {
-        constructor(gemCraftingObj) {
+        constructor(gemCraftingObj, increaseRate, startIncrease) {
             this.red = gemCraftingObj.red;
             this.blue = gemCraftingObj.blue;
             this.green = gemCraftingObj.green;
@@ -2698,19 +2851,21 @@ document.addEventListener("DOMContentLoaded", event => {
             this.actualGreenValue = 0;
 
             this.nextRedValue = 1;
-            this.nextBlueValue = 3;
-            this.nextGreenValue = 1;
+            this.nextBlueValue = 2;
+            this.nextGreenValue = 2;
 
             this.previousRedValue = 1;
             this.previousBlueValue = 1;
             this.previousGreenValue = 1;
 
-            this.redFactor = 3;
-            this.blueFactor = 5;
+            this.blueFactor = 3;
             this.greenFactor = 2;
 
             this.blueLocked = false;
             this.greenLocked = false;
+
+            this.increaseRate = increaseRate;
+            this.startIncrease = startIncrease;
         }
         lockBlue() {
             this.blueLocked = true;
@@ -2804,52 +2959,320 @@ document.addEventListener("DOMContentLoaded", event => {
             return true;
         }
         redNext() {
-            if (this.investedRed == this.nextRedValue) {
-                this.nextRedValue += this.redFactor;
-                this.previousRedValue = this.nextRedValue - this.redFactor;
-                this.actualRedValue++;
-                this.redUI();
-            }
+            this.getRedLevel();
+            this.redUI();
         }
         redPrevious() {
-            if (this.investedRed < this.previousRedValue && this.actualRedValue > 0) {
-                this.nextRedValue -= this.redFactor;
-                this.previousRedValue = this.nextRedValue - this.redFactor;
-                this.actualRedValue--;
-                this.redUI();
-            }
+            this.getRedLevel();
+            this.redUI();
         }
         blueNext() {
             if (this.investedBlue == this.nextBlueValue) {
-                this.nextBlueValue += this.blueFactor;
-                this.previousBlueValue = this.nextBlueValue - this.blueFactor;
+                this.nextBlueValue *= this.blueFactor;
+                this.previousBlueValue = this.nextBlueValue / this.blueFactor;
                 this.actualBlueValue++;
                 this.blueUI();
             }
         }
         bluePrevious() {
             if (this.investedBlue < this.previousBlueValue && this.actualBlueValue > 0) {
-                this.nextBlueValue -= this.blueFactor;
-                this.previousBlueValue = this.nextBlueValue - this.blueFactor;
+                this.nextBlueValue /= this.blueFactor;
+                this.previousBlueValue = this.nextBlueValue / this.blueFactor;
                 this.actualBlueValue--;
                 this.blueUI();
             }
         }
         greenNext() {
             if (this.investedGreen == this.nextGreenValue) {
-                this.nextGreenValue += this.greenFactor;
-                this.previousGreenValue = this.nextGreenValue - this.greenFactor;
+                this.nextGreenValue *= this.greenFactor;
+                this.previousGreenValue = this.nextGreenValue / this.greenFactor;
                 this.actualGreenValue++;
                 this.greenUI();
             }
         }
         greenPrevious() {
             if (this.investedGreen < this.previousGreenValue && this.actualGreenValue > 0) {
-                this.nextGreenValue -= this.greenFactor;
-                this.previousGreenValue = this.nextGreenValue - this.greenFactor;
+                this.nextGreenValue /= this.greenFactor;
+                this.previousGreenValue = this.nextGreenValue / this.greenFactor;
                 this.actualGreenValue--;
                 this.greenUI();
             }
+        }
+        getRedLevel() {
+            if (this.investedRed == 0) {
+                this.nextRedValue = 1;
+                this.actualRedValue = 0;
+                return
+            }
+            let counterIncrease = this.startIncrease;
+            let counter = counterIncrease;
+            let adder = 1;
+            let i = 0;
+            let pressOn = true;
+            while (pressOn) {
+                counter--;
+                if (counter == 0) {
+                    if (adder % this.increaseRate == 0) {
+                        counterIncrease++;
+                    }
+                    counter = counterIncrease;
+                    adder++;
+                    if (this.investedRed < i) {
+                        this.nextRedValue = i;
+                        pressOn = false;
+                    }
+                }
+                if (this.investedRed == i) {
+                    this.actualRedValue = adder;
+                }
+                i++;
+            }
+        }
+    }
+
+    class QuestUI {
+        constructor() {
+            this.element = document.getElementById("quest");
+            this.imageElement = this.element.querySelector(".image");
+            this.titleElement = this.element.querySelector(".title");
+            this.descriptionElement = this.element.querySelector(".description");
+            this.cancelElement = this.element.querySelector(".cancel");
+            this.acceptElement = this.element.querySelector(".accept");
+            this.nextElement = this.element.querySelector(".next");
+
+            this.cancelElement.addEventListener("click", evt => this.cancel(evt));
+            this.acceptElement.addEventListener("click", evt => this.confirm(evt));
+            this.nextElement.addEventListener("click", evt => this.nextDialog(evt));
+
+            this.quest = null;
+            this.dialog = null;
+            this.showCancel = true;
+        }
+        showDialog(quest, dialog, showConfirm, showCancel, showNext) {
+            this.quest = quest;
+            this.dialog = dialog;
+            this.showCancel = showCancel;
+            this.element.classList.remove("js-hidden");
+            this.imageElement.style.backgroundPosition = `0 -${this.dialog.spritePos * 100}%`;
+            this.titleElement.textContent = this.dialog.title;
+            this.descriptionElement.textContent = this.dialog.description;
+            if (showConfirm) {
+                this.acceptElement.style.display = "block";
+            } else {
+                this.acceptElement.style.display = "none";
+            }
+            if (this.showCancel) {
+                this.cancelElement.style.display = "block";
+            } else {
+                this.cancelElement.style.display = "none";
+            }
+            if (showNext) {
+                this.nextElement.style.display = "block";
+            } else {
+                this.nextElement.style.display = "none";
+            }
+        }
+        reset() {
+            this.element.classList.add("js-hidden");
+            this.quest.reset();
+            this.dialog.reset();
+            this.quest = null;
+            this.dialog = null;
+            this.showCancel = true;
+        }
+        cancel() {
+            this.quest.cancel();
+            this.reset();
+        }
+        confirm() {
+            this.quest.confirm();
+            this.reset();
+        }
+        nextDialog() {
+            if (this.dialog.next()) {
+                this.showDialog(this.quest, this.dialog, false, this.showCancel, true);
+            } else {
+                this.showDialog(this.quest, this.dialog, true, this.showCancel, false);
+            }
+        }
+    }
+
+    class QuestDialog {
+        constructor(title, spritePos, descriptions) {
+            this.title = title;
+            this.spritePos = spritePos;
+            this.descriptions = descriptions;
+            this.descriptionIndex = 0;
+        }
+        reset() {
+            this.descriptionIndex = 0;
+        }
+        next() {
+            this.descriptionIndex++;
+            if (this.descriptionIndex == this.descriptions.length - 1) {
+                return false;
+            }
+            return true;
+        }
+        get hasNext() {
+            return this.descriptions.length > 1;
+        }
+        get description() {
+            return this.descriptions[this.descriptionIndex];
+        }
+    }
+
+    class QuestObjective {
+        constructor(detail, type, dialog) {
+            this.detail = detail;
+            this.type = type;
+            this.dialog = dialog;
+            this.state = "inactive";
+        }
+        setActive() {
+            this.state = "active";
+            this.detail.onBegin();
+        }
+        setComplete() {
+            this.state = "complete";
+            this.detail.onEnd();
+        }
+    }
+
+    class Quest {
+        constructor(id, orderID, chainID, ui, objective, previousQuestID) {
+            this.id = id;
+            this.orderID = orderID;
+            this.chainID = chainID;
+            this.ui = ui;
+            this.objective = objective;
+            this.previousQuestID = previousQuestID;
+            this.questManager = null;
+            this.currentQuest = null;
+            this.item = null;
+            this.pending = false;
+        }
+        begin(questManager, currentQuest, callback) {
+            this.callback = callback;
+            let showConfirm;
+            let canCancel;
+            let showNext;
+            let dialog;
+            if (this.previousQuestID != null && currentQuest != null && this.previousQuestID == currentQuest.id) {
+                this.currentQuest = currentQuest;
+                //In the quest chain, only when the "next assignment" is accepted (confirm()),
+                //will the current one be given the status of "completed".
+            }
+            switch (this.objective.state) {
+                case "inactive":
+                    if (this.currentQuest == null && this.orderID != 0) {
+                        return false;
+                    } else {
+                        dialog = this.objective.dialog.begin;
+                        showConfirm = !dialog.hasNext;
+                        canCancel = true;
+                        showNext = dialog.hasNext;
+                        this.questManager = questManager;
+                        break;
+                    }
+                case "active":
+                    if (questManager && questManager.id == this.questManager.id) {
+                        dialog = this.objective.dialog.pending;
+                        showConfirm = false;
+                        canCancel = true;
+                        showNext = dialog.hasNext;
+                        this.pending = true;
+                    }
+                    break;
+
+                default:
+                    return false;
+            }
+            this.ui.showDialog(this, dialog, showConfirm, canCancel, showNext);
+            return true;
+        }
+        confirm() {
+            if (this.currentQuest) {
+                this.currentQuest.objective.setComplete();
+            }
+            this.objective.setActive();
+            if (this.callback) {
+                this.callback(this);
+            }
+            this.reset();
+        }
+        cancel() {
+            if (this.pending) {
+                if (this.callback) {
+                    this.callback(this);
+                }
+                this.pending = false;
+            }
+            this.reset();
+        }
+        reset() {
+            this.isRecievingManager = null;
+            this.currentQuest = null;
+        }
+        setItem(item) {
+            this.item = item;
+        }
+        getItem() {
+            const item = this.item;
+            this.item = null;
+            return item;
+        }
+    }
+
+    class QuestManager {
+        constructor(id, chainID, spritePos) {
+            this.id = id;
+            this.chainID = chainID;
+            this.spritePos = spritePos;
+            this.quests = [];
+            this.depleted = false;
+            this.merchant = false;
+        }
+        get quest() {
+            if (this.quests.length == 0) {
+                this.depleted = true;
+                return null;
+            }
+            return this.quests[0];
+        }
+        get hasMerchant() {
+            return this.merchant;
+        }
+        set hasMerchant(value) {
+            this.merchant = value;
+        }
+        addQuest(quest) {
+            this.quests.push(quest);
+        }
+        getQuest() {
+            if (this.quest == null) {
+                return null;
+            }
+            const quest = this.quests.shift();
+            if (this.quests.length == 0) {
+                this.depleted = true;
+            }
+            return quest;
+        }
+        isPending(quest) {
+            return this.id == quest.questManager.id;
+        }
+        compareChainID(chainID) {
+            // for (let i = 0; i < this.quests.length; i++) {
+            //     const quest = this.quests[i];
+            //     if (quest.chainID == chainID) {
+            //         return true;
+            //     }
+            // }
+            if (chainID == this.chainID) {
+                return true;
+            }
+            return false;
         }
     }
 
@@ -2866,6 +3289,10 @@ document.addEventListener("DOMContentLoaded", event => {
     // console.log("Platinum: " + platinum.amount + ", Gold: " + gold.amount + ", silver: " + silver.amount);
 
     //#endregion CLASSES
+
+    //#region VARIABLES class dependant
+    const questUI = new QuestUI();
+    //#endregion VARIABLES class dependant
 
     //#region OBJECTS
 
@@ -2887,6 +3314,8 @@ document.addEventListener("DOMContentLoaded", event => {
             ranged: true,
             source: null,
             fired: false,
+            increaseRate: 7,
+            startIncrease: 3,
             spellGem: null,
             activate(source) {
                 if (this.fired) {
@@ -2960,6 +3389,8 @@ document.addEventListener("DOMContentLoaded", event => {
             ranged: false,
             source: null,
             fired: false,
+            increaseRate: 3,
+            startIncrease: 4,
             spellGem: null,
             activate(source) {
                 if (this.fired) {
@@ -3068,6 +3499,8 @@ document.addEventListener("DOMContentLoaded", event => {
             ranged: false,
             source: null,
             fired: false,
+            increaseRate: 1,
+            startIncrease: 6,
             spellGem: null,
             playerAttach: true,
             manualDeactivate: true,
@@ -3132,6 +3565,9 @@ document.addEventListener("DOMContentLoaded", event => {
             inventoryItem: false,
             spawnPropability: 100,
             spawnPerZone: 1.2,
+            merchantCountMin: 0,
+            merchantCountMax: 0,
+            price: 0,
             collectSFX: "./audio/sfx/CHAIN_Drop_03_mono.ogg",
             useSFX: "./audio/sfx/CHAIN_Drop_03_mono.ogg",
             attack: null,
@@ -3160,6 +3596,9 @@ document.addEventListener("DOMContentLoaded", event => {
             inventoryItem: true,
             spawnPropability: 20,
             spawnPerZone: 1,
+            merchantCountMin: 5,
+            merchantCountMax: 10,
+            price: 40,
             collectSFX: "./audio/sfx/EAT_Swallow_mono.ogg",
             useSFX: "./audio/sfx/EAT_Swallow_mono.ogg",
             attack: null,
@@ -3168,10 +3607,18 @@ document.addEventListener("DOMContentLoaded", event => {
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
-                    if (player.life.value < player.life.baseValue) {
-                        player.addLife(item.amount);
-                        if (!player.inventory.removeItem(item)) {
-                            createInventoryItemsUI(player.inventory);
+                    if (merchantObj.playerActive) {
+                        player.addCoins(merchantObj.itemPrice(item, true));
+                        merchantObj.inventory.addItem(item);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    } else {
+                        if (player.life.value < player.life.baseValue) {
+                            player.addLife(item.amount);
+                            if (!player.inventory.removeItem(item)) {
+                                createInventoryItemsUI(player.inventory);
+                            }
                         }
                     }
                 }
@@ -3179,6 +3626,16 @@ document.addEventListener("DOMContentLoaded", event => {
                     player.inventory.addItem(item);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
+                    }
+                }
+                if (inventory.owner === "merchant") {
+                    const itemPrice = merchantObj.itemPrice(item, true);
+                    if (player.hasCoins(itemPrice)) {
+                        player.inventory.addItem(item);
+                        player.removeCoins(itemPrice);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
                     }
                 }
             }
@@ -3196,6 +3653,9 @@ document.addEventListener("DOMContentLoaded", event => {
             inventoryItem: true,
             spawnPropability: 0,
             spawnPerZone: 0,
+            merchantCountMin: 0,
+            merchantCountMax: 0,
+            price: 2960,
             collectSFX: "./audio/sfx/LOCK_Metal_Padlock_Unlock_Pop_01_mono.ogg",
             useSFX: null,
             attack: null,
@@ -3225,6 +3685,9 @@ document.addEventListener("DOMContentLoaded", event => {
             inventoryItem: true,
             spawnPropability: 80,
             spawnPerZone: 1.4,
+            merchantCountMin: 1,
+            merchantCountMax: 4,
+            price: 200,
             collectSFX: "./audio/sfx/LOCK_Metal_Padlock_Unlock_Pop_01_mono.ogg",
             useSFX: null,
             attack: null,
@@ -3232,14 +3695,31 @@ document.addEventListener("DOMContentLoaded", event => {
                 player.addRedGem(item);
             },
             onUse(item, inventory) {
-                if (inventory.owner === "chest") {
+                if (inventory.owner === "merchant") {
+                    const itemPrice = merchantObj.itemPrice(item, true);
+                    if (player.hasCoins(itemPrice)) {
+                        player.addRedGem(item);
+                        player.removeCoins(itemPrice);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    }
+                } else if (inventory.owner === "chest") {
                     player.addRedGem(item);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
                 } else {
-                    hideInventory();
-                    gemCraftingShow();
+                    if (merchantObj.playerActive) {
+                        player.addCoins(merchantObj.itemPrice(item, true));
+                        merchantObj.inventory.addItem(item);
+                        if (player.removeRedGem()) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    } else {
+                        hideInventory();
+                        gemCraftingShow();
+                    }
                 }
             }
         },
@@ -3256,6 +3736,9 @@ document.addEventListener("DOMContentLoaded", event => {
             inventoryItem: true,
             spawnPropability: 50,
             spawnPerZone: 0.6,
+            merchantCountMin: 0,
+            merchantCountMax: 2,
+            price: 320,
             collectSFX: "./audio/sfx/LOCK_Metal_Padlock_Unlock_Pop_01_mono.ogg",
             useSFX: null,
             attack: null,
@@ -3263,14 +3746,31 @@ document.addEventListener("DOMContentLoaded", event => {
                 player.addBlueGem(item);
             },
             onUse(item, inventory) {
-                if (inventory.owner === "chest") {
+                if (inventory.owner === "merchant") {
+                    const itemPrice = merchantObj.itemPrice(item, true);
+                    if (player.hasCoins(itemPrice)) {
+                        player.addBlueGem(item);
+                        player.removeCoins(itemPrice);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    }
+                } else if (inventory.owner === "chest") {
                     player.addBlueGem(item);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
                 } else {
-                    hideInventory();
-                    gemCraftingShow();
+                    if (merchantObj.playerActive) {
+                        player.addCoins(merchantObj.itemPrice(item, true));
+                        merchantObj.inventory.addItem(item);
+                        if (player.removeBlueGem()) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    } else {
+                        hideInventory();
+                        gemCraftingShow();
+                    }
                 }
             }
         },
@@ -3287,6 +3787,9 @@ document.addEventListener("DOMContentLoaded", event => {
             inventoryItem: true,
             spawnPropability: 20,
             spawnPerZone: 0.7,
+            merchantCountMin: 0,
+            merchantCountMax: 2,
+            price: 280,
             collectSFX: "./audio/sfx/LOCK_Metal_Padlock_Unlock_Pop_01_mono.ogg",
             useSFX: null,
             attack: null,
@@ -3294,14 +3797,31 @@ document.addEventListener("DOMContentLoaded", event => {
                 player.addGreenGem(item);
             },
             onUse(item, inventory) {
-                if (inventory.owner === "chest") {
+                if (inventory.owner === "merchant") {
+                    const itemPrice = merchantObj.itemPrice(item, true);
+                    if (player.hasCoins(itemPrice)) {
+                        player.addGreenGem(item);
+                        player.removeCoins(itemPrice);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    }
+                } else if (inventory.owner === "chest") {
                     player.addGreenGem(item);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
                 } else {
-                    hideInventory();
-                    gemCraftingShow();
+                    if (merchantObj.playerActive) {
+                        player.addCoins(merchantObj.itemPrice(item, true));
+                        merchantObj.inventory.addItem(item);
+                        if (player.removeGreenGem()) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    } else {
+                        hideInventory();
+                        gemCraftingShow();
+                    }
                 }
             }
         },
@@ -3318,6 +3838,9 @@ document.addEventListener("DOMContentLoaded", event => {
             inventoryItem: true,
             spawnPropability: 10,
             spawnPerZone: 0.1,
+            merchantCountMin: 1,
+            merchantCountMax: 1,
+            price: 80,
             collectSFX: "./audio/sfx/BOW_Release_Arrow_mono.ogg",
             useSFX: null,
             attack: new WeaponSlot("Power", 2, 8, "Stab", 1, 3, attackElements),
@@ -3326,14 +3849,33 @@ document.addEventListener("DOMContentLoaded", event => {
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
-                    player.setWeaponItem(item);
-                    player.inventory.removeItem(item);
-                    createInventoryItemsUI(player.inventory);
+                    if (merchantObj.playerActive) {
+                        player.addCoins(merchantObj.itemPrice(item, true));
+                        merchantObj.inventory.addItem(item);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    } else {
+                        player.setWeaponItem(item);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    }
                 }
                 if (inventory.owner === "chest") {
                     player.inventory.addItem(item);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
+                    }
+                }
+                if (inventory.owner === "merchant") {
+                    const itemPrice = merchantObj.itemPrice(item, true);
+                    if (player.hasCoins(itemPrice)) {
+                        player.inventory.addItem(item);
+                        player.removeCoins(itemPrice);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
                     }
                 }
             }
@@ -3351,6 +3893,9 @@ document.addEventListener("DOMContentLoaded", event => {
             inventoryItem: true,
             spawnPropability: 8,
             spawnPerZone: 0.06,
+            merchantCountMin: 0,
+            merchantCountMax: 1,
+            price: 380,
             attack: new WeaponSlot("Power", 2, 14, "Stab", 1, 6, attackElements),
             collectSFX: "./audio/sfx/FRICTION_Metal_Bars_05_mono.ogg",
             useSFX: null,
@@ -3359,14 +3904,33 @@ document.addEventListener("DOMContentLoaded", event => {
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
-                    player.setWeaponItem(item);
-                    player.inventory.removeItem(item);
-                    createInventoryItemsUI(player.inventory);
+                    if (merchantObj.playerActive) {
+                        player.addCoins(merchantObj.itemPrice(item, true));
+                        merchantObj.inventory.addItem(item);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    } else {
+                        player.setWeaponItem(item);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    }
                 }
                 if (inventory.owner === "chest") {
                     player.inventory.addItem(item);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
+                    }
+                }
+                if (inventory.owner === "merchant") {
+                    const itemPrice = merchantObj.itemPrice(item, true);
+                    if (player.hasCoins(itemPrice)) {
+                        player.inventory.addItem(item);
+                        player.removeCoins(itemPrice);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
                     }
                 }
             }
@@ -3384,6 +3948,9 @@ document.addEventListener("DOMContentLoaded", event => {
             inventoryItem: true,
             spawnPropability: 4,
             spawnPerZone: 0.04,
+            merchantCountMin: 0,
+            merchantCountMax: 1,
+            price: 810,
             collectSFX: "./audio/sfx/FRICTION_Metal_Bars_02_mono.ogg",
             useSFX: null,
             attack: new WeaponSlot("Power", 3, 24, "Dash", 2, 13, attackElements),
@@ -3392,14 +3959,33 @@ document.addEventListener("DOMContentLoaded", event => {
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
-                    player.setWeaponItem(item);
-                    player.inventory.removeItem(item);
-                    createInventoryItemsUI(player.inventory);
+                    if (merchantObj.playerActive) {
+                        player.addCoins(merchantObj.itemPrice(item, true));
+                        merchantObj.inventory.addItem(item);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    } else {
+                        player.setWeaponItem(item);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    }
                 }
                 if (inventory.owner === "chest") {
                     player.inventory.addItem(item);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
+                    }
+                }
+                if (inventory.owner === "merchant") {
+                    const itemPrice = merchantObj.itemPrice(item, true);
+                    if (player.hasCoins(itemPrice)) {
+                        player.inventory.addItem(item);
+                        player.removeCoins(itemPrice);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
                     }
                 }
             }
@@ -3417,6 +4003,9 @@ document.addEventListener("DOMContentLoaded", event => {
             inventoryItem: true,
             spawnPropability: 8,
             spawnPerZone: 0.08,
+            merchantCountMin: 0,
+            merchantCountMax: 1,
+            price: 480,
             collectSFX: "./audio/sfx/TOOL_Toolbox_Close_mono.ogg",
             useSFX: null,
             attack: null,
@@ -3425,14 +4014,33 @@ document.addEventListener("DOMContentLoaded", event => {
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
-                    player.setArmor(item);
-                    player.inventory.removeItem(item);
-                    createInventoryItemsUI(player.inventory);
+                    if (merchantObj.playerActive) {
+                        player.addCoins(merchantObj.itemPrice(item, true));
+                        merchantObj.inventory.addItem(item);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    } else {
+                        player.setArmor(item);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    }
                 }
                 if (inventory.owner === "chest") {
                     player.inventory.addItem(item);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
+                    }
+                }
+                if (inventory.owner === "merchant") {
+                    const itemPrice = merchantObj.itemPrice(item, true);
+                    if (player.hasCoins(itemPrice)) {
+                        player.inventory.addItem(item);
+                        player.removeCoins(itemPrice);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
                     }
                 }
             }
@@ -3450,6 +4058,9 @@ document.addEventListener("DOMContentLoaded", event => {
             inventoryItem: true,
             spawnPropability: 5,
             spawnPerZone: 0.05,
+            merchantCountMin: 0,
+            merchantCountMax: 1,
+            price: 970,
             collectSFX: "./audio/sfx/TOOL_Toolbox_Close_mono.ogg",
             useSFX: null,
             attack: null,
@@ -3458,9 +4069,18 @@ document.addEventListener("DOMContentLoaded", event => {
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
-                    player.setArmor(item);
-                    player.inventory.removeItem(item);
-                    createInventoryItemsUI(player.inventory);
+                    if (merchantObj.playerActive) {
+                        player.addCoins(merchantObj.itemPrice(item, true));
+                        merchantObj.inventory.addItem(item);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    } else {
+                        player.setArmor(item);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    }
                 }
                 if (inventory.owner === "chest") {
                     player.inventory.addItem(item);
@@ -3468,15 +4088,58 @@ document.addEventListener("DOMContentLoaded", event => {
                         createInventoryItemsUI(inventory);
                     }
                 }
+                if (inventory.owner === "merchant") {
+                    const itemPrice = merchantObj.itemPrice(item, true);
+                    if (player.hasCoins(itemPrice)) {
+                        player.inventory.addItem(item);
+                        player.removeCoins(itemPrice);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    }
+                }
+            }
+        },
+        pouch: {
+            name: "Pouch",
+            type: "container",
+            spriteCoordinates: { x: 6, y: 4 },
+            includeInStartZone: false,
+            minValue: 1,
+            maxValue: 1,
+            stackable: false,
+            equipable: false,
+            apMoveCost: 0,
+            inventoryItem: true,
+            spawnPropability: 5,
+            spawnPerZone: 0.05,
+            merchantCountMin: 0,
+            merchantCountMax: 0,
+            price: 970,
+            collectSFX: "./audio/sfx/TOOL_Toolbox_Close_mono.ogg",
+            useSFX: null,
+            attack: null,
+            onCollect(item) {
+                player.inventory.addItem(item);
+            },
+            onUse(item, inventory) {
+                if (item.isQuestItem) {
+                    console.log("Can't use this item!");
+                } else {
+                    if (!inventory.removeItem(item)) {
+                        createInventoryItemsUI(inventory);
+                    }
+                    console.log("Pouch opened...");
+                }
             }
         },
     }
 
     let music = {
         current: null,
-        menu: new Music("./audio/fantasy_title.ogg", startVolume),
-        calm: new Music("./audio/medieval_market_LOOP.ogg", startVolume),
-        combat: new Music("./audio/enemy_territory_LOOP.ogg", startVolume),
+        menu: new Music("./audio/fantasy_title.ogg", START_VOLUME),
+        calm: new Music("./audio/medieval_market_LOOP.ogg", START_VOLUME),
+        combat: new Music("./audio/enemy_territory_LOOP.ogg", START_VOLUME),
         setCurrent: function(musicObj) {
             this.current = musicObj;
         },
@@ -3498,14 +4161,209 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
+    let quest = {
+        initialize() {
+            this.properties(this.main);
+            this.properties(this.test);
+        },
+        properties(details) {
+            for (let i = 0; i < details.length; i++) {
+                const detail = details[i];
+                detail.id = questID;
+                detail.orderID = i;
+                detail.chainID = chainID;
+                questID++;
+            }
+            chainID++;
+        },
+        managers(details) {
+            let managers = [];
+            for (let i = 0; i < details.length; i++) {
+                const detail = details[i];
+                const quest = new Quest(detail.id, detail.orderID, detail.chainID, questUI, new QuestObjective(detail, detail.type, this.createDialogues(detail)), i == 0 ? null : detail.id - 1);
+                let manager = null;
+                for (let managerIndex = 0; managerIndex < managers.length; managerIndex++) {
+                    const mngr = managers[managerIndex].manager;
+                    if (mngr.id == detail.managerID) {
+                        mngr.addQuest(quest);
+                        manager = mngr;
+                        break;
+                    }
+                }
+                if (manager == null) {
+                    manager = new QuestManager(detail.managerID, detail.chainID, detail.spritePos);
+                    manager.addQuest(quest);
+                    managers.push({
+                        manager,
+                        world: detail.world,
+                        zoneID: detail.zoneID,
+                    });
+                }
+            }
+            return managers;
+        },
+        createDialogues(detail) {
+            return {
+                begin: new QuestDialog(detail.title, detail.spritePos, detail.dialog.begin),
+                pending: new QuestDialog(detail.title, detail.spritePos, detail.dialog.pending),
+            }
+        },
+        main: [{
+                title: "Package delivery",
+                spritePos: 2,
+                managerID: "main0",
+                world: worlds.home,
+                zoneID: "0_0",
+                type: "delivery",
+                dialog: {
+                    begin: [
+                        "Hi, stranger. Could you please help me with something?",
+                        "I need this package delivered at the Pink Merchant...",
+                        "If you deliver this for me, I will reward you greatly..."
+                    ],
+                    pending: [
+                        "Have you made the delivery yet?",
+                    ]
+                },
+                getQuestItem() {
+                    return "pouch";
+                },
+                onBegin() {
+                    console.log("Begin quest");
+                },
+                onEnd() {
+                    console.log("End 0");
+                },
+            },
+            {
+                title: "Give package",
+                spritePos: 1,
+                managerID: "main1",
+                world: worlds.outdoor,
+                zoneID: "0_1",
+                type: "",
+                dialog: {
+                    begin: [
+                        "Is this... Is this the package I've been looking for?",
+                        "It is indeed...!",
+                        "I've been looking for this, like a crazy person! Thank you so much, for bringing it to me.",
+                    ],
+                    pending: [
+                        "Go back and get your reward!",
+                    ]
+                },
+                onBegin() {
+                    console.log("Begin 1");
+                },
+                onEnd() {
+                    console.log("End 1");
+                },
+            },
+            {
+                title: "Get reward",
+                spritePos: 2,
+                managerID: "main0",
+                world: worlds.home,
+                zoneID: "0_0",
+                type: "reward",
+                dialog: {
+                    begin: [
+                        "I can't imagine what the Pink Merchant would do without the package!",
+                        "Here is something for your trouble...",
+                    ],
+                    pending: []
+                },
+                onBegin() {
+                    console.log("Begin 2");
+                },
+                onEnd() {
+                    console.log("End quest");
+                },
+                getReward() {
+                    return ["coins", "coins", "coins", "potions", "potions", "redGems", "redGems", "blueGems"];
+                },
+                questChainEnd() {
+                    return this.chainID;
+                }
+            },
+        ],
+        test: [{
+                title: "Annoying little beasts",
+                spritePos: 3,
+                managerID: "test0",
+                world: worlds.outdoor,
+                zoneID: "1_0",
+                type: "world",
+                counter: 1,
+                countType: "Goblin",
+                dialog: {
+                    begin: [
+                        "Oh I hate those annoying little beasts?",
+                        "Could you perhaps kill 3 of those for me?",
+                    ],
+                    pending: [
+                        "Have you killed them yet?",
+                    ]
+                },
+                onBegin() {
+                    console.log("Begin quest");
+                },
+                countUp(objective, type) {
+                    if (!this.counter || !this.countType) {
+                        return false;
+                    }
+                    if (type != this.countType || objective.state == "complete") {
+                        return false;
+                    }
+                    this.counter--;
+                    if (this.counter <= 0) {
+                        objective.setComplete();
+                        return true;
+                    }
+                    return false;
+                },
+                onEnd() {
+                    console.log("End 0");
+                },
+            },
+            {
+                title: "Get reward",
+                spritePos: 3,
+                managerID: "test0",
+                world: worlds.outdoor,
+                zoneID: "1_0",
+                type: "reward",
+                dialog: {
+                    begin: [
+                        "You are the man!",
+                        "Here is something for your trouble...",
+                    ],
+                    pending: []
+                },
+                onBegin() {
+                    console.log("Begin 2");
+                },
+                onEnd() {
+                    console.log("End quest");
+                },
+                getReward() {
+                    return ["ironSword"];
+                },
+                questChainEnd() {
+                    return this.chainID;
+                }
+            },
+        ],
+    }
+
     //#endregion OBJECTS
 
     //#region EVENT LISTENERS
     welcomeScreen.addEventListener("click", function() {
         this.classList.add("js-hidden");
         startFormName.focus();
-        optionsFormMusic.value = startVolume * 100;
-        optionsFormSfx.value = startVolume * 100;
+        optionsFormMusic.value = START_VOLUME * 100;
+        optionsFormSfx.value = START_VOLUME * 100;
         music.setCurrent(music.menu);
         music.current.fadeIn();
     })
@@ -3663,6 +4521,24 @@ document.addEventListener("DOMContentLoaded", event => {
             gemCraftingShow();
         }
     });
+    inventoryPlayerMerchantToggle.addEventListener("click", function() {
+        if (merchantObj.inventory == null) {
+            merchantObj.activate(openedInventory);
+        }
+        if (merchantObj.active) {
+            merchantObj.active = false;
+            merchantObj.playerActive = true;
+            this.textContent = "Show Merchant inventory";
+            this.classList.add("players-inventory");
+            showInventory(player.inventory);
+        } else {
+            merchantObj.active = true;
+            merchantObj.playerActive = false;
+            this.textContent = "Show Player inventory";
+            this.classList.remove("players-inventory");
+            showInventory(merchantObj.inventory);
+        }
+    });
 
     for (let i = 0; i < zoneTransitions.length; i++) {
         const zoneTransition = zoneTransitions[i];
@@ -3786,10 +4662,16 @@ document.addEventListener("DOMContentLoaded", event => {
             playerInventory.classList.add("two-inventories");
             secondaryInventory.classList.remove("js-hidden");
             inventoryTakeAll.style.display = "unset";
+            inventoryPlayerMerchantToggle.style.display = "none";
         } else {
             playerInventory.classList.remove("two-inventories");
             secondaryInventory.classList.add("js-hidden");
             inventoryTakeAll.style.display = "none";
+            if (openedInventory.owner === "merchant") {
+                inventoryPlayerMerchantToggle.style.display = "unset";
+            } else if (!merchantObj.playerActive) {
+                inventoryPlayerMerchantToggle.style.display = "none";
+            }
         }
         createInventoryItemsUI(openedInventory);
     }
@@ -3797,11 +4679,13 @@ document.addEventListener("DOMContentLoaded", event => {
     function hideInventory(destroy = false) {
         inventoryActive = false;
         if (destroy && openedInventory.owner == "chest" && openedInventory.tile) {
-            destroyChest(currentZone, openedInventory.tile.object);
-            console.log("DESTROY CHEST!");
+            destroyChest(openedInventory.tile);
         }
         openedInventory = null;
         playerInventory.classList.add("js-hidden");
+        inventoryPlayerMerchantToggle.textContent = "Show Player inventory";
+        inventoryPlayerMerchantToggle.classList.remove("players-inventory");
+        merchantObj.deactivate();
     }
 
     function toggleMenu() {
@@ -3882,9 +4766,18 @@ document.addEventListener("DOMContentLoaded", event => {
             hideInventory(true);
             return;
         }
+        if (inventory.owner == "merchant" || (inventory.owner == "player" && merchantObj.playerActive)) {
+            invPrice.style.display = "flex";
+        } else {
+            invPrice.style.display = "none";
+        }
         for (let i = 0; i < inventory.contents.length; i++) {
             const content = inventory.contents[i];
             inventoryGrid.append(inventoryItemButton(inventory, content));
+        }
+        buttonsUpdate();
+        if (inventory.contents.length > 0) {
+            setInventoryHoverInfo(inventory.contents[0].item);
         }
     }
 
@@ -3895,25 +4788,58 @@ document.addEventListener("DOMContentLoaded", event => {
         button.classList.add("inventory__item");
         button.setAttribute("aria-label", "Inventory item");
         button.style.backgroundPosition = `-${x}px -${y}px`;
-        if (content.item.stackable) {
-            button.innerHTML = `<span class="inventory__amount">${content.count}</span>`;
-        }
+        buttonInnerContent(button, inventory, content);
 
         button.addEventListener("click", function() {
             clickInventoryButton(this, inventory, content);
         });
         button.addEventListener("mouseover", function() {
-            setInventoryHoverInfo(content.item);
+            const rows = setInventoryHoverInfo(content.item);
+            invPriceText.textContent = content.item.price;
+            invInfo.content.innerHTML = rows;
         });
 
         invBtns.push({ element: button, inventory: inventory, content: content });
         return button;
     }
 
+    function buttonsUpdate() {
+        if (invBtns.length == 0) {
+            return;
+        }
+        if (invBtns[0].inventory.owner == "merchant") {
+            for (let i = 0; i < invBtns.length; i++) {
+                const invBtn = invBtns[i];
+                let itemPrice = merchantObj.itemPrice(invBtn.content.item, false);
+                if (player.hasCoins(itemPrice)) {
+                    invBtn.element.classList.remove("too-expensive");
+                } else {
+                    invBtn.element.classList.add("too-expensive");
+                }
+            }
+        }
+    }
+
     function clickInventoryButton(button, inventory, content) {
         inventory.onUse(content.item);
+        buttonInnerContent(button, inventory, content);
+    }
+
+    function buttonInnerContent(button, inventory, content) {
+        let innerButtonContent = "";
         if (content.item.stackable) {
-            button.innerHTML = `<span class="inventory__amount">${content.count}</span>`;
+            innerButtonContent += `<span class="inventory__amount">${content.count}</span>`;
+        }
+        if (inventory.owner == "merchant") {
+            let itemPrice = merchantObj.itemPrice(content.item, false);
+            innerButtonContent += `<span class="inventory__price">${itemPrice}</span>`;
+        }
+        if (inventory.owner == "player" && merchantObj.playerActive) {
+            let itemPrice = merchantObj.itemPrice(content.item, true);
+            innerButtonContent += `<span class="inventory__price">${itemPrice}</span>`;
+        }
+        if (innerButtonContent != "") {
+            button.innerHTML = innerButtonContent;
         }
     }
 
@@ -4021,7 +4947,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 value = "Amount";
                 break;
         }
-        invInfo.content.innerHTML = rows;
+        return rows;
     }
 
     //#region START MENU FUNCTIONS
@@ -4038,129 +4964,8 @@ document.addEventListener("DOMContentLoaded", event => {
 
     //#endregion MENU FUNCTIONS
 
-    //#region GAME FUNCTIONS
-
+    //#region GEM CRAFTING
     gemCraftingCreateRows();
-
-    function newGame(playerName) {
-        music.crossFade(music.calm);
-        currentWorld = worlds.home;
-        dayTime = new Daytime(ticksPerSecond, dayTimeControls.dayDuration, dayTimeControls.nightDuration, dayTimeControls.transitDuration, background, function(t) {
-                const sunUpPos = -40;
-                if (cycleDaylight) {
-                    if (firstDaylight) {
-                        sun.style.display = "";
-                        player.setOverlayOpacity(0);
-                        sun.style.top = sunUpPos + "%";
-                    } else {
-                        let opacity = 1 / (this.transitDuration * this.ticksPerSecond) * t;
-                        if (this.isNight) {
-                            player.setOverlayOpacity(opacity);
-                            sun.style.top = lerp(sunUpPos, 100, opacity) + "%";
-                        } else {
-                            player.setOverlayOpacity(1 - opacity);
-                            sun.style.top = lerp(sunUpPos, 100, 1 - opacity) + "%";
-                            if (player.torchEquipped && opacity > 0.8) {
-                                player.setTorch(false);
-                            }
-                        }
-                    }
-                } else if (firstDaylight) {
-                    sun.style.display = "none";
-                }
-            }, function() {
-                if (cycleDaylight) {
-                    sun.style.display = "";
-                } else {
-                    sun.style.display = "none";
-                }
-                console.log("Day, time: " + timeControls.formatTime);
-            },
-            function() {
-                firstDaylight = false;
-                if (cycleDaylight) {
-                    sun.style.display = "";
-                } else {
-                    sun.style.display = "none";
-                }
-                console.log("Night, time: " + timeControls.formatTime);
-            });
-        const gameDayDuration = (dayTime.dayDuration + dayTime.nightDuration) * ticksPerSecond;
-        const ticksPerGameMinute = gameDayDuration / 1440; // 24 * 60 = 1440 (game minutes per day)
-        timeControls.ticksPerGameMinute = ticksPerGameMinute;
-        region = new Region(currentWorld, background, zoneContainer, tileSize);
-        miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
-        playerName = playerName == "" ? "Player 1" : playerName;
-        const sfxArr = ["VOICE_Girl_4yo_Hurt_Long_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_04_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_05_mono.ogg"];
-        player = new Player(playerName, "player", playerAnimTime.move, playerAnimTime.attack, new Attribute(playerStats.health, true), new Attribute(playerStats.strength, false), new Attribute(playerStats.armor, false), ui, null, actions, playerAP, sfxArr, new Inventory("player"), null, gameOver);
-        const weaponItemButton = player.setWeaponItem(new Item("start-sword", collectables.woodenSword));
-        weaponItemButton.primaryElement.addEventListener("click", function() {
-            if (!player.weaponItem.button.primaryElement.classList.contains("disabled")) {
-                player.setPrimaryWeapon();
-            }
-        });
-        weaponItemButton.secondaryElement.addEventListener("click", function() {
-            if (!player.weaponItem.button.secondaryElement.classList.contains("disabled")) {
-                player.setSecondaryWeapon();
-            }
-        });
-        for (let i = 0; i < Object.keys(spell).length; i++) {
-            const key = Object.keys(spell)[i];
-            const slot = player.setSlot(new Slot("slot-" + (i + 3), spell[key]));
-            slot.element.addEventListener("click", function() {
-                const index = i;
-                if (player.getSlotState(index)) {
-                    player.activateSlot(index);
-                }
-            });
-        }
-        resetConfirmBox();
-        player.setConfirmation(new Confirmation(
-            "Flee?",
-            "Are you sure you want to flee from the fight?<br>(You will be taken to a random tile in the last known safe area).",
-            "Flee?",
-            "Cancel",
-            player.confirmation,
-        ));
-
-        gemCraftingPlayerSetup();
-
-        battleQueueElement.innerHTML = "";
-        buildMap(true);
-        buildZone("0_0");
-        placePlayer(currentZone.getCenterTile());
-        addPlayerControls();
-        setEvent();
-
-        //Manual placement of dungeon
-        // const tileObj = currentZone.getRandomTile();
-        // placeDungeon(currentWorld.placeGateways()[0], currentZone, tileObj);
-        if (cheatsOn) {
-            player.addCoins(cheatMoney);
-            for (let i = 0; i < cheatRedGem; i++) {
-                uniqueIndex++;
-                const item = new Item("gem-" + uniqueIndex, collectables.redGems);
-                player.addRedGem(item);
-            }
-            for (let i = 0; i < cheatBlueGem; i++) {
-                uniqueIndex++;
-                const item = new Item("gem-" + uniqueIndex, collectables.blueGems);
-                player.addBlueGem(item);
-            }
-            for (let i = 0; i < cheatGreenGem; i++) {
-                uniqueIndex++;
-                const item = new Item("gem-" + uniqueIndex, collectables.greenGems);
-                player.addGreenGem(item);
-            }
-        }
-
-        //Pathfinding algorithm test
-        // updatePathfindingGrid();
-        // console.log(findShortestPath({ x: 0, y: 0 }, { x: 3, y: 3 }, pathFindingGrid));
-
-        gameStarted = true;
-        startEngine();
-    }
 
     function gemCraftingToggle() {
         if (gemCraftingActive) {
@@ -4298,7 +5103,7 @@ document.addEventListener("DOMContentLoaded", event => {
         } else {
             gemCraftingSpellSelected.damage = gemCraftingSpellSelected.baseDamage + gemCraftingSpellSelected.spellGem.redValue;
         }
-        gemCraftingUpdateTitle();
+        gemCraftingUpdate();
     }
 
     function removeRedGem() {
@@ -4312,7 +5117,7 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         uniqueIndex++;
         player.addRedGem(new Item(collectables.redGems.type + uniqueIndex, collectables.redGems));
-        gemCraftingUpdateTitle();
+        gemCraftingUpdate();
     }
 
     function addBlueGem() {
@@ -4327,7 +5132,7 @@ document.addEventListener("DOMContentLoaded", event => {
         if (gemCraftingSpellSelected.cost == 1) {
             gemCraftingSpellSelected.spellGem.lockBlue();
         }
-        gemCraftingUpdateTitle();
+        gemCraftingUpdate();
     }
 
     function removeBlueGem() {
@@ -4338,7 +5143,7 @@ document.addEventListener("DOMContentLoaded", event => {
         gemCraftingSpellSelected.cost = gemCraftingSpellSelected.baseCost - gemCraftingSpellSelected.spellGem.blueValue;
         uniqueIndex++;
         player.addBlueGem(new Item(collectables.blueGems.type + uniqueIndex, collectables.blueGems));
-        gemCraftingUpdateTitle();
+        gemCraftingUpdate();
     }
 
     function addGreenGem() {
@@ -4353,7 +5158,7 @@ document.addEventListener("DOMContentLoaded", event => {
         if (gemCraftingSpellSelected.cooldown == 1) {
             gemCraftingSpellSelected.spellGem.lockGreen();
         }
-        gemCraftingUpdateTitle();
+        gemCraftingUpdate();
     }
 
     function removeGreenGem() {
@@ -4364,10 +5169,10 @@ document.addEventListener("DOMContentLoaded", event => {
         gemCraftingSpellSelected.cooldown = gemCraftingSpellSelected.baseCooldown - gemCraftingSpellSelected.spellGem.greenValue;
         uniqueIndex++;
         player.addGreenGem(new Item(collectables.greenGems.type + uniqueIndex, collectables.greenGems));
-        gemCraftingUpdateTitle();
+        gemCraftingUpdate();
     }
 
-    function gemCraftingUpdateTitle() {
+    function gemCraftingUpdate() {
         let title = "Damage";
         let redValue = gemCraftingSpellSelected.damage;
         if (gemCraftingSpellSelected.type == "defense") {
@@ -4379,12 +5184,13 @@ document.addEventListener("DOMContentLoaded", event => {
         gemCraftingSpellSelected.spellGem.green.title("Cooldown", gemCraftingSpellSelected.cooldown);
         gemCraftingSpellSelected.spellGem.setup();
         player.updateSlots();
+        player.setSlotStates();
     }
 
     function gemCraftingSpellSetup(gem) {
         for (let i = 0; i < Object.keys(spell).length; i++) {
             const key = Object.keys(spell)[i];
-            spell[key].spellGem = new SpellGem(gem);
+            spell[key].spellGem = new SpellGem(gem, spell[key].increaseRate, spell[key].startIncrease);
         }
     }
 
@@ -4447,7 +5253,132 @@ document.addEventListener("DOMContentLoaded", event => {
 
         gemCraftingSpellSelected.spellGem.setup();
 
-        gemCraftingUpdateTitle();
+        gemCraftingUpdate();
+    }
+    //#endregion GEM CRAFTING
+
+    //#region GAME FUNCTIONS
+
+    function newGame(playerName) {
+        music.crossFade(music.calm);
+        currentWorld = worlds.home;
+        dayTime = new Daytime(TICKS_PER_SECOND, dayTimeControls.dayDuration, dayTimeControls.nightDuration, dayTimeControls.transitDuration, background, function(t) {
+                const sunUpPos = -40;
+                if (cycleDaylight) {
+                    if (firstDaylight) {
+                        sun.style.display = "";
+                        player.setOverlayOpacity(0);
+                        sun.style.top = sunUpPos + "%";
+                    } else {
+                        let opacity = 1 / (this.transitDuration * this.ticksPerSecond) * t;
+                        if (this.isNight) {
+                            player.setOverlayOpacity(opacity);
+                            sun.style.top = lerp(sunUpPos, 100, opacity) + "%";
+                        } else {
+                            player.setOverlayOpacity(1 - opacity);
+                            sun.style.top = lerp(sunUpPos, 100, 1 - opacity) + "%";
+                            if (player.torchEquipped && opacity > 0.8) {
+                                player.setTorch(false);
+                            }
+                        }
+                    }
+                } else if (firstDaylight) {
+                    sun.style.display = "none";
+                }
+            }, function() {
+                if (cycleDaylight) {
+                    sun.style.display = "";
+                } else {
+                    sun.style.display = "none";
+                }
+                console.log("Day, time: " + timeControls.formatTime);
+            },
+            function() {
+                firstDaylight = false;
+                if (cycleDaylight) {
+                    sun.style.display = "";
+                } else {
+                    sun.style.display = "none";
+                }
+                console.log("Night, time: " + timeControls.formatTime);
+            });
+        const gameDayDuration = (dayTime.dayDuration + dayTime.nightDuration) * TICKS_PER_SECOND;
+        const ticksPerGameMinute = gameDayDuration / 1440; // 24 * 60 = 1440 (game minutes per day)
+        timeControls.ticksPerGameMinute = ticksPerGameMinute;
+        region = new Region(currentWorld, background, zoneContainer, TILE_SIZE);
+        miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
+        playerName = playerName == "" ? "Player 1" : playerName;
+        const sfxArr = ["VOICE_Girl_4yo_Hurt_Long_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_04_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_05_mono.ogg"];
+        player = new Player(playerName, "player", playerAnimTime.move, playerAnimTime.attack, new Attribute(playerStats.health, true), new Attribute(playerStats.strength, false), new Attribute(playerStats.armor, false), ui, null, actions, playerAP, sfxArr, new Inventory("player"), null, gameOver);
+        const weaponItemButton = player.setWeaponItem(new Item("start-sword", collectables.woodenSword));
+        weaponItemButton.primaryElement.addEventListener("click", function() {
+            if (!player.weaponItem.button.primaryElement.classList.contains("disabled")) {
+                player.setPrimaryWeapon();
+            }
+        });
+        weaponItemButton.secondaryElement.addEventListener("click", function() {
+            if (!player.weaponItem.button.secondaryElement.classList.contains("disabled")) {
+                player.setSecondaryWeapon();
+            }
+        });
+        for (let i = 0; i < Object.keys(spell).length; i++) {
+            const key = Object.keys(spell)[i];
+            const slot = player.setSlot(new Slot("slot-" + (i + 3), spell[key]));
+            slot.element.addEventListener("click", function() {
+                const index = i;
+                if (player.getSlotState(index)) {
+                    player.activateSlot(index);
+                }
+            });
+        }
+        resetConfirmBox();
+        player.setConfirmation(new Confirmation(
+            "Flee?",
+            "Are you sure you want to flee from the fight?<br>(You will be taken to a random tile in the last known safe area).",
+            "Flee?",
+            "Cancel",
+            player.confirmation,
+        ));
+
+        quest.initialize();
+
+        gemCraftingPlayerSetup();
+
+        battleQueueElement.innerHTML = "";
+        buildMap(true);
+        buildZone("0_0");
+        placePlayer(currentZone.getCenterTile());
+        addPlayerControls();
+        setEvent();
+
+        //Manual placement of dungeon
+        // const tileObj = currentZone.getRandomTile();
+        // placeDungeon(currentWorld.placeGateways()[0], currentZone, tileObj);
+        if (cheatsOn) {
+            player.addCoins(cheatMoney);
+            for (let i = 0; i < cheatRedGem; i++) {
+                uniqueIndex++;
+                const item = new Item("gem-" + uniqueIndex, collectables.redGems);
+                player.addRedGem(item);
+            }
+            for (let i = 0; i < cheatBlueGem; i++) {
+                uniqueIndex++;
+                const item = new Item("gem-" + uniqueIndex, collectables.blueGems);
+                player.addBlueGem(item);
+            }
+            for (let i = 0; i < cheatGreenGem; i++) {
+                uniqueIndex++;
+                const item = new Item("gem-" + uniqueIndex, collectables.greenGems);
+                player.addGreenGem(item);
+            }
+        }
+
+        //Pathfinding algorithm test
+        // updatePathfindingGrid();
+        // console.log(findShortestPath({ x: 0, y: 0 }, { x: 3, y: 3 }, pathFindingGrid));
+
+        gameStarted = true;
+        startEngine();
     }
 
     function resetConfirmBox() {
@@ -4470,7 +5401,7 @@ document.addEventListener("DOMContentLoaded", event => {
         currentWorld.miniMap = miniMap;
         currentWorld.startZoneId = currentZone.id;
         if (world.region == null) {
-            region = new Region(world, background, zoneContainer, tileSize);
+            region = new Region(world, background, zoneContainer, TILE_SIZE);
             miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
             currentWorld = world;
             if (currentWorld.daylightCycle) {
@@ -4553,27 +5484,67 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         // placeGateways();
         currentWorld.placeGateways();
+        worlds.updateQuestObjectives(currentWorld);
 
         if (!isNewMap) {
             return;
         }
 
-        const safeZonePercentage = 15;
+        const safeZonePercentage = 5;
         let safeZoneCount = region.zones.length / 100 * safeZonePercentage;
         safeZoneCount = Math.ceil(safeZoneCount);
 
         region.setSafeZones(safeZoneCount);
 
+        // placeMerchants();
+
         const chestPercentage = 50;
         let chestCount = region.zones.length / 100 * chestPercentage;
         // let chestCount = region.safeZones.length / 100 * chestPercentage;
         chestCount = Math.ceil(chestCount);
-
         placeChests(chestCount);
 
         if (region.enemyPercentage > 0) {
             placeEnemies(zoneEnemyCount(region.enemyPercentage));
         }
+
+        //QUEST MANAGERS
+        const managers = quest.managers(quest.main);
+        for (let i = 0; i < managers.length; i++) {
+            const managerObj = managers[i];
+            if (managerObj.world == currentWorld && !managerObj.hasMerchant) {
+                const zone = region.getZone(managerObj.zoneID);
+                const tileObj = zone.getRandomTile(true);
+                const merchant = createMerchant(managerObj.manager.spritePos);
+                merchant.addManager(managerObj.manager);
+                placeMerchant(zone, tileObj, merchant);
+                managerObj.hasMerchant = true;
+                currentWorld.questObjectives.push({
+                    merchant: merchant,
+                    zoneID: zone.id,
+                    tileObj: tileObj,
+                });
+            }
+        }
+        const managers2 = quest.managers(quest.test);
+        for (let i = 0; i < managers2.length; i++) {
+            const managerObj = managers2[i];
+            if (managerObj.world == currentWorld && !managerObj.hasMerchant) {
+                const zone = region.getZone(managerObj.zoneID);
+                const tileObj = zone.getRandomTile(true);
+                const merchant = createMerchant(managerObj.manager.spritePos);
+                merchant.addManager(managerObj.manager);
+                placeMerchant(zone, tileObj, merchant);
+                managerObj.hasMerchant = true;
+                currentWorld.questObjectives.push({
+                    merchant: merchant,
+                    zoneID: zone.id,
+                    tileObj: tileObj,
+                });
+            }
+        }
+        worlds.updateQuestObjectives(currentWorld);
+
 
         //INSERT ENEMIES MANUALLY FOR TESTING PURPOSES
         if (cheatsOn && enemiesAtStart > 0) {
@@ -4654,14 +5625,24 @@ document.addEventListener("DOMContentLoaded", event => {
                     battleQueue.push(tileObj.object);
                     enemiesInZone++;
                 }
+                if (tileObj.type == "merchant") {
+                    const merchant = tileObj.object;
+                    tileObj.placeHTML(merchant.createHTML());
+                    setQuestState(merchant);
+                }
                 if (tileObj.type == "chest") {
                     tileObj.placeHTML(tileObj.object.createHTML());
                 }
                 if (tileObj.type == "item") {
                     tileObj.placeHTML(tileObj.object.createHTML());
                 }
+
             }
             tileObjHTML.addEventListener("click", function() {
+                if (player.currentTile == currentZone.getTileObj(this.id)) {
+                    toggleMenu();
+                    return;
+                }
                 moveAlongPath(this.id);
             });
             tileObjHTML.addEventListener("mouseover", function() {
@@ -4676,6 +5657,44 @@ document.addEventListener("DOMContentLoaded", event => {
         setEdgeButton(zoneTransitionDown, currentZone.edgeButtons.down);
         setEdgeButton(zoneTransitionLeft, currentZone.edgeButtons.left);
         setEdgeButton(zoneTransitionRight, currentZone.edgeButtons.right);
+        if (player.quests.length > 0) {
+            console.log(player.quests)
+        }
+    }
+
+    function setQuestState(merchant) {
+        merchant.setQuestState(getQuestState(merchant));
+        worlds.updateQuestObjectives(currentWorld);
+    }
+
+    function getQuestState(merchant) {
+        let isActive = false;
+        if (merchant.isQuestManager) {
+            if (merchant.questManager.depleted) {
+                isActive = false;
+            } else {
+                let playerQuest = null;
+                if (player.quests.length > 0) {
+                    for (let i = 0; i < player.quests.length; i++) {
+                        const qst = player.quests[i];
+                        if (merchant.questManager.compareChainID(qst.chainID)) {
+                            playerQuest = qst;
+                            break;
+                        }
+                    }
+                }
+                if (playerQuest) {
+                    isActive = !merchant.questManager.isPending(playerQuest);
+                    if (!isActive && playerQuest.objective.type == "world") {
+                        isActive = playerQuest.objective.state == "complete";
+                    }
+                } else {
+                    const orderID = merchant.questManager.quests[0].orderID;
+                    isActive = orderID == 0;
+                }
+            }
+        }
+        return isActive;
     }
 
     function moveAlongPath(tileId) {
@@ -4807,7 +5826,6 @@ document.addEventListener("DOMContentLoaded", event => {
         player.resetAllSlots();
         music.crossFade(music.calm);
         background.classList.remove("battle");
-        console.log("Calm");
     }
 
     function combatEvent() {
@@ -4827,8 +5845,8 @@ document.addEventListener("DOMContentLoaded", event => {
         takeTurn();
     }
 
-    function enemyKill() {
-        player.enemyKill();
+    function enemyKill(enemy) {
+        player.enemyKill(enemy);
         enemiesInZone--;
         if (enemiesInZone <= 0) {
             enemiesInZone = 0;
@@ -5015,6 +6033,46 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
+    function placeMerchants() {
+        //Place and fill each merchants inventory
+        for (let i = 0; i < region.safeZones.length; i++) {
+            const zone = region.safeZones[i];
+            const tileObj = zone.getRandomTile(true);
+            // const spritePos = randomInteger(0, 7);
+            const merchant = createMerchant(0);
+            placeMerchant(zone, tileObj, merchant);
+        }
+    }
+
+    function createMerchant(spritePos) {
+        let filteredCollectables = getInventoryCollectables();
+        let items = [];
+        for (let collectableObjIndex = 0; collectableObjIndex < filteredCollectables.length; collectableObjIndex++) {
+            const collectable = filteredCollectables[collectableObjIndex];
+            const itemCount = randomInteger(collectable.merchantCountMin, collectable.merchantCountMax + 1);
+            for (let count = 0; count < itemCount; count++) {
+                uniqueIndex++;
+                items.push(new Item(collectable.type + "-" + uniqueIndex, collectable));
+            }
+        }
+        const merchant = new Merchant(spritePos, new Inventory("merchant"));
+        fillChest(merchant, items);
+        return merchant;
+    }
+
+    function getInventoryCollectables() {
+        let inventoryCollectables = [];
+        const collectableObjs = Object.keys(collectables);
+        for (let keyIndex = 0; keyIndex < collectableObjs.length; keyIndex++) {
+            const key = collectableObjs[keyIndex];
+            const collectable = collectables[key];
+            if (collectable.inventoryItem) {
+                inventoryCollectables.push(collectable);
+            }
+        }
+        return inventoryCollectables;
+    }
+
     function placeChests(chestCount) {
         //Place and fill each chest
         for (let i = 0; i < chestCount; i++) {
@@ -5027,11 +6085,10 @@ document.addEventListener("DOMContentLoaded", event => {
             for (let keyIndex = 0; keyIndex < collectableObjs.length; keyIndex++) {
                 const key = collectableObjs[keyIndex];
                 const collectable = collectables[key];
-                if (!collectable.inventoryItem && !collectable.type == "coin") {
-                    continue;
+                if (collectable.inventoryItem || collectable.type == "coin") {
+                    spawnPropability += collectable.spawnPropability;
+                    collObjs.push({ collectable: collectable, spawnPropability: spawnPropability });
                 }
-                spawnPropability += collectable.spawnPropability;
-                collObjs.push({ collectable: collectable, spawnPropability: spawnPropability });
             }
             let items = [];
             let minMax = { typeIndex: 0, min: 1, max: 2 }
@@ -5053,8 +6110,8 @@ document.addEventListener("DOMContentLoaded", event => {
                 minMax.min = 2;
                 minMax.max = 3;
             }
-            const chest = new Chest(minMax.typeIndex, tileObj, new Inventory("chest"));
-            placeChest(zone, chest);
+            const chest = new Chest(minMax.typeIndex, new Inventory("chest"));
+            placeChest(tileObj, chest);
             let itemCount = randomInteger(minMax.min, minMax.max);
             let collectable;
             for (let itemAmount = 0; itemAmount < itemCount; itemAmount++) {
@@ -5073,10 +6130,15 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    function placeChest(zone, chest) {
-        chest.tileObj.setEmpty();
-        chest.tileObj.placeObject(chest, "chest", true);
-        miniMap.tileAddClass(zone.id, "chest");
+    function placeMerchant(zone, tileObj, merchant) {
+        tileObj.setEmpty();
+        tileObj.placeObject(merchant, "merchant", true);
+        miniMap.tileAddClass(zone.id, "merchant");
+    }
+
+    function placeChest(tileObj, chest) {
+        tileObj.setEmpty();
+        tileObj.placeObject(chest, "chest", true);
     }
 
     function fillChest(chest, items) {
@@ -5086,11 +6148,10 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    function destroyChest(zone, chest) {
-        chest.tileObj.setEmpty();
-        miniMap.tileRemoveClass(zone.id, "chest");
-        effect.explosion.createHTML(chest.tileObj);
-        effect.floating.createHTML(chest.tileObj, "Empty");
+    function destroyChest(tileObj) {
+        tileObj.setEmpty();
+        effect.explosion.createHTML(tileObj);
+        effect.floating.createHTML(tileObj, "Empty");
     }
 
     function placeEnemies(amount) {
@@ -5099,12 +6160,6 @@ document.addEventListener("DOMContentLoaded", event => {
             const tileObj = zone.getRandomTile(true);
             randomEnemy(tileObj);
         }
-        //TODO: This needs to be deleted at some point.
-        //For now, it is used for adjustments of enemy amount/values
-        // for (let i = 0; i < currentWorld.enemyTypes.length; i++) {
-        //     const nmeType = currentWorld.enemyTypes[i];
-        //     console.log(nmeType.name + "'s: " + nmeType.totalCount);
-        // }
     }
 
     function randomEnemy(tileObj) {
@@ -5125,7 +6180,7 @@ document.addEventListener("DOMContentLoaded", event => {
 
     function placeCollectables(collectable) {
         collectable.totalStackAmount = 0;
-        const collStacks = Math.round(worlds.zoneCount(currentWorld) * collectable.spawnPerZone * collectableSpawnFactor);
+        const collStacks = Math.round(worlds.zoneCount(currentWorld) * collectable.spawnPerZone * COLLECTABLE_SPAWN_FACTOR);
         console.log(collectable.name + " - " + collStacks);
         for (let i = 0; i < collStacks; i++) {
             const zone = region.getRandomZone();
@@ -5135,9 +6190,6 @@ document.addEventListener("DOMContentLoaded", event => {
             tileObj.placeObject(item, "item", true);
             collectable.totalStackAmount += item.amount;
         }
-        //TODO: This needs to be deleted at some point.
-        //For now, it is used for adjustments of collectables- amount/values
-        // console.log(collectable.name + "'s total: " + uniqueIndex + ", total value: " + collectable.totalStackAmount);
     }
 
     function placeGateway(gateway, zone, tileObj, exitOffset) {
@@ -5320,6 +6372,80 @@ document.addEventListener("DOMContentLoaded", event => {
             });
             return "chest";
         }
+        if (destinationTileObj.type == "merchant") {
+            player.setInteractTime();
+            halfWayMove(player.element, player.moveTime, direction, null, function() {
+                playerIsMoving = false;
+                const merchant = destinationTileObj.object;
+                let hasQuest = false;
+                if (merchant.isQuestManager) {
+                    let playerQuest = null;
+                    if (player.quests.length > 0) {
+                        for (let i = 0; i < player.quests.length; i++) {
+                            const qst = player.quests[i];
+                            if (merchant.questManager.compareChainID(qst.chainID)) {
+                                playerQuest = qst;
+                                break;
+                            }
+                        }
+                    }
+                    if (playerQuest && merchant.questManager.isPending(playerQuest) && playerQuest.objective.state != "complete") {
+                        hasQuest = playerQuest.begin(merchant.questManager, null, function() {
+                            merchant.inventory.tile = destinationTileObj;
+                            showInventory(merchant.inventory);
+                        });
+                    } else if (!merchant.questManager.depleted) {
+                        hasQuest = merchant.questManager.quest.begin(merchant.questManager, playerQuest, function() {
+                            const newQuest = merchant.questManager.getQuest();
+                            if (player.quests.length > 0) {
+                                for (let i = 0; i < player.quests.length; i++) {
+                                    const qst = player.quests[i];
+                                    if (qst.objective.detail.getQuestItem) {
+                                        player.inventory.removeQuestItem(qst.getItem());
+                                        break;
+                                    }
+                                }
+                            }
+                            if (newQuest) {
+                                if (playerQuest && playerQuest.objective.state == "complete") {
+                                    player.removeQuest(playerQuest);
+                                }
+                                player.addQuest(newQuest);
+                                const detail = newQuest.objective.detail;
+                                if (detail.getReward) {
+                                    const collectableTypes = detail.getReward();
+                                    for (let i = 0; i < collectableTypes.length; i++) {
+                                        const collectable = collectables[collectableTypes[i]];
+                                        uniqueIndex++;
+                                        const item = new Item(collectable.type + uniqueIndex, collectable);
+                                        item.onCollect(false);
+                                    }
+                                }
+                                if (detail.getQuestItem) {
+                                    const collectable = collectables[detail.getQuestItem()];
+                                    uniqueIndex++;
+                                    const item = new Item(collectable.type + uniqueIndex, collectable);
+                                    item.isQuestItem = true;
+                                    player.inventory.addQuestItem(item);
+                                    newQuest.setItem(item);
+                                }
+                                if (detail.questChainEnd) {
+                                    const chainID = detail.questChainEnd();
+                                    worlds.updateManagers(currentWorld, chainID);
+                                    player.removeQuests(chainID);
+                                }
+                            }
+                            setQuestState(merchant);
+                        });
+                    }
+                }
+                if (!hasQuest) {
+                    merchant.inventory.tile = destinationTileObj;
+                    showInventory(merchant.inventory);
+                }
+            });
+            return "merchant";
+        }
         if (player.inBattle) {
             if (destinationTileObj.type == "enemy") {
                 const apAttack = player.apAttack();
@@ -5449,7 +6575,7 @@ document.addEventListener("DOMContentLoaded", event => {
         let obj = {}
         obj.msgElm = document.createElement("P");
         obj.msgElm.classList.add("info-center__message");
-        obj.msgElm.style.transition = `opacity ${messageFadeDuration}ms, visibility ${messageFadeDuration}ms`;
+        obj.msgElm.style.transition = `opacity ${MESSAGE_FADE_DURATION}ms, visibility ${MESSAGE_FADE_DURATION}ms`;
         obj.msgElm.textContent = msg;
         infoCenter.prepend(obj.msgElm);
         obj.delay = setTimeout(() => {
@@ -5459,9 +6585,9 @@ document.addEventListener("DOMContentLoaded", event => {
                 obj.fade = setTimeout(() => {
                     messagePool.shift();
                     infoCenter.removeChild(obj.msgElm);
-                }, messageFadeDuration);
-            }, messageDuration);
-        }, messageDelay);
+                }, MESSAGE_FADE_DURATION);
+            }, MESSAGE_DURATION);
+        }, MESSAGE_DELAY);
         // if (messagePool.length === 4) {
         //     clearTimeout(messagePool[0].delay);
         //     clearTimeout(messagePool[0].duration);
@@ -5535,9 +6661,9 @@ document.addEventListener("DOMContentLoaded", event => {
     //Torch:
     function equipTorch() {
         if (torchEquipping) {
-            player.setNightOverlayOpacity(1 - (1 / torchEquipTime * torchEquipTimeCurrent))
+            player.setNightOverlayOpacity(1 - (1 / TORCH_EQUIP_TIME * torchEquipTimeCurrent))
             torchEquipTimeCurrent += deltaTime;
-            if (torchEquipTimeCurrent >= torchEquipTime) {
+            if (torchEquipTimeCurrent >= TORCH_EQUIP_TIME) {
                 torchEquipTimeCurrent = 0;
                 torchEquipping = false;
             }
@@ -5546,9 +6672,9 @@ document.addEventListener("DOMContentLoaded", event => {
 
     function unEquipTorch() {
         if (torchUnEquipping) {
-            player.setNightOverlayOpacity(1 / torchEquipTime * torchEquipTimeCurrent)
+            player.setNightOverlayOpacity(1 / TORCH_EQUIP_TIME * torchEquipTimeCurrent)
             torchEquipTimeCurrent += deltaTime;
-            if (torchEquipTimeCurrent >= torchEquipTime) {
+            if (torchEquipTimeCurrent >= TORCH_EQUIP_TIME) {
                 torchEquipTimeCurrent = 0;
                 torchUnEquipping = false;
             }

@@ -429,6 +429,11 @@ button {
     background-size: 700%;
 }
 
+.ui-icon.ui-icon--big {
+    width: 80px;
+    height: 80px;
+}
+
 .ui-icon.location {
     fill: crimson;
 }
@@ -479,6 +484,7 @@ button {
 
 .info-field {
     padding: 0.5rem;
+    background-image: none;
 }
 
 .info-center {
@@ -640,7 +646,7 @@ button {
     box-shadow: 0 0 0 2px black;
 } */
 
-.zone__shop .shop {
+.zone__merchant .merchant {
     background-image: url(../images/character.png);
     background-size: 100%;
     background-position: 0 -600%;
@@ -722,6 +728,18 @@ button {
     width: 100%;
     height: 100%;
     position: absolute;
+}
+
+.tile__object.quest-active::before {
+    content: "!";
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: -50%;
+    font-weight: 700;
+    font-size: 2rem;
+    color: gold;
+    text-shadow: 0 0 5px black;
 }
 
 .zone__tile:not(.zone__empty).path {
@@ -911,7 +929,12 @@ button {
 }
 
 .mini-map__tile {
+    position: relative;
     width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    ;
 }
 
 .mini-map__tile.forest {
@@ -929,6 +952,22 @@ button {
 .mini-map__tile.dungeon {
     background-color: var(--dungeon);
     border: 1px solid #3b3b3b;
+}
+
+.mini-map__tile.quest-active::before {
+    content: "!";
+    padding: 10%;
+    width: 40%;
+    height: 40%;
+    color: black;
+    font-size: 60%;
+    background-color: gold;
+    font-weight: 1000;
+    border: 1px solid black;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .list__item-icon.legend {
@@ -979,8 +1018,19 @@ button {
     background-size: 100%;
 }
 
-.mini-map__tile.active {
+.mini-map__tile.active::before {
+    content: " ";
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
     background-color: crimson;
+    transform: scale(0.5);
+    padding: 0;
+    border: 1px solid black;
+}
+
+.mini-map__tile.active.transparent::before {
+    transform: scale(0);
 }
 
 .mini-map__tile.shop {
@@ -1109,7 +1159,7 @@ button {
 .inventory {
     height: 70vh;
     display: grid;
-    grid-template-columns: 0px 250px 400px;
+    grid-template-columns: 0px 250px 415px;
     grid-template-rows: 40px 1fr;
     gap: 1rem;
     margin-bottom: 1.5rem;
@@ -1134,7 +1184,6 @@ button {
 
 .inventory__title {
     font-size: 2rem;
-    text-align: center;
 }
 
 .inventory__button {
@@ -1142,17 +1191,42 @@ button {
     right: 0;
     top: 0;
     height: 100%;
+    min-width: 180px;
     padding: 0 0.5rem;
-    border: 4px double goldenrod;
     border-radius: 5px;
-    background-color: #115e11;
-    color: gold;
     transition: all 300ms;
 }
 
-.inventory__button:hover {
-    background-color: #137a13;
+.inventory__green {
+    border: 4px double goldenrod;
+    background-color: #115e11;
     color: gold;
+}
+
+.inventory__golden {
+    border: 4px double green;
+    background-color: goldenrod;
+    color: white;
+}
+
+.inventory__golden.players-inventory {
+    border: 4px double maroon;
+    background-color: crimson;
+    color: white;
+}
+
+.inventory__green:hover {
+    background-color: #137a13;
+}
+
+.inventory__golden:hover {
+    background-color: gold;
+    color: black;
+}
+
+.inventory__golden.players-inventory:hover {
+    background-color: lightcoral;
+    color: black;
 }
 
 .inventory__content {
@@ -1160,6 +1234,13 @@ button {
     height: 100%;
     background-image: url(../images/paper-background.png);
     box-shadow: 2px 2px 20px rgba(41, 33, 14, 0.479) inset;
+}
+
+.inventory__inner {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
 }
 
 .inventory__info {
@@ -1196,7 +1277,7 @@ button {
     grid-template-columns: repeat(5, 64px);
     grid-auto-rows: 64px;
     gap: 0.75rem;
-    padding: 1rem;
+    padding: 1.5rem;
 }
 
 .inventory__item {
@@ -1215,9 +1296,43 @@ button {
     box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.5);
 }
 
+.inventory__item.too-expensive {
+    border: 1px solid black;
+    background-color: rgb(133, 127, 114);
+    box-shadow: none;
+    filter: grayscale(1) opacity(0.5);
+    cursor: not-allowed;
+}
+
+.inventory__item.too-expensive:hover {
+    border: 1px solid black;
+    background-color: rgb(133, 127, 114);
+    box-shadow: none;
+    filter: grayscale(1) opacity(0.5);
+}
+
 .inventory__item:hover {
     filter: contrast(140%);
     box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.inventory-price {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 1rem;
+}
+
+.inventory-price__title {
+    font-size: 2rem;
+}
+
+.inventory-price__text {
+    font-size: 1.2rem;
+    padding: 0 1rem;
+    margin-top: -1rem;
+    white-space: nowrap;
 }
 
 .inventory__amount {
@@ -1233,6 +1348,33 @@ button {
     align-items: center;
     color: white;
     background-color: saddlebrown;
+}
+
+.inventory__price {
+    position: absolute;
+    top: -0.6rem;
+    right: -0.45rem;
+    width: 2rem;
+    height: 1.4rem;
+    min-width: 40px;
+    border: 1px solid black;
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: green;
+    transform: scale(0.9);
+    transition: all 300ms;
+}
+
+.inventory__item:hover .inventory__price {
+    transform: scale(1.1);
+    background-color: rgb(19, 158, 19);
+}
+
+.inventory__item.too-expensive:hover .inventory__price {
+    transform: scale(0.9);
 }
 
 
@@ -1938,6 +2080,73 @@ button {
 /* #endregion BATTLE ACTION POINTS */
 
 
+/* #region QUEST */
+
+.dialog.quest {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: default;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.quest__box {
+    width: 520px;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.quest__image {
+    background-image: url(../images/character.png);
+    background-size: 100%;
+    width: 92px;
+    height: 92px;
+    margin-right: 0.5rem;
+    float: left;
+}
+
+.quest__buttons {
+    height: 100%;
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+}
+
+.quest__button {
+    width: 32%;
+    height: 40px;
+    margin-left: 0.25rem;
+    border: 1px solid goldenrod;
+    color: gold;
+    background-color: crimson;
+}
+
+.quest__button-green {
+    background-color: green;
+}
+
+.quest__button-blue {
+    background-color: indigo;
+}
+
+.quest__button:hover {
+    border: 1px solid gold;
+    filter: brightness(1.2);
+}
+
+
+/* #endregion QUEST */
+
+
 /* #region EFFECT */
 
 .effect {
@@ -1988,11 +2197,11 @@ button {
     animation-name: timed;
     animation-iteration-count: infinite;
     animation-timing-function: step-end;
-    opacity: 0.75;
-    transform: scale(0.75);
+    opacity: 0.6;
+    transform: scale(1.8, 1.4);
     position: absolute;
-    top: -35%;
-    left: -35%;
+    top: -25%;
+    left: 0;
 }
 
 @keyframes timed {
