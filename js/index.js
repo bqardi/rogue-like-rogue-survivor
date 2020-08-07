@@ -12,15 +12,23 @@ document.addEventListener("DOMContentLoaded", event => {
 
     //#region CHEATS
 
-    const cheatsOn = true;
-    const cheatKey = false;
-    const cheatWeapon = false;
-    const cheatFogOfWar = true;
-    const enemiesAtStart = 0;
-    const cheatMoney = 99999999;
-    const cheatRedGem = 2000;
-    const cheatBlueGem = 1000;
-    const cheatGreenGem = 1000;
+    const CHEATS_ON = true;
+    const CHEAT_KEY = false;
+    const CHEAT_WEAPON = false;
+    const CHEAT_FOG_OF_WAR = true;
+    const ENEMIES_AT_START = 0;
+    const CHEAT_COLLECTABLES = true;
+    const CHEAT_SPELL_DAMAGE = 99;
+    const CHEAT_MONEY = 9999;
+
+    const cheatCollectables = [
+        { key: "ironAxe", amount: 1, inventory: true },
+        { key: "pouch", amount: 5, inventory: true },
+        { key: "largeShield", amount: 1, inventory: true },
+        { key: "redGems", amount: 2011, inventory: true },
+        { key: "blueGems", amount: 6318, inventory: true },
+        { key: "greenGems", amount: 768, inventory: true },
+    ];
 
     //#endregion CHEATS
 
@@ -29,6 +37,9 @@ document.addEventListener("DOMContentLoaded", event => {
     // Quests
     let questID = 0;
     let chainID = 0;
+    let questOverviewActive = false;
+    const questOverview = document.getElementById("quest-overview");
+    const questOverviewParent = questOverview.querySelector(".content");
 
     // Minimum dayDuration + nightDuration = 72, (55, 17) = 1 ticks per minute and change to nighttime at 18:19
     const dayTimeControls = {
@@ -208,6 +219,7 @@ document.addEventListener("DOMContentLoaded", event => {
 
     //UI
     const infoCenter = document.getElementById("info-center");
+    const openQuest = document.getElementById("open-quest");
     const openBackpack = document.getElementById("open-backpack");
     const openSpell = document.getElementById("open-spell");
 
@@ -232,6 +244,11 @@ document.addEventListener("DOMContentLoaded", event => {
             count: document.getElementById("coin-count"),
             sprite: { x: 3, y: 3 },
         },
+        quest: {
+            icon: document.getElementById("quest-icon"),
+            count: document.getElementById("quest"),
+            sprite: { x: 0, y: 0 },
+        },
         backpack: {
             icon: document.getElementById("backpack-icon"),
             count: document.getElementById("backpack"),
@@ -250,8 +267,8 @@ document.addEventListener("DOMContentLoaded", event => {
     let player;
 
     const playerAnimTime = {
-        move: 150,
-        attack: 150,
+        move: 140,
+        attack: 120,
     }
 
     const playerStats = {
@@ -296,28 +313,30 @@ document.addEventListener("DOMContentLoaded", event => {
     //#region OBJECTS used before CLASSES
 
     let effect = {
-        explosion: {
-            name: "Explosion",
-            class: "explosion",
-            duration: 700,
-            createHTML: function(tileObj) {
+        simple: {
+            name: "Simple",
+            createHTML: function(tileObj, type, duration) {
                 const element = tileObj.element;
                 let fx = document.createElement("DIV");
                 fx.classList.add("effect");
-                fx.classList.add(this.class);
+                fx.classList.add(type);
                 fx.classList.add("tile__object");
                 fx.style.width = `${TILE_SIZE}px`;
                 fx.style.height = `${TILE_SIZE}px`;
-                fx.style.animationDuration = `${this.duration}ms`;
+                fx.style.animationDuration = `${duration}ms`;
                 element.append(fx);
                 tileObj.setBusy();
-                const effectTimeout = setTimeout(() => {
-                    if (fx) {
-                        element.removeChild(fx);
-                        tileObj.freeBusy();
-                    }
-                }, this.duration);
+                const effectTimeout = {
+                    timeout: setTimeout(() => {
+                        if (fx) {
+                            element.removeChild(fx);
+                            tileObj.freeBusy();
+                        }
+                    }, duration),
+                    callback() {}
+                }
                 effectTimeouts.push(effectTimeout);
+                return fx;
             },
             soundEffect(soundFile) {
                 new SFX("./audio/sfx/" + soundFile, sfxVolume);
@@ -365,12 +384,15 @@ document.addEventListener("DOMContentLoaded", event => {
                 fx.style.animationDuration = `${this.duration}ms`;
                 element.append(fx);
                 tileObj.setBusy();
-                const effectTimeout = setTimeout(() => {
-                    if (fx) {
-                        element.removeChild(fx);
-                        tileObj.freeBusy();
-                    }
-                }, this.duration);
+                const effectTimeout = {
+                    timeout: setTimeout(() => {
+                        if (fx) {
+                            element.removeChild(fx);
+                            tileObj.freeBusy();
+                        }
+                    }, this.duration),
+                    callback() {}
+                }
                 effectTimeouts.push(effectTimeout);
             },
             soundEffect(soundFile) {
@@ -395,12 +417,15 @@ document.addEventListener("DOMContentLoaded", event => {
                 fx.innerHTML = value;
                 element.append(fx);
                 tileObj.setBusy();
-                const effectTimeout = setTimeout(() => {
-                    if (fx) {
-                        element.removeChild(fx);
-                        tileObj.freeBusy();
-                    }
-                }, this.duration);
+                const effectTimeout = {
+                    timeout: setTimeout(() => {
+                        if (fx) {
+                            element.removeChild(fx);
+                            tileObj.freeBusy();
+                        }
+                    }, this.duration),
+                    callback() {}
+                }
                 effectTimeouts.push(effectTimeout);
             },
             soundEffect(soundFile) {
@@ -411,12 +436,15 @@ document.addEventListener("DOMContentLoaded", event => {
             name: "Spell",
             class: "spell",
             duration: 500,
-            createHTML: function(tileObj, type, name, turnLength = 0) {
+            createHTML: function(tileObj, type, name, preActive, turnLength = 0) {
+                this.preActive = preActive;
                 const element = tileObj.element;
                 let fx = document.createElement("DIV");
                 fx.classList.add("effect");
                 fx.classList.add(type);
-                fx.classList.add(name);
+                if (this.preActive) {
+                    fx.classList.add("pre-active");
+                }
                 fx.classList.add("tile__object");
                 fx.style.width = `${TILE_SIZE}px`;
                 fx.style.height = `${TILE_SIZE}px`;
@@ -426,6 +454,13 @@ document.addEventListener("DOMContentLoaded", event => {
                     this.turnLengthElm.textContent = turnLength;
                     fx.append(this.turnLengthElm);
                 }
+                this.gfx = document.createElement("DIV");
+                this.gfx.classList.add("icon");
+                this.gfx.classList.add(name);
+                if (this.preActive) {
+                    this.gfx.classList.add(preActive);
+                }
+                fx.append(this.gfx);
                 element.append(fx);
                 return fx;
             },
@@ -441,11 +476,53 @@ document.addEventListener("DOMContentLoaded", event => {
                 this.duration = duration;
                 fx.style.animationDuration = `${this.duration}ms`;
                 fx.classList.add(this.class);
+                if (this.preActive) {
+                    fx.classList.remove("pre-active");
+                    this.gfx.classList.remove(this.preActive);
+                }
             },
             soundEffect(soundFile) {
                 new SFX("./audio/sfx/" + soundFile, sfxVolume);
             }
         },
+        zoomTo: {
+            name: "Zoom to",
+            createHTML(tileObj, targetElement, type, spritePos, callback = null) {
+                const element = document.body;
+                let fx = document.createElement("DIV");
+                fx.classList.add("effect");
+                fx.classList.add("zoom-to");
+                fx.classList.add(type);
+                fx.classList.add("tile__object");
+                fx.style.width = `${TILE_SIZE}px`;
+                fx.style.height = `${TILE_SIZE}px`;
+
+                const icon = document.createElement("DIV");
+                icon.classList.add("zoom-icon");
+                icon.style.backgroundPosition = `-${spritePos.x * 100}% -${spritePos.y * 100}%`;
+
+                const sourceRect = tileObj.element.getBoundingClientRect();
+                const targetRect = targetElement.getBoundingClientRect();
+                const duration = cssMoveVarsFixed(fx, sourceRect, targetRect) * 1.1;
+                icon.style.animationDuration = `${duration}ms`;
+                fx.style.animationDuration = `${duration}ms`;
+
+                fx.appendChild(icon);
+                element.appendChild(fx);
+
+                setTimeout(() => {
+                    if (callback) {
+                        callback();
+                    }
+                    element.removeChild(fx);
+                }, duration);
+
+                return fx;
+            },
+            soundEffect(soundFile) {
+                new SFX("./audio/sfx/" + soundFile, sfxVolume);
+            }
+        }
     }
 
     const enemyType = {
@@ -470,12 +547,12 @@ document.addEventListener("DOMContentLoaded", event => {
             enemyDamage(enemy, damage) {
                 const tileObj = enemy.currentTile;
                 effect.floating.createHTML(tileObj, damage);
-                effect.explosion.createHTML(tileObj);
-                effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
+                effect.simple.createHTML(tileObj, "explosion", 700);
+                effect.simple.soundEffect("THUD_Bright_03_mono.mp3");
             },
             enemyDeath: function(enemy) {
                 enemyKill(enemy);
-                effect.floating.createHTML(enemy.currentTile, "Arrrgh!");
+                enemyDrop(enemy);
             }
         },
         skeleton: {
@@ -499,12 +576,12 @@ document.addEventListener("DOMContentLoaded", event => {
             enemyDamage(enemy, damage) {
                 const tileObj = enemy.currentTile;
                 effect.floating.createHTML(tileObj, damage);
-                effect.explosion.createHTML(tileObj);
-                effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
+                effect.simple.createHTML(tileObj, "explosion", 700);
+                effect.simple.soundEffect("THUD_Bright_03_mono.mp3");
             },
             enemyDeath: function(enemy) {
                 enemyKill(enemy);
-                effect.floating.createHTML(enemy.currentTile, "Arrrgh!");
+                enemyDrop(enemy);
             }
         },
         orc: {
@@ -528,12 +605,12 @@ document.addEventListener("DOMContentLoaded", event => {
             enemyDamage(enemy, damage) {
                 const tileObj = enemy.currentTile;
                 effect.floating.createHTML(tileObj, damage);
-                effect.explosion.createHTML(tileObj);
-                effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
+                effect.simple.createHTML(tileObj, "explosion", 700);
+                effect.simple.soundEffect("THUD_Bright_03_mono.mp3");
             },
             enemyDeath: function(enemy) {
                 enemyKill(enemy);
-                effect.floating.createHTML(enemy.currentTile, "Arrrgh!");
+                enemyDrop(enemy);
             }
         },
         goblin: {
@@ -565,12 +642,46 @@ document.addEventListener("DOMContentLoaded", event => {
             enemyDamage(enemy, damage) {
                 const tileObj = enemy.currentTile;
                 effect.floating.createHTML(tileObj, damage);
-                effect.explosion.createHTML(tileObj);
-                effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
+                effect.simple.createHTML(tileObj, "explosion", 700);
+                effect.simple.soundEffect("THUD_Bright_03_mono.mp3");
             },
             enemyDeath: function(enemy) {
                 enemyKill(enemy);
-                effect.floating.createHTML(enemy.currentTile, "Arrrgh!");
+                enemyDrop(enemy);
+            }
+        },
+    }
+
+    const enemyBossType = {
+        fireElemental: {
+            name: "Fire Elemental",
+            cls: "fire-elemental",
+            world: "outdoor",
+            zoneID: "-1_0",
+            life: 250,
+            strength: 54,
+            totalCount: 0,
+            moveTime: 500,
+            attackTime: 200,
+            actionPoints: {
+                current: 2,
+                start: 2,
+                max: 4,
+            },
+            spcAtckInfo: "None",
+            sfxs: ["MONSTER_Ugh_02_mono.ogg", "MONSTER_Grunt_Short_02_mono.ogg"],
+            specialAttack: function() {
+                //Nothing
+            },
+            enemyDamage(enemy, damage) {
+                const tileObj = enemy.currentTile;
+                effect.floating.createHTML(tileObj, damage);
+                effect.simple.createHTML(tileObj, "explosion", 700);
+                effect.simple.soundEffect("THUD_Bright_03_mono.mp3");
+            },
+            enemyDeath: function(enemy) {
+                enemyKill(enemy);
+                enemyDrop(enemy);
             }
         },
     }
@@ -602,20 +713,27 @@ document.addEventListener("DOMContentLoaded", event => {
                 for (let i = 0; i < world.questObjectives.length; i++) {
                     const objective = world.questObjectives[i];
                     const merchant = objective.merchant;
+                    const minimapTile = miniMap.getTile(objective.zoneID);
                     if (getQuestState(merchant)) {
-                        miniMap.tileAddClass(objective.zoneID, "quest-active");
+                        minimapTile.classList.add("quest-active");
+                        objective.tooltip.setActive(true);
                     } else {
-                        miniMap.tileRemoveClass(objective.zoneID, "quest-active");
+                        minimapTile.classList.remove("quest-active");
+                        objective.tooltip.setActive(false);
                     }
                 }
             }
         },
-        updateManagers(world, chainID) {
+        removeManagers(world, chainID) {
             if (world.questObjectives.length > 0) {
-                for (let i = 0; i < world.questObjectives.length; i++) {
+                for (let i = world.questObjectives.length - 1; i >= 0; i--) {
                     const objective = world.questObjectives[i];
-                    if (objective.merchant.questManager.chainID == chainID) {
-                        objective.merchant.removeManager();
+                    if (objective.merchant.questManager) {
+                        if (objective.merchant.questManager.chainID == chainID) {
+                            objective.merchant.removeManager();
+                        }
+                    } else {
+                        world.questObjectives.splice(i, 1);
                     }
                 }
             }
@@ -663,7 +781,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "outdoor",
             locked: false,
             bioms: ["forest", "desert", "snow"],
-            obstacles: ["tree", "rock"],
+            obstacles: [{ type: "tree", health: 100, resource: "wood" }, { type: "rock", health: 300, resource: "stone" }],
             region: null,
             miniMap: null,
             size: {
@@ -707,7 +825,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "dungeon",
             locked: true,
             bioms: ["dungeon"],
-            obstacles: ["pillar", "barrel"],
+            obstacles: [{ type: "pillar", health: 400, resource: "stone" }, { type: "barrel", health: 50, resource: "wood" }],
             region: null,
             miniMap: null,
             size: {
@@ -750,7 +868,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "dungeon",
             locked: true,
             bioms: ["dungeon"],
-            obstacles: ["pillar", "barrel"],
+            obstacles: [{ type: "pillar", health: 400, resource: "stone" }, { type: "barrel", health: 50, resource: "wood" }],
             region: null,
             miniMap: null,
             size: {
@@ -793,7 +911,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "dungeon",
             locked: true,
             bioms: ["dungeon"],
-            obstacles: ["pillar", "barrel"],
+            obstacles: [{ type: "pillar", health: 400, resource: "stone" }, { type: "barrel", health: 50, resource: "wood" }],
             region: null,
             miniMap: null,
             size: {
@@ -836,7 +954,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "dungeon",
             locked: true,
             bioms: ["dungeon"],
-            obstacles: ["pillar", "barrel"],
+            obstacles: [{ type: "pillar", health: 400, resource: "stone" }, { type: "barrel", health: 50, resource: "wood" }],
             region: null,
             miniMap: null,
             size: {
@@ -1192,6 +1310,54 @@ document.addEventListener("DOMContentLoaded", event => {
             this.objectHTML = null;
             this.busy = [];
             this.markEmpty = false;
+
+            this.health = null;
+            this.healthTimer = null;
+            this.healthType = null;
+        }
+        addHealthObj(healthObj, type) {
+            this.health = healthObj;
+            this.healthType = type;
+        }
+        createHealthHTML() {
+            if (this.health) {
+                this.healthElement = document.createElement("DIV");
+                this.healthElement.classList.add("tile-health");
+                this.healthElement.classList.add("js-hidden");
+                this.healthBarElement = document.createElement("DIV");
+                this.healthBarElement.classList.add("tile-health__bar");
+
+                this.healthElement.appendChild(this.healthBarElement);
+                this.element.appendChild(this.healthElement);
+                const percentage = (this.health.value / this.health.maxValue) * 100;
+                this.healthBarElement.style.width = `${percentage}%`;
+            }
+        }
+        updateHealthBar() {
+            if (this.healthElement) {
+                if (this.healthTimer) {
+                    clearTimeout(this.healthTimer);
+                }
+                this.healthElement.classList.remove("js-hidden");
+                const percentage = (this.health.value / this.health.maxValue) * 100;
+                this.healthBarElement.style.width = `${percentage}%`;
+                this.healthTimer = setTimeout(() => {
+                    this.healthElement.classList.add("js-hidden");
+                }, 3000);
+            }
+        }
+        takeDamage(amount) {
+            if (this.health && this.health.value > 0) {
+                const healthLeft = this.health.remove(amount);
+                effect.floating.createHTML(this, roundDecimal(amount, 2));
+                if (healthLeft == 0) {
+                    effect.simple.createHTML(this, "explosion", 700);
+                    this.element.className = "zone__tile zone__empty";
+                    this.setEmpty();
+                }
+                this.updateHealthBar();
+                return healthLeft;
+            }
         }
         setBusy() {
             this.busy.push(0);
@@ -1313,6 +1479,41 @@ document.addEventListener("DOMContentLoaded", event => {
             const miniMapTile = document.getElementById("minimap_" + id);
             miniMapTile.classList.remove(cls);
         }
+        getTile(id) {
+            const miniMapTile = document.getElementById("minimap_" + id);
+            return miniMapTile;
+        }
+    }
+
+    class MiniTooltip {
+        constructor(parent, title, text) {
+            this.parent = parent;
+            this.title = title;
+            this.text = text;
+            this.createHTML();
+        }
+        createHTML() {
+            this.element = document.createElement("DIV");
+            this.element.classList.add("mini-tooltip");
+            this.titleElement = document.createElement("H3");
+            this.titleElement.classList.add("mini-tooltip__title");
+            this.titleElement.textContent = this.title;
+            this.textElement = document.createElement("P");
+            this.textElement.classList.add("mini-tooltip__text");
+            this.textElement.textContent = this.text;
+            this.element.appendChild(this.titleElement);
+            this.element.appendChild(this.textElement);
+            this.parent.appendChild(this.element);
+        }
+        setActive(isActive) {
+            if (this.element) {
+                if (isActive) {
+                    this.element.classList.add("js-active");
+                } else {
+                    this.element.classList.remove("js-active");
+                }
+            }
+        }
     }
 
     class Gate {
@@ -1346,10 +1547,10 @@ document.addEventListener("DOMContentLoaded", event => {
             }
             this.tooltip = new Tooltip(this.id, texts, this.element);
             this.element.classType = this;
-            this.element.addEventListener("mouseover", function(evt) {
+            this.element.addEventListener("mouseenter", function(evt) {
                 evt.currentTarget.classType.showTooltip();
             });
-            this.element.addEventListener("mouseout", function(evt) {
+            this.element.addEventListener("mouseleave", function(evt) {
                 evt.currentTarget.classType.tooltip.hide();
             });
         }
@@ -1387,12 +1588,13 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Character {
-        constructor(name, type, moveTime, attackTime, life, strength, tileId, apElement, actionPoints, sfxs, inventory, onDamage, onDeath) {
+        constructor(name, type, moveTime, attackTime, health, strength, tileId, apElement, actionPoints, sfxs, inventory, onDamage, onDeath) {
             this.name = name;
+            this.lcaseName = toFileName(this.name);
             this.type = type;
             this.moveTime = moveTime;
             this.attackTime = attackTime;
-            this.life = life;
+            this.health = health;
             // this.totalLife = life;
             this.strength = strength;
             // this.baseStrength = strength;
@@ -1418,15 +1620,26 @@ document.addEventListener("DOMContentLoaded", event => {
             this.moveCost = 1;
             this.onDamage = onDamage;
             this.onDeath = onDeath;
+            this.styleOpacity = 1;
+            if (this.type == "player") {
+                this.lcaseName = "spritesheet";
+            }
         }
         get currentTile() {
             return currentZone.getTileObj(this.tileId);
         }
+        get opacity() {
+            return this.styleOpacity;
+        }
+        set opacity(value) {
+            this.styleOpacity = value;
+            this.element.style.opacity = this.styleOpacity;
+        }
         createTooltip() {
             this.tooltip = new Tooltip(this.name, this.texts, this.element);
             this.element.classType = this;
-            this.element.addEventListener("mouseover", (evt) => this.showTooltip(evt));
-            this.element.addEventListener("mouseout", (evt) => this.tooltip.hide(evt));
+            this.element.addEventListener("mouseenter", (evt) => this.showTooltip(evt));
+            this.element.addEventListener("mouseleave", (evt) => this.tooltip.hide(evt));
         }
         updateTooltip() {
             this.tooltip.setContent(this.texts);
@@ -1505,11 +1718,7 @@ document.addEventListener("DOMContentLoaded", event => {
         actionPointHTML() {
             this.actionPointHTMLRemove();
             this.apElement.classList.add("js-active");
-            let lcaseName = this.name.toLowerCase();
-            if (this.type == "player") {
-                lcaseName = "spritesheet";
-            }
-            this.apImage.src = `./images/${this.type}-${lcaseName}.png`;
+            this.apImage.src = `./images/${this.type}-${this.lcaseName}.png`;
             this.apImage.alt = this.name;
             for (let i = 0; i < this.actionPointMax; i++) {
                 let apPoint = document.createElement("DIV");
@@ -1576,8 +1785,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 this.takeDamage(this.dot);
                 this.dotCount--;
                 if (this.dotCount == 0) {
-                    this.dot = 0;
-                    this.element.removeChild(this.statusEffect);
+                    this.removeStatusEffect();
                 }
                 return true;
             }
@@ -1586,6 +1794,22 @@ document.addEventListener("DOMContentLoaded", event => {
         endTurn() {
             this.actionPointsTransfer = this.actionPoints;
         }
+        damageOverTime(damage, count, statusEffect) {
+            this.dotCount = count;
+            this.dot = damage;
+            if (this.statusEffect) {
+                this.removeStatusEffect();
+            }
+            this.statusEffect = statusEffect;
+        }
+        removeStatusEffect() {
+            this.dot = 0;
+            if (this.element && this.statusEffect) {
+                if (this.element.contains(this.statusEffect)) {
+                    this.element.removeChild(this.statusEffect);
+                }
+            }
+        }
         setMoveTime() {
             this.element.style.animationDuration = `${this.moveTime}ms`;
         }
@@ -1593,11 +1817,16 @@ document.addEventListener("DOMContentLoaded", event => {
             this.element.style.animationDuration = `${this.attackTime}ms`;
         }
         addLife(amount) {
-            if (this.isDead) {
+            if (this.isDead || amount == 0) {
                 return;
             }
-            this.life.add(amount);
-            if (this.life.value <= 0) {
+            let healthLeft = 0;
+            if (amount < 0) {
+                healthLeft = this.health.remove(-amount);
+            } else {
+                healthLeft = this.health.add(amount);
+            }
+            if (healthLeft == 0) {
                 this.isDead = true;
                 this.onDeath(this);
             }
@@ -1619,22 +1848,13 @@ document.addEventListener("DOMContentLoaded", event => {
                 this.playSFX(this.sfxs[rnd]);
             }
         }
-        damageOverTime(damage, count, statusEffect) {
-            this.dotCount = count;
-            this.dot = damage;
-            this.statusEffect = statusEffect;
-        }
         playSFX(sfxFile) {
             new SFX("./audio/sfx/" + sfxFile, sfxVolume);
         }
         createCardHTML(parent) {
-            let lcaseName = this.name.toLowerCase();
-            if (this.type == "player") {
-                lcaseName = "spritesheet";
-            }
             const titleImage = `
                 <h3 class="character-card__title">${this.name}</h3>
-                <img class="character-card__image" src="./images/${this.type}-${lcaseName}.png" alt="${this.name}">
+                <img class="character-card__image" src="./images/${this.type}-${this.lcaseName}.png" alt="${this.name}">
             `;
             let card = document.createElement("DIV");
             let cardHealth = document.createElement("DIV");
@@ -1666,7 +1886,7 @@ document.addEventListener("DOMContentLoaded", event => {
             if (this.isDead) {
                 this.removeCard();
             } else {
-                this.cardHealthBar.style.width = `${this.life.value / this.life.baseValue * 100}%`
+                this.cardHealthBar.style.width = `${this.health.value / this.health.maxValue * 100}%`
             }
         }
         setActive() {
@@ -1692,7 +1912,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type,
             moveTime,
             attackTime,
-            life,
+            health,
             strength,
             armor,
             uiObj,
@@ -1704,7 +1924,7 @@ document.addEventListener("DOMContentLoaded", event => {
             onDamage,
             onDeath
         ) {
-            super(name, type, moveTime, attackTime, life, strength, tileId, apElement, actionPoints, sfxs, inventory, onDamage, onDeath);
+            super(name, type, moveTime, attackTime, health, strength, tileId, apElement, actionPoints, sfxs, inventory, onDamage, onDeath);
             this.armor = armor;
             this.baseArmor = armor;
             this.coins = 0;
@@ -1726,6 +1946,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.activeSlot = null;
             this.magicArmor = 0;
             this.quests = [];
+            this.questRows = [];
             this.fleeElement = document.getElementById("combat-flee");
             this.fleeCostElement = document.getElementById("combat-flee-cost");
             this.moveElement = document.getElementById("combat-move");
@@ -1733,7 +1954,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.initialize();
         }
         initialize() {
-            this.ui.life.count.textContent = this.life.value;
+            this.ui.life.count.textContent = this.health.value;
             this.ui.strength.count.textContent = this.strength.value;
             this.ui.armor.count.textContent = this.armor.value;
             this.element = document.createElement("DIV");
@@ -1785,6 +2006,30 @@ document.addEventListener("DOMContentLoaded", event => {
                 }
             }
         }
+        addQuestRow(row, chainID) {
+            this.questRows.push({ row, chainID });
+        }
+        updateQuestRow(chainID) {
+            let exists = false;
+            for (let i = 0; i < this.questRows.length; i++) {
+                const questRow = this.questRows[i];
+                if (questRow.chainID == chainID) {
+                    questRow.row.setPending();
+                    exists = true;
+                    break;
+                }
+            }
+            return exists;
+        }
+        lastQuestRow(chainID) {
+            for (let i = 0; i < this.questRows.length; i++) {
+                const questRow = this.questRows[i];
+                if (questRow.chainID == chainID) {
+                    questRow.row.setComplete();
+                    return;
+                }
+            }
+        }
         setTorch(equip) {
             if (equip) {
                 if (torchEquipping || torchUnEquipping) {
@@ -1830,7 +2075,7 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         createTooltipContent() {
             this.texts = [
-                tooltipElm("Life: ", this.life.value),
+                tooltipElm("Life: ", this.health.value),
                 tooltipElm("Damage: ", this.strength.value),
                 tooltipElm("Armor: ", this.armor.value),
                 tooltipElm("Movement speed: ", this.moveTime),
@@ -1852,7 +2097,7 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         addLife(amount) {
             super.addLife(amount);
-            this.ui.life.count.textContent = this.life.value;
+            this.ui.life.count.textContent = this.health.value;
             this.updateTooltip();
         }
         setWeaponItem(item) {
@@ -1880,7 +2125,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.resetWeaponButtons();
             this.deactivateSlots();
             this.activeSlot = this.slots[index];
-            let spellObj = currentZone.getTileObj(player.tileId);
+            let spellObj = player.currentTile;
             if (this.activeSlot.spell.playerAttach) {
                 spellObj = player;
             }
@@ -1905,6 +2150,9 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         get spellIsRanged() {
             return this.activeSlot.spell.ranged;
+        }
+        get spellTargetEmpty() {
+            return this.activeSlot.spell.canTargetEmpty;
         }
         fireSlotSpell(targetTileObj) {
             if (this.activeSlot == null) {
@@ -2057,14 +2305,15 @@ document.addEventListener("DOMContentLoaded", event => {
                 const quest = this.quests[i];
                 if (quest.objective.detail.countUp) {
                     if (quest.objective.detail.countUp(quest.objective, enemy.name)) {
-                        worlds.updateQuestObjectives(currentWorld);
                         for (let merchants = 0; merchants < currentWorld.questObjectives.length; merchants++) {
                             const objective = currentWorld.questObjectives[merchants];
                             const merchant = objective.merchant;
                             if (objective.zoneID == currentZone.id) {
-                                setQuestState(merchant);
+                                console.log("Getting quest state")
+                                merchant.setQuestState(getQuestState(merchant));
                             }
                         }
+                        worlds.updateQuestObjectives(currentWorld);
                     }
                 }
             }
@@ -2145,7 +2394,7 @@ document.addEventListener("DOMContentLoaded", event => {
             type,
             moveTime,
             attackTime,
-            life,
+            health,
             strength,
             tileId,
             apElement,
@@ -2156,8 +2405,7 @@ document.addEventListener("DOMContentLoaded", event => {
             onDamage,
             onDeath
         ) {
-            super(name, type, moveTime, attackTime, life, strength, tileId, apElement, actionPoints, sfxs, inventory, onDamage, onDeath);
-            this.totalLife = life;
+            super(name, type, moveTime, attackTime, health, strength, tileId, apElement, actionPoints, sfxs, inventory, onDamage, onDeath);
             this.cls = typeObj.cls;
             this.elmBar;
             this.elmBarText;
@@ -2174,7 +2422,7 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         createTooltipContent() {
             this.texts = [
-                tooltipElm("Life: ", roundDecimal(this.life.value, 2)),
+                tooltipElm("Life: ", roundDecimal(this.health.value, 2)),
                 tooltipElm("Damage: ", this.strength.value),
                 tooltipElm("Movement speed: ", this.moveTime),
                 tooltipElm("AP start: ", this.actionPointStart),
@@ -2187,46 +2435,124 @@ document.addEventListener("DOMContentLoaded", event => {
             super.updateTooltip();
         }
         createHTML() {
-            let enemyHTML = document.createElement("DIV");
-            enemyHTML.classList.add("enemy");
-            enemyHTML.style.backgroundImage = `url(./images/enemy-${this.cls}.png)`;
-            enemyHTML.classList.add("animation");
-            enemyHTML.classList.add("tile__object");
-            enemyHTML.style.animationDuration = `${this.animationTime}ms`;
-            let healthbar = document.createElement("DIV");
-            let bar = document.createElement("DIV");
-            let barText = document.createElement("SPAN");
-            healthbar.classList.add("healthbar");
-            bar.classList.add("bar");
-            bar.style.width = `${this.life.value / this.life.baseValue * 100}%`;
-            barText.classList.add("bar__text");
-            barText.textContent = `${this.life.value} / ${this.life.baseValue}`;
-            healthbar.append(bar);
-            healthbar.append(barText);
-            enemyHTML.append(healthbar);
-            this.element = enemyHTML;
-            this.elmBar = bar;
-            this.elmBarText = barText;
+            this.element = document.createElement("DIV");
+            this.element.classList.add("enemy");
+            this.element.style.backgroundImage = `url(./images/enemy-${this.lcaseName}.png)`;
+            this.element.classList.add("animation");
+            this.element.classList.add("tile__object");
+            this.element.style.animationDuration = `${this.animationTime}ms`;
+            this.element.append(this.healthBarHTML());
             this.createTooltipContent();
             this.createTooltip();
-            return enemyHTML;
+            return this.element;
+        }
+        healthBarHTML(healthClass = "") {
+            let healthbar = document.createElement("DIV");
+            healthbar.classList.add("healthbar");
+            if (healthClass != "") {
+                healthbar.classList.add(healthClass);
+            }
+
+            this.elmBar = document.createElement("DIV");
+            this.elmBar.classList.add("bar");
+            this.elmBar.style.width = `${this.health.value / this.health.maxValue * 100}%`;
+
+            this.elmBarText = document.createElement("SPAN");
+            this.elmBarText.classList.add("bar__text");
+            this.elmBarText.textContent = `${this.health.value} / ${this.health.maxValue}`;
+
+            healthbar.append(this.elmBar);
+            healthbar.append(this.elmBarText);
+
+            return healthbar;
         }
         addLife(amount) {
             super.addLife(amount);
-            if (this.life.value <= 0) {
+            if (this.health.value <= 0) {
                 this.tooltip.remove();
             }
         }
         takeDamage(damage) {
             super.takeDamage(damage);
-            this.elmBar.style.width = `${this.life.value / this.life.baseValue * 100}%`;
-            this.elmBarText.textContent = `${roundDecimal(this.life.value, 2)} / ${this.life.baseValue}`;
-            if (this.life.value <= 0) {
+            this.elmBar.style.width = `${this.health.value / this.health.maxValue * 100}%`;
+            this.elmBarText.textContent = `${roundDecimal(this.health.value, 2)} / ${this.health.maxValue}`;
+            if (this.health.value <= 0) {
                 this.currentTile.removeObject(this.element);
                 return true;
             }
             this.updateTooltip();
             return false;
+        }
+    }
+
+    class EnemyBoss extends Enemy {
+        constructor(
+            name,
+            type,
+            moveTime,
+            attackTime,
+            health,
+            strength,
+            tileId,
+            apElement,
+            actionPoints,
+            sfxs,
+            inventory,
+            typeObj,
+            spell,
+            onDamage,
+            onDeath
+        ) {
+            super(name, type, moveTime, attackTime, health, strength, tileId, apElement, actionPoints, sfxs, inventory, typeObj, onDamage, onDeath);
+            this.spell = spell;
+        }
+        createHTML() {
+            this.element = document.createElement("DIV");
+            this.element.classList.add("enemy");
+            this.element.classList.add("boss");
+            this.element.classList.add("animation");
+            this.element.classList.add("tile__object");
+            this.element.style.animationDuration = `${this.animationTime}ms`;
+            this.spriteElement = document.createElement("DIV");
+            this.spriteElement.classList.add("boss-icon");
+            this.spriteElement.style.backgroundImage = `url(./images/enemy-${this.lcaseName}.png)`;
+            this.element.append(this.spriteElement);
+            this.element.append(super.healthBarHTML("boss-healthbar"));
+            this.createTooltipContent();
+            this.createTooltip();
+            return this.element;
+        }
+        spellFire(targetTileObj) {
+            this.spell.fire(this.currentTile, targetTileObj, this.strength.value / 2, function(spellObj) {
+                console.log("Fireball hit the player");
+            });
+        }
+    }
+
+    class Health {
+        constructor(health, maxHealth = -1) {
+            this.value = health;
+            this.maxValue = maxHealth;
+            this.initialize();
+        }
+        initialize() {
+            if (this.maxValue === -1) {
+                this.maxValue = this.value;
+            }
+        }
+        add(amount) {
+            this.value += amount;
+            if (this.value > this.maxValue) {
+                this.value = this.maxValue;
+            }
+            return this.value;
+        }
+        remove(amount) {
+            this.value -= amount;
+            if (this.value <= 0) {
+                this.value = 0;
+            }
+            return this.value;
         }
     }
 
@@ -2362,6 +2688,9 @@ document.addEventListener("DOMContentLoaded", event => {
             this.deactivate();
             this.coolReset();
             this.spell.deactivate();
+            if (this.spell.selfDeactivate) {
+                this.spell.selfDeactivate();
+            }
         }
         spellActivate(spellObj) {
             if (this.isCoolingDown) {
@@ -2370,9 +2699,6 @@ document.addEventListener("DOMContentLoaded", event => {
             return this.spell.activate(spellObj);
         }
         spellDeactivate() {
-            if (this.spell.manualDeactivate) {
-                return;
-            }
             this.spell.deactivate();
         }
         spellFire(targetTileObj) {
@@ -2521,6 +2847,7 @@ document.addEventListener("DOMContentLoaded", event => {
             this.questItems = [];
         }
         addQuestItem(item) {
+            item.isQuestItem = true;
             this.questItems.push(item);
             return this.addItem(item);
         }
@@ -2670,6 +2997,8 @@ document.addEventListener("DOMContentLoaded", event => {
             this.title = `<h3 class="title">${title}</h3>`;
             this.boundElement = boundElement;
             this.offset = 10;
+            this.delay = 500;
+            this.timer = null;
             this.initialize(texts);
         }
         initialize(texts) {
@@ -2691,25 +3020,41 @@ document.addEventListener("DOMContentLoaded", event => {
             this.element.style.display = "";
         }
         showAbove() {
-            let boundElmObj = this.boundElement.getBoundingClientRect();
-            const top = boundElmObj.top - this.rect.height - this.offset;
-            const left = boundElmObj.left + (boundElmObj.width / 2) - (this.rect.width / 2);
-            this.element.style.top = top + "px";
-            this.element.style.left = left + "px";
-            this.element.classList.add("js-active");
+            if (this.timer) {
+                clearTimeout(this.timer);
+            }
+            this.timer = setTimeout(() => {
+                let boundElmObj = this.boundElement.getBoundingClientRect();
+                const top = boundElmObj.top - this.rect.height - this.offset;
+                const left = boundElmObj.left + (boundElmObj.width / 2) - (this.rect.width / 2);
+                this.element.style.top = top + "px";
+                this.element.style.left = left + "px";
+                this.element.classList.add("js-active");
+            }, this.delay);
         }
         showBelow() {
-            let boundElmObj = this.boundElement.getBoundingClientRect();
-            const top = boundElmObj.top + boundElmObj.height + this.offset;
-            const left = boundElmObj.left + (boundElmObj.width / 2) - (this.rect.width / 2);
-            this.element.style.top = top + "px";
-            this.element.style.left = left + "px";
-            this.element.classList.add("js-active");
+            if (this.timer) {
+                clearTimeout(this.timer);
+            }
+            this.timer = setTimeout(() => {
+                let boundElmObj = this.boundElement.getBoundingClientRect();
+                const top = boundElmObj.top + boundElmObj.height + this.offset;
+                const left = boundElmObj.left + (boundElmObj.width / 2) - (this.rect.width / 2);
+                this.element.style.top = top + "px";
+                this.element.style.left = left + "px";
+                this.element.classList.add("js-active");
+            }, this.delay);
         }
         hide() {
+            if (this.timer) {
+                clearTimeout(this.timer);
+            }
             this.element.classList.remove("js-active");
         }
         remove() {
+            if (this.timer) {
+                clearTimeout(this.timer);
+            }
             if (this.element) {
                 this.element.parentNode.removeChild(this.element);
             }
@@ -2731,8 +3076,9 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     class Merchant extends Chest {
-        constructor(spritePos, inventory) {
+        constructor(name, spritePos, inventory) {
             super(spritePos, inventory);
+            this.name = name;
             this.questManager = null;
             this.questState = false;
         }
@@ -3276,6 +3622,32 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
+    class QuestRow {
+        constructor(parent, title) {
+            this.parent = parent;
+            this.title = title;
+            this.createHTML();
+        }
+        createHTML() {
+            this.element = document.createElement("DIV");
+            this.element.classList.add("quest-overview__row");
+            this.titleElement = document.createElement("P");
+            this.titleElement.classList.add("quest-overview__row-title");
+            this.titleElement.textContent = this.title;
+            this.statusElement = document.createElement("P");
+            this.statusElement.classList.add("quest-overview__row-status");
+            this.element.appendChild(this.titleElement);
+            this.element.appendChild(this.statusElement);
+            this.parent.appendChild(this.element);
+        }
+        setPending() {
+            this.element.classList.add("pending");
+        }
+        setComplete() {
+            this.element.classList.add("complete");
+        }
+    }
+
     // let platinum = new Currency();
     // let gold = new Currency(100, platinum);
     // let silver = new Currency(100, gold);
@@ -3302,7 +3674,7 @@ document.addEventListener("DOMContentLoaded", event => {
             name: "Fireball",
             type: "offense",
             description: "Ranged ball of fire with high damage",
-            icon: `<svg viewBox="0 0 24 24"><path d="M17.55,11.2C17.32,10.9 17.05,10.64 16.79,10.38C16.14,9.78 15.39,9.35 14.76,8.72C13.3,7.26 13,4.85 13.91,3C13,3.23 12.16,3.75 11.46,4.32C8.92,6.4 7.92,10.07 9.12,13.22C9.16,13.32 9.2,13.42 9.2,13.55C9.2,13.77 9.05,13.97 8.85,14.05C8.63,14.15 8.39,14.09 8.21,13.93C8.15,13.88 8.11,13.83 8.06,13.76C6.96,12.33 6.78,10.28 7.53,8.64C5.89,10 5,12.3 5.14,14.47C5.18,14.97 5.24,15.47 5.41,15.97C5.55,16.57 5.81,17.17 6.13,17.7C7.17,19.43 9,20.67 10.97,20.92C13.07,21.19 15.32,20.8 16.93,19.32C18.73,17.66 19.38,15 18.43,12.72L18.3,12.46C18.1,12 17.83,11.59 17.5,11.21L17.55,11.2M14.45,17.5C14.17,17.74 13.72,18 13.37,18.1C12.27,18.5 11.17,17.94 10.5,17.28C11.69,17 12.39,16.12 12.59,15.23C12.76,14.43 12.45,13.77 12.32,13C12.2,12.26 12.22,11.63 12.5,10.94C12.67,11.32 12.87,11.7 13.1,12C13.86,13 15.05,13.44 15.3,14.8C15.34,14.94 15.36,15.08 15.36,15.23C15.39,16.05 15.04,16.95 14.44,17.5H14.45Z"></path></svg>`,
+            icon: `<div class="spell-icon" style="background-position: -600% 0;">`,
             cost: 7,
             baseCost: 7,
             damage: 6,
@@ -3322,7 +3694,7 @@ document.addEventListener("DOMContentLoaded", event => {
                     return false;
                 }
                 this.source = source;
-                this.effect = effect.spell.createHTML(this.source, "ranged", this.id);
+                this.effect = effect.spell.createHTML(this.source, "ranged", this.id, null);
                 return true;
             },
             deactivate() {
@@ -3341,14 +3713,13 @@ document.addEventListener("DOMContentLoaded", event => {
                 this.fired = true;
                 const sourceRect = this.source.element.getBoundingClientRect();
                 const targetRect = target.element.getBoundingClientRect();
-                const x = targetRect.left - sourceRect.left;
-                const y = targetRect.top - sourceRect.top;
-                const distance = Math.sqrt(x * x + y * y);
-                this.effect.style.cssText += `--spell-x:${x}px;--spell-y:${y}px;`;
-                effect.spell.activateHTML(this.effect, distance * 2);
+                const distance = cssMoveVars(this.effect, sourceRect, targetRect);
+                effect.spell.activateHTML(this.effect, distance * 0.8);
                 player.apSpellAttack(this.cost);
                 player.setSlotStates();
+                player.setSlotStatesAll(false);
                 setTimeout(() => {
+                    player.setSlotStatesAll(true);
                     this.deactivate();
                     player.setPrimaryWeapon();
                 }, effect.spell.duration);
@@ -3360,12 +3731,12 @@ document.addEventListener("DOMContentLoaded", event => {
                 }, effect.spell.duration / 10 * 9);
             },
             hit(targets) {
+                let dmg = this.damage;
                 for (let i = 0; i < targets.length; i++) {
                     const target = targets[i];
-                    if (target.type == "enemy") {
-                        effect.explosion.createHTML(target);
+                    if (target.type == "enemy" || target.type == "player") {
+                        effect.simple.createHTML(target, "explosion", 700);
                         const statusEffect = effect.timed.createHTML(target.object, "burning", 1600);
-                        const dmg = this.damage;
                         target.object.damageOverTime(dmg / 4, 3, statusEffect);
                         target.object.takeDamage(dmg);
                     }
@@ -3377,7 +3748,7 @@ document.addEventListener("DOMContentLoaded", event => {
             name: "Ice Nova",
             type: "offense",
             description: "An ice storm surrounds you and damages all nearby enemies",
-            icon: `<svg viewBox="0 0 24 24"><path d="M20,15C20,15 18.6,16.3 21.1,17L18.3,19.8H15.5C15.5,19.8 13.6,19.7 15,22H11L9,20C9,20 7.7,18.6 7,21.1L4.2,18.3V15.5C4.2,15.5 4.3,13.6 2,15V11L4,9C4,9 5.4,7.7 2.8,7.1L5.6,4.2H8.5C8.5,4.2 10.4,4.3 9,2H13L15,4C15,4 16.3,5.4 17,2.8L19.8,5.6V8.5C19.8,8.5 19.7,10.4 22,9V13L20,15M14,12A2,2 0 0,0 12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12Z"></path></svg>`,
+            icon: `<div class="spell-icon" style="background-position: -500% -200%;">`,
             cost: 9,
             baseCost: 9,
             damage: 12,
@@ -3397,7 +3768,8 @@ document.addEventListener("DOMContentLoaded", event => {
                     return false;
                 }
                 this.source = source;
-                this.effect = effect.spell.createHTML(this.source, "self", this.id);
+                this.effect = effect.spell.createHTML(this.source, "self", this.id, "ring");
+                this.effect.style.transform = `scale(3)`;
                 return true;
             },
             deactivate() {
@@ -3418,7 +3790,9 @@ document.addEventListener("DOMContentLoaded", event => {
                 effect.spell.activateHTML(this.effect, 800);
                 player.apSpellAttack(this.cost);
                 player.setSlotStates();
+                player.setSlotStatesAll(false);
                 setTimeout(() => {
+                    player.setSlotStatesAll(true);
                     this.deactivate();
                     player.setPrimaryWeapon();
                     if (player.actionPoints == 0 && enemiesInZone > 0) {
@@ -3428,7 +3802,6 @@ document.addEventListener("DOMContentLoaded", event => {
                 let dmgDuration = 0;
                 const iterations = 5;
                 for (let i = 0; i < iterations; i++) {
-                    dmgDuration += effect.spell.duration / iterations;
                     setTimeout(() => {
                         let targets = [];
                         const upTile = adjacentTile(target, "up");
@@ -3469,6 +3842,7 @@ document.addEventListener("DOMContentLoaded", event => {
                         }
                         this.hit(targets);
                     }, dmgDuration);
+                    dmgDuration += effect.spell.duration / iterations;
                 }
             },
             hit(targets) {
@@ -3476,7 +3850,7 @@ document.addEventListener("DOMContentLoaded", event => {
                     const target = targets[i];
                     if (target.type == "enemy") {
                         const dmg = roundDecimal(this.damage / 5, 2);
-                        effect.explosion.createHTML(target);
+                        effect.simple.createHTML(target, "explosion", 700);
                         target.object.takeDamage(dmg);
                     }
                 }
@@ -3487,7 +3861,7 @@ document.addEventListener("DOMContentLoaded", event => {
             name: "Dome Shield",
             type: "defense",
             description: "Magic shield that protects you from incoming damage",
-            icon: `<svg viewBox="0 0 24 24"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1Z"></path></svg>`,
+            icon: `<div class="spell-icon" style="background-position: -200% -100%;">`,
             cost: 8,
             baseCost: 8,
             damage: 0,
@@ -3510,10 +3884,20 @@ document.addEventListener("DOMContentLoaded", event => {
                     return false;
                 }
                 this.source = source;
-                this.effect = effect.spell.createHTML(this.source, "pulse", this.id, this.baseTurnLength);
+                this.effect = effect.spell.createHTML(this.source, "pulse", this.id, null, this.baseTurnLength);
                 return true;
             },
             deactivate() {
+                if (this.source == null || this.effect == null || this.fired) {
+                    return;
+                }
+                effect.spell.removeInstantHTML(this.source.element, this.effect);
+                this.source = null;
+                this.effect = null;
+                this.fired = false;
+                player.resetMagicArmor();
+            },
+            selfDeactivate() {
                 if (this.source == null || this.effect == null) {
                     return;
                 }
@@ -3545,8 +3929,136 @@ document.addEventListener("DOMContentLoaded", event => {
                     effect.spell.updateTurnLength(this.turnLength);
                 }
                 if (this.turnLength == 0) {
-                    this.deactivate();
+                    this.selfDeactivate();
                 }
+            },
+        },
+        teleport: {
+            id: "teleport",
+            name: "Teleport",
+            type: "offense",
+            description: "Teleport to any tile in the battle area",
+            icon: `<div class="spell-icon" style="background-position: -300% -100%;">`,
+            cost: 7,
+            baseCost: 7,
+            damage: 0,
+            baseDamage: 0,
+            armor: 0,
+            baseArmor: 0,
+            cooldown: 9,
+            baseCooldown: 9,
+            ranged: true,
+            source: null,
+            fired: false,
+            increaseRate: 7,
+            startIncrease: 3,
+            spellGem: null,
+            canTargetEmpty: true,
+            activate(source) {
+                if (this.fired) {
+                    return false;
+                }
+                this.source = source;
+                this.effect = effect.spell.createHTML(this.source, "ranged", this.id, null);
+                return true;
+            },
+            deactivate() {
+                if (this.source == null || this.effect == null) {
+                    return;
+                }
+                effect.spell.removeInstantHTML(this.source.element, this.effect);
+                this.source = null;
+                this.effect = null;
+                this.fired = false;
+            },
+            fire(target) {
+                if (this.source == null || (target.type != "empty" && target.type != "item")) {
+                    return;
+                }
+                this.fired = true;
+                playerIsMoving = true;
+                const sourceRect = this.source.element.getBoundingClientRect();
+                const targetRect = target.element.getBoundingClientRect();
+                const x = targetRect.left - sourceRect.left;
+                const y = targetRect.top - sourceRect.top;
+                const distance = Math.sqrt(x * x + y * y);
+                this.effect.style.cssText += `--spell-x:${x}px;--spell-y:${y}px;`;
+                effect.spell.activateHTML(this.effect, distance * 0.8);
+                player.apSpellAttack(this.cost);
+                player.setSlotStates();
+                player.setSlotStatesAll(false);
+                setTimeout(() => {
+                    effect.simple.createHTML(this.source, "explosion", 700);
+                    this.deactivate();
+                    player.setPrimaryWeapon();
+                }, effect.spell.duration);
+                setTimeout(() => {
+                    this.hit([target]);
+                    player.opacity = 0;
+                    if (player.actionPoints == 0 && enemiesInZone > 0) {
+                        nextTurn();
+                    }
+                }, effect.spell.duration / 10 * 9);
+            },
+            hit(targets) {
+                const target = targets[0];
+                setTimeout(() => {
+                    effect.simple.createHTML(target, "burst", 900);
+                    setTimeout(() => {
+                        player.opacity = 1;
+                        if (target.type == "item") {
+                            effect.flash.createHTML(target);
+                            player.collect(target.object);
+                            target.removeObject(target.object.element);
+                        }
+                        effect.simple.createHTML(target, "explosion", 700);
+                        playerToTile(target);
+                        playerIsMoving = false;
+                        player.setSlotStatesAll(true);
+                    }, 700);
+                }, 200);
+            },
+        },
+    }
+
+    let enemySpell = {
+        fireball: {
+            id: "fireball",
+            name: "Fireball",
+            type: "offense",
+            description: "Ranged ball of fire with high damage",
+            icon: `<div class="spell-icon" style="background-position: -600% 0;">`,
+            ranged: true,
+            deactivate() {
+                if (this.source == null || this.effect == null) {
+                    return;
+                }
+                effect.spell.removeInstantHTML(this.source.element, this.effect);
+                this.source = null;
+                this.effect = null;
+            },
+            fire(source, target, damage, onHit) {
+                this.source = source;
+                this.target = target;
+                this.damage = roundDecimal(damage, 2);
+                this.effect = effect.spell.createHTML(this.source, "ranged", this.id, null);
+                const sourceRect = this.source.element.getBoundingClientRect();
+                const targetRect = target.element.getBoundingClientRect();
+                const distance = cssMoveVars(this.effect, sourceRect, targetRect);
+                effect.spell.activateHTML(this.effect, distance * 0.8);
+                setTimeout(() => {
+                    this.deactivate();
+                }, effect.spell.duration);
+                setTimeout(() => {
+                    this.hit(target);
+                    onHit(this);
+                }, effect.spell.duration / 10 * 9);
+            },
+            hit() {
+                effect.simple.createHTML(this.target, "explosion", 700);
+                const statusEffect = effect.timed.createHTML(this.target.object, "burning", 1600);
+                this.target.object.takeDamage(this.damage);
+                this.target.object.damageOverTime(this.damage / 4, 3, statusEffect);
             },
         },
     }
@@ -3557,14 +4069,14 @@ document.addEventListener("DOMContentLoaded", event => {
             type: "coin",
             spriteCoordinates: { x: 3, y: 3 },
             includeInStartZone: true,
-            minValue: 10,
-            maxValue: 80,
+            minValue: 1,
+            maxValue: 1,
             stackable: true,
             equipable: false,
             apMoveCost: 0,
             inventoryItem: false,
             spawnPropability: 100,
-            spawnPerZone: 1.2,
+            spawnPerZone: 4.2,
             merchantCountMin: 0,
             merchantCountMax: 0,
             price: 0,
@@ -3572,11 +4084,13 @@ document.addEventListener("DOMContentLoaded", event => {
             useSFX: "./audio/sfx/CHAIN_Drop_03_mono.ogg",
             attack: null,
             onCollect(item) {
-                player.addCoins(item.amount);
+                itemCollectAnimation(item, ui.coins.icon, function() {
+                    player.addCoins(item.amount);
+                });
             },
             onUse(item, inventory) {
                 if (inventory.owner === "chest") {
-                    player.addCoins(item.amount);
+                    item.onCollect(true);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
@@ -3603,7 +4117,9 @@ document.addEventListener("DOMContentLoaded", event => {
             useSFX: "./audio/sfx/EAT_Swallow_mono.ogg",
             attack: null,
             onCollect(item) {
-                player.inventory.addItem(item);
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.inventory.addItem(item);
+                });
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
@@ -3614,7 +4130,7 @@ document.addEventListener("DOMContentLoaded", event => {
                             createInventoryItemsUI(inventory);
                         }
                     } else {
-                        if (player.life.value < player.life.baseValue) {
+                        if (player.health.value < player.health.maxValue) {
                             player.addLife(item.amount);
                             if (!player.inventory.removeItem(item)) {
                                 createInventoryItemsUI(player.inventory);
@@ -3623,7 +4139,7 @@ document.addEventListener("DOMContentLoaded", event => {
                     }
                 }
                 if (inventory.owner === "chest") {
-                    player.inventory.addItem(item);
+                    item.onCollect(true);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
@@ -3631,7 +4147,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 if (inventory.owner === "merchant") {
                     const itemPrice = merchantObj.itemPrice(item, true);
                     if (player.hasCoins(itemPrice)) {
-                        player.inventory.addItem(item);
+                        item.onCollect(true);
                         player.removeCoins(itemPrice);
                         if (!inventory.removeItem(item)) {
                             createInventoryItemsUI(inventory);
@@ -3660,12 +4176,13 @@ document.addEventListener("DOMContentLoaded", event => {
             useSFX: null,
             attack: null,
             onCollect(item) {
-                player.addKey(item);
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.addKey(item);
+                });
             },
             onUse(item, inventory) {
                 if (inventory.owner === "chest") {
-                    // player.inventory.addItem(item);
-                    player.addKey(item);
+                    item.onCollect(true);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
@@ -3692,20 +4209,22 @@ document.addEventListener("DOMContentLoaded", event => {
             useSFX: null,
             attack: null,
             onCollect(item) {
-                player.addRedGem(item);
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.addRedGem(item);
+                });
             },
             onUse(item, inventory) {
                 if (inventory.owner === "merchant") {
                     const itemPrice = merchantObj.itemPrice(item, true);
                     if (player.hasCoins(itemPrice)) {
-                        player.addRedGem(item);
+                        item.onCollect(true);
                         player.removeCoins(itemPrice);
                         if (!inventory.removeItem(item)) {
                             createInventoryItemsUI(inventory);
                         }
                     }
                 } else if (inventory.owner === "chest") {
-                    player.addRedGem(item);
+                    item.onCollect(true);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
@@ -3743,20 +4262,22 @@ document.addEventListener("DOMContentLoaded", event => {
             useSFX: null,
             attack: null,
             onCollect(item) {
-                player.addBlueGem(item);
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.addBlueGem(item);
+                });
             },
             onUse(item, inventory) {
                 if (inventory.owner === "merchant") {
                     const itemPrice = merchantObj.itemPrice(item, true);
                     if (player.hasCoins(itemPrice)) {
-                        player.addBlueGem(item);
+                        item.onCollect(true);
                         player.removeCoins(itemPrice);
                         if (!inventory.removeItem(item)) {
                             createInventoryItemsUI(inventory);
                         }
                     }
                 } else if (inventory.owner === "chest") {
-                    player.addBlueGem(item);
+                    item.onCollect(true);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
@@ -3794,20 +4315,22 @@ document.addEventListener("DOMContentLoaded", event => {
             useSFX: null,
             attack: null,
             onCollect(item) {
-                player.addGreenGem(item);
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.addGreenGem(item);
+                });
             },
             onUse(item, inventory) {
                 if (inventory.owner === "merchant") {
                     const itemPrice = merchantObj.itemPrice(item, true);
                     if (player.hasCoins(itemPrice)) {
-                        player.addGreenGem(item);
+                        item.onCollect(true);
                         player.removeCoins(itemPrice);
                         if (!inventory.removeItem(item)) {
                             createInventoryItemsUI(inventory);
                         }
                     }
                 } else if (inventory.owner === "chest") {
-                    player.addGreenGem(item);
+                    item.onCollect(true);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
@@ -3845,7 +4368,9 @@ document.addEventListener("DOMContentLoaded", event => {
             useSFX: null,
             attack: new WeaponSlot("Power", 2, 8, "Stab", 1, 3, attackElements),
             onCollect(item) {
-                player.inventory.addItem(item);
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.inventory.addItem(item);
+                });
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
@@ -3863,7 +4388,7 @@ document.addEventListener("DOMContentLoaded", event => {
                     }
                 }
                 if (inventory.owner === "chest") {
-                    player.inventory.addItem(item);
+                    item.onCollect(true);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
@@ -3871,7 +4396,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 if (inventory.owner === "merchant") {
                     const itemPrice = merchantObj.itemPrice(item, true);
                     if (player.hasCoins(itemPrice)) {
-                        player.inventory.addItem(item);
+                        item.onCollect(true);
                         player.removeCoins(itemPrice);
                         if (!inventory.removeItem(item)) {
                             createInventoryItemsUI(inventory);
@@ -3900,7 +4425,9 @@ document.addEventListener("DOMContentLoaded", event => {
             collectSFX: "./audio/sfx/FRICTION_Metal_Bars_05_mono.ogg",
             useSFX: null,
             onCollect(item) {
-                player.inventory.addItem(item);
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.inventory.addItem(item);
+                });
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
@@ -3918,7 +4445,7 @@ document.addEventListener("DOMContentLoaded", event => {
                     }
                 }
                 if (inventory.owner === "chest") {
-                    player.inventory.addItem(item);
+                    item.onCollect(true);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
@@ -3926,7 +4453,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 if (inventory.owner === "merchant") {
                     const itemPrice = merchantObj.itemPrice(item, true);
                     if (player.hasCoins(itemPrice)) {
-                        player.inventory.addItem(item);
+                        item.onCollect(true);
                         player.removeCoins(itemPrice);
                         if (!inventory.removeItem(item)) {
                             createInventoryItemsUI(inventory);
@@ -3955,7 +4482,9 @@ document.addEventListener("DOMContentLoaded", event => {
             useSFX: null,
             attack: new WeaponSlot("Power", 3, 24, "Dash", 2, 13, attackElements),
             onCollect(item) {
-                player.inventory.addItem(item);
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.inventory.addItem(item);
+                });
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
@@ -3973,7 +4502,7 @@ document.addEventListener("DOMContentLoaded", event => {
                     }
                 }
                 if (inventory.owner === "chest") {
-                    player.inventory.addItem(item);
+                    item.onCollect(true);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
@@ -3981,7 +4510,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 if (inventory.owner === "merchant") {
                     const itemPrice = merchantObj.itemPrice(item, true);
                     if (player.hasCoins(itemPrice)) {
-                        player.inventory.addItem(item);
+                        item.onCollect(true);
                         player.removeCoins(itemPrice);
                         if (!inventory.removeItem(item)) {
                             createInventoryItemsUI(inventory);
@@ -4010,7 +4539,9 @@ document.addEventListener("DOMContentLoaded", event => {
             useSFX: null,
             attack: null,
             onCollect(item) {
-                player.inventory.addItem(item);
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.inventory.addItem(item);
+                });
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
@@ -4028,7 +4559,7 @@ document.addEventListener("DOMContentLoaded", event => {
                     }
                 }
                 if (inventory.owner === "chest") {
-                    player.inventory.addItem(item);
+                    item.onCollect(true);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
@@ -4036,7 +4567,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 if (inventory.owner === "merchant") {
                     const itemPrice = merchantObj.itemPrice(item, true);
                     if (player.hasCoins(itemPrice)) {
-                        player.inventory.addItem(item);
+                        item.onCollect(true);
                         player.removeCoins(itemPrice);
                         if (!inventory.removeItem(item)) {
                             createInventoryItemsUI(inventory);
@@ -4065,7 +4596,9 @@ document.addEventListener("DOMContentLoaded", event => {
             useSFX: null,
             attack: null,
             onCollect(item) {
-                player.inventory.addItem(item);
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.inventory.addItem(item);
+                });
             },
             onUse(item, inventory) {
                 if (inventory.owner === "player") {
@@ -4083,7 +4616,7 @@ document.addEventListener("DOMContentLoaded", event => {
                     }
                 }
                 if (inventory.owner === "chest") {
-                    player.inventory.addItem(item);
+                    item.onCollect(true);
                     if (!inventory.removeItem(item)) {
                         createInventoryItemsUI(inventory);
                     }
@@ -4091,7 +4624,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 if (inventory.owner === "merchant") {
                     const itemPrice = merchantObj.itemPrice(item, true);
                     if (player.hasCoins(itemPrice)) {
-                        player.inventory.addItem(item);
+                        item.onCollect(true);
                         player.removeCoins(itemPrice);
                         if (!inventory.removeItem(item)) {
                             createInventoryItemsUI(inventory);
@@ -4115,22 +4648,168 @@ document.addEventListener("DOMContentLoaded", event => {
             spawnPerZone: 0.05,
             merchantCountMin: 0,
             merchantCountMax: 0,
-            price: 970,
+            price: 100,
             collectSFX: "./audio/sfx/TOOL_Toolbox_Close_mono.ogg",
             useSFX: null,
             attack: null,
             onCollect(item) {
-                player.inventory.addItem(item);
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.inventory.addItem(item);
+                });
             },
             onUse(item, inventory) {
-                if (item.isQuestItem) {
-                    console.log("Can't use this item!");
-                } else {
-                    if (!inventory.removeItem(item)) {
-                        createInventoryItemsUI(inventory);
+                if (!item.isQuestItem) {
+                    if (inventory.owner === "player") {
+                        if (merchantObj.playerActive) {
+                            player.addCoins(merchantObj.itemPrice(item, true));
+                            merchantObj.inventory.addItem(item);
+                            if (!inventory.removeItem(item)) {
+                                createInventoryItemsUI(inventory);
+                            }
+                        } else {
+                            if (!inventory.removeItem(item)) {
+                                createInventoryItemsUI(inventory);
+                            }
+                            const rnd = randomInteger(8, 20);
+                            let delay = 20;
+                            for (let i = 0; i < rnd; i++) {
+                                setTimeout(() => {
+                                    createRandomItem(true).onCollect(i == rnd - 1);
+                                }, delay);
+                                delay += randomInteger(50, 100);
+                            }
+                            hideInventory();
+                        }
                     }
-                    console.log("Pouch opened...");
+                    if (inventory.owner === "chest") {
+                        item.onCollect(true);
+                        if (!inventory.removeItem(item)) {
+                            createInventoryItemsUI(inventory);
+                        }
+                    }
+                    if (inventory.owner === "merchant") {
+                        const itemPrice = merchantObj.itemPrice(item, true);
+                        if (player.hasCoins(itemPrice)) {
+                            item.onCollect(true);
+                            player.removeCoins(itemPrice);
+                            if (!inventory.removeItem(item)) {
+                                createInventoryItemsUI(inventory);
+                            }
+                        }
+                    }
                 }
+            }
+        },
+        wood: {
+            name: "Wood",
+            type: "resource",
+            spriteCoordinates: { x: 6, y: 5 },
+            includeInStartZone: false,
+            minValue: 1,
+            maxValue: 1,
+            stackable: true,
+            equipable: false,
+            apMoveCost: 0,
+            inventoryItem: true,
+            spawnPropability: 0,
+            spawnPerZone: 0,
+            merchantCountMin: 0,
+            merchantCountMax: 0,
+            price: 2,
+            collectSFX: "./audio/sfx/TOOL_Toolbox_Close_mono.ogg",
+            useSFX: null,
+            attack: null,
+            onCollect(item) {
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.inventory.addItem(item);
+                });
+            },
+            onUse(item, inventory) {
+
+            }
+        },
+        stone: {
+            name: "Stone",
+            type: "resource",
+            spriteCoordinates: { x: 6, y: 6 },
+            includeInStartZone: false,
+            minValue: 1,
+            maxValue: 1,
+            stackable: true,
+            equipable: false,
+            apMoveCost: 0,
+            inventoryItem: true,
+            spawnPropability: 0,
+            spawnPerZone: 0,
+            merchantCountMin: 0,
+            merchantCountMax: 0,
+            price: 2,
+            collectSFX: "./audio/sfx/TOOL_Toolbox_Close_mono.ogg",
+            useSFX: null,
+            attack: null,
+            onCollect(item) {
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.inventory.addItem(item);
+                });
+            },
+            onUse(item, inventory) {
+
+            }
+        },
+        iron: {
+            name: "Iron",
+            type: "resource",
+            spriteCoordinates: { x: 0, y: 7 },
+            includeInStartZone: false,
+            minValue: 1,
+            maxValue: 1,
+            stackable: true,
+            equipable: false,
+            apMoveCost: 0,
+            inventoryItem: true,
+            spawnPropability: 0,
+            spawnPerZone: 0,
+            merchantCountMin: 0,
+            merchantCountMax: 0,
+            price: 2,
+            collectSFX: "./audio/sfx/TOOL_Toolbox_Close_mono.ogg",
+            useSFX: null,
+            attack: null,
+            onCollect(item) {
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.inventory.addItem(item);
+                });
+            },
+            onUse(item, inventory) {
+
+            }
+        },
+        gold: {
+            name: "Gold",
+            type: "resource",
+            spriteCoordinates: { x: 1, y: 7 },
+            includeInStartZone: false,
+            minValue: 1,
+            maxValue: 1,
+            stackable: true,
+            equipable: false,
+            apMoveCost: 0,
+            inventoryItem: true,
+            spawnPropability: 0,
+            spawnPerZone: 0,
+            merchantCountMin: 0,
+            merchantCountMax: 0,
+            price: 2,
+            collectSFX: "./audio/sfx/TOOL_Toolbox_Close_mono.ogg",
+            useSFX: null,
+            attack: null,
+            onCollect(item) {
+                itemCollectAnimation(item, openBackpack, function() {
+                    player.inventory.addItem(item);
+                });
+            },
+            onUse(item, inventory) {
+
             }
         },
     }
@@ -4163,41 +4842,53 @@ document.addEventListener("DOMContentLoaded", event => {
 
     let quest = {
         initialize() {
-            this.properties(this.main);
-            this.properties(this.test);
-        },
-        properties(details) {
-            for (let i = 0; i < details.length; i++) {
-                const detail = details[i];
-                detail.id = questID;
-                detail.orderID = i;
-                detail.chainID = chainID;
-                questID++;
-            }
-            chainID++;
-        },
-        managers(details) {
-            let managers = [];
-            for (let i = 0; i < details.length; i++) {
-                const detail = details[i];
-                const quest = new Quest(detail.id, detail.orderID, detail.chainID, questUI, new QuestObjective(detail, detail.type, this.createDialogues(detail)), i == 0 ? null : detail.id - 1);
-                let manager = null;
-                for (let managerIndex = 0; managerIndex < managers.length; managerIndex++) {
-                    const mngr = managers[managerIndex].manager;
-                    if (mngr.id == detail.managerID) {
-                        mngr.addQuest(quest);
-                        manager = mngr;
-                        break;
-                    }
+            for (let chainIndex = 0; chainIndex < this.chains.length; chainIndex++) {
+                for (let i = 0; i < this.chains[chainIndex].details.length; i++) {
+                    const detail = this.chains[chainIndex].details[i];
+                    detail.id = questID;
+                    detail.orderID = i;
+                    detail.chainID = chainID;
+                    questID++;
                 }
-                if (manager == null) {
-                    manager = new QuestManager(detail.managerID, detail.chainID, detail.spritePos);
-                    manager.addQuest(quest);
-                    managers.push({
-                        manager,
-                        world: detail.world,
-                        zoneID: detail.zoneID,
-                    });
+                chainID++;
+            }
+        },
+        managers() {
+            let managers = [];
+            for (let chainIndex = 0; chainIndex < this.chains.length; chainIndex++) {
+                for (let i = 0; i < this.chains[chainIndex].details.length; i++) {
+                    const detail = this.chains[chainIndex].details[i];
+                    const quest = new Quest(
+                        detail.id,
+                        detail.orderID,
+                        detail.chainID,
+                        questUI,
+                        new QuestObjective(
+                            detail,
+                            detail.type,
+                            this.createDialogues(detail)),
+                        i == 0 ? null : detail.id - 1);
+                    let manager = null;
+                    for (let managerIndex = 0; managerIndex < managers.length; managerIndex++) {
+                        const mngr = managers[managerIndex].manager;
+                        if (mngr.id == detail.managerID) {
+                            mngr.addQuest(quest);
+                            manager = mngr;
+                            break;
+                        }
+                    }
+                    if (manager == null) {
+                        manager = new QuestManager(detail.managerID, detail.chainID);
+                        manager.addQuest(quest);
+                        managers.push({
+                            manager,
+                            name: detail.name,
+                            title: detail.title,
+                            spritePos: detail.spritePos,
+                            world: detail.world,
+                            zoneID: detail.zoneID,
+                        });
+                    }
                 }
             }
             return managers;
@@ -4208,150 +4899,160 @@ document.addEventListener("DOMContentLoaded", event => {
                 pending: new QuestDialog(detail.title, detail.spritePos, detail.dialog.pending),
             }
         },
-        main: [{
-                title: "Package delivery",
-                spritePos: 2,
-                managerID: "main0",
-                world: worlds.home,
-                zoneID: "0_0",
-                type: "delivery",
-                dialog: {
-                    begin: [
-                        "Hi, stranger. Could you please help me with something?",
-                        "I need this package delivered at the Pink Merchant...",
-                        "If you deliver this for me, I will reward you greatly..."
-                    ],
-                    pending: [
-                        "Have you made the delivery yet?",
-                    ]
-                },
-                getQuestItem() {
-                    return "pouch";
-                },
-                onBegin() {
-                    console.log("Begin quest");
-                },
-                onEnd() {
-                    console.log("End 0");
-                },
+        chains: [{
+                details: [{
+                        name: "Linda",
+                        title: "Package delivery",
+                        spritePos: 2,
+                        managerID: "package-delivery-0",
+                        world: worlds.outdoor,
+                        zoneID: "0_0",
+                        type: "delivery",
+                        dialog: {
+                            begin: [
+                                "Hi, stranger. Could you please help me with something?",
+                                "I need this package delivered at the Pink Merchant...",
+                                "If you deliver this for me, I will reward you with nice things..."
+                            ],
+                            pending: [
+                                "Have you made the delivery yet?",
+                            ]
+                        },
+                        getQuestItem() {
+                            return "pouch";
+                        },
+                        onBegin() {
+                            console.log("Begin quest");
+                        },
+                        onEnd() {
+                            console.log("End 0");
+                        },
+                    },
+                    {
+                        name: "Pink Merchant",
+                        title: "Package delivery - Return",
+                        spritePos: 5,
+                        managerID: "package-delivery-1",
+                        world: worlds.outdoor,
+                        zoneID: "1_2",
+                        type: "",
+                        dialog: {
+                            begin: [
+                                "Is this... Is this the package I've been looking for?",
+                                "It is indeed...!",
+                                "I've been looking for this, like a crazy person! Thank you so much, for bringing it to me.",
+                            ],
+                            pending: [
+                                "Go back and get your reward!",
+                            ]
+                        },
+                        onBegin() {
+                            console.log("Begin 1");
+                        },
+                        onEnd() {
+                            console.log("End 1");
+                        },
+                    },
+                    {
+                        name: "Linda",
+                        title: "Get reward",
+                        spritePos: 2,
+                        managerID: "package-delivery-0",
+                        world: worlds.outdoor,
+                        zoneID: "0_0",
+                        type: "reward",
+                        dialog: {
+                            begin: [
+                                "I can't imagine what the Pink Merchant would do without the package!",
+                                "Here is something for your trouble...",
+                            ],
+                            pending: []
+                        },
+                        onBegin() {
+                            console.log("Begin 2");
+                        },
+                        onEnd() {
+                            console.log("End quest");
+                        },
+                        getReward() {
+                            return [{ type: "coins", amount: 3 }, { type: "potions", amount: 2 }, { type: "redGems", amount: 2 }, { type: "blueGems", amount: 1 }];
+                        },
+                        questChainEnd() {
+                            return this.chainID;
+                        }
+                    },
+                ],
             },
             {
-                title: "Give package",
-                spritePos: 1,
-                managerID: "main1",
-                world: worlds.outdoor,
-                zoneID: "0_1",
-                type: "",
-                dialog: {
-                    begin: [
-                        "Is this... Is this the package I've been looking for?",
-                        "It is indeed...!",
-                        "I've been looking for this, like a crazy person! Thank you so much, for bringing it to me.",
-                    ],
-                    pending: [
-                        "Go back and get your reward!",
-                    ]
-                },
-                onBegin() {
-                    console.log("Begin 1");
-                },
-                onEnd() {
-                    console.log("End 1");
-                },
-            },
-            {
-                title: "Get reward",
-                spritePos: 2,
-                managerID: "main0",
-                world: worlds.home,
-                zoneID: "0_0",
-                type: "reward",
-                dialog: {
-                    begin: [
-                        "I can't imagine what the Pink Merchant would do without the package!",
-                        "Here is something for your trouble...",
-                    ],
-                    pending: []
-                },
-                onBegin() {
-                    console.log("Begin 2");
-                },
-                onEnd() {
-                    console.log("End quest");
-                },
-                getReward() {
-                    return ["coins", "coins", "coins", "potions", "potions", "redGems", "redGems", "blueGems"];
-                },
-                questChainEnd() {
-                    return this.chainID;
-                }
-            },
-        ],
-        test: [{
-                title: "Annoying little beasts",
-                spritePos: 3,
-                managerID: "test0",
-                world: worlds.outdoor,
-                zoneID: "1_0",
-                type: "world",
-                counter: 1,
-                countType: "Goblin",
-                dialog: {
-                    begin: [
-                        "Oh I hate those annoying little beasts?",
-                        "Could you perhaps kill 3 of those for me?",
-                    ],
-                    pending: [
-                        "Have you killed them yet?",
-                    ]
-                },
-                onBegin() {
-                    console.log("Begin quest");
-                },
-                countUp(objective, type) {
-                    if (!this.counter || !this.countType) {
-                        return false;
-                    }
-                    if (type != this.countType || objective.state == "complete") {
-                        return false;
-                    }
-                    this.counter--;
-                    if (this.counter <= 0) {
-                        objective.setComplete();
-                        return true;
-                    }
-                    return false;
-                },
-                onEnd() {
-                    console.log("End 0");
-                },
-            },
-            {
-                title: "Get reward",
-                spritePos: 3,
-                managerID: "test0",
-                world: worlds.outdoor,
-                zoneID: "1_0",
-                type: "reward",
-                dialog: {
-                    begin: [
-                        "You are the man!",
-                        "Here is something for your trouble...",
-                    ],
-                    pending: []
-                },
-                onBegin() {
-                    console.log("Begin 2");
-                },
-                onEnd() {
-                    console.log("End quest");
-                },
-                getReward() {
-                    return ["ironSword"];
-                },
-                questChainEnd() {
-                    return this.chainID;
-                }
+                details: [{
+                        name: "Genevive",
+                        title: "Annoying little beasts",
+                        spritePos: 3,
+                        managerID: "little-beasts-0",
+                        world: worlds.outdoor,
+                        zoneID: "1_-2",
+                        type: "world",
+                        counter: 2,
+                        countType: "Goblin",
+                        dialog: {
+                            begin: [
+                                "Oh, Goblin's! I hate those annoying little beasts?",
+                                "Could you perhaps kill 2 of those for me?",
+                            ],
+                            pending: [
+                                "Have you killed them yet?",
+                            ]
+                        },
+                        onBegin() {
+                            console.log("Begin quest");
+                        },
+                        countUp(objective, type) {
+                            if (!this.counter || !this.countType) {
+                                return false;
+                            }
+                            if (type != this.countType || objective.state == "complete") {
+                                return false;
+                            }
+                            this.counter--;
+                            if (this.counter <= 0) {
+                                objective.setComplete();
+                                return true;
+                            }
+                            return false;
+                        },
+                        onEnd() {
+                            console.log("End 0");
+                        },
+                    },
+                    {
+                        name: "Genevive",
+                        title: "Get reward",
+                        spritePos: 3,
+                        managerID: "little-beasts-0",
+                        world: worlds.outdoor,
+                        zoneID: "1_-2",
+                        type: "reward",
+                        dialog: {
+                            begin: [
+                                "You are the man!",
+                                "Here is something for your trouble...",
+                            ],
+                            pending: []
+                        },
+                        onBegin() {
+                            console.log("Begin 2");
+                        },
+                        onEnd() {
+                            console.log("End quest");
+                        },
+                        getReward() {
+                            return [{ type: "ironSword", amount: 1 }];
+                        },
+                        questChainEnd() {
+                            return this.chainID;
+                        }
+                    },
+                ],
             },
         ],
     }
@@ -4498,18 +5199,30 @@ document.addEventListener("DOMContentLoaded", event => {
         evt.stopPropagation();
     });
     inventoryTakeAll.addEventListener("click", function() {
+        let delay = 100;
         for (let i = 0; i < invBtns.length; i++) {
             const btn = invBtns[i];
             let hasItemAmount = btn.inventory.onCollect(btn.content.item);
-            while (hasItemAmount) {
-                hasItemAmount = btn.inventory.onCollect(btn.content.item);
-            }
+            delay += randomInteger(50, 100);
+            setTimeout(() => {
+                while (hasItemAmount) {
+                    hasItemAmount = btn.inventory.onCollect(btn.content.item);
+                }
+            }, delay);
         }
         hideInventory(true);
     });
     gemCrafting.addEventListener("click", gemCraftingHide);
     gemCraftingWindow.addEventListener("click", function(evt) {
         evt.stopPropagation();
+    });
+    questOverview.addEventListener("click", function() {
+        hideQuestOverview();
+    });
+    openQuest.addEventListener("click", function() {
+        if (playersTurn && !player.inBattle) {
+            showQuestOverview();
+        }
     });
     openBackpack.addEventListener("click", function() {
         if (playersTurn) {
@@ -4542,40 +5255,63 @@ document.addEventListener("DOMContentLoaded", event => {
 
     for (let i = 0; i < zoneTransitions.length; i++) {
         const zoneTransition = zoneTransitions[i];
+        let obj;
+        const directions = ["up", "down", "left", "right"];
         zoneTransition.addEventListener("click", function() {
             if (playerIsMoving) {
                 return;
             }
-            let coordinate = currentZone.getTileObj(player.tileId).coordinates();
-            if (this.classList.contains("up")) {
-                coordinate.y = 0;
-                const id = coordinate.x + "_" + coordinate.y;
-                playerAI(currentZone.getTileObj(id), function() {
-                    changeZone(0, 1, currentZone.tiles.length - region.zoneSize + coordinate.x);
-                });
+            playerAI(currentZone.getTileObj(obj.id), function() {
+                changeZone(obj.x, obj.y, obj.tileIndex);
+            });
+        });
+        zoneTransition.addEventListener("mouseenter", function() {
+            if (playerIsMoving) {
+                return;
             }
-            if (this.classList.contains("down")) {
-                coordinate.y = currentWorld.zoneSize - 1;
-                const id = coordinate.x + "_" + coordinate.y;
-                playerAI(currentZone.getTileObj(id), function() {
-                    changeZone(0, -1, coordinate.x);
-                });
-            }
-            if (this.classList.contains("left")) {
-                coordinate.x = 0;
-                const id = coordinate.x + "_" + coordinate.y;
-                playerAI(currentZone.getTileObj(id), function() {
-                    changeZone(-1, 0, coordinate.y * region.zoneSize + region.zoneSize - 1);
-                });
-            }
-            if (this.classList.contains("right")) {
-                coordinate.x = currentWorld.zoneSize - 1;
-                const id = coordinate.x + "_" + coordinate.y;
-                playerAI(currentZone.getTileObj(id), function() {
-                    changeZone(1, 0, coordinate.y * region.zoneSize);
-                });
+            for (let i = 0; i < directions.length; i++) {
+                const direction = directions[i];
+                if (this.classList.contains(direction)) {
+                    obj = zoneTransitionObj(direction);
+                    visualizePath(obj.id);
+                    return;
+                }
             }
         });
+    }
+
+    function zoneTransitionObj(direction) {
+        let coordinate = currentZone.getTileObj(player.tileId).coordinates();
+        let obj = { id: "", x: 0, y: 0, tileIndex: null, direction: direction }
+        if (direction == "up") {
+            coordinate.y = 0;
+            obj.id = coordinate.x + "_" + coordinate.y;
+            obj.x = 0;
+            obj.y = 1;
+            obj.tileIndex = currentZone.tiles.length - region.zoneSize + coordinate.x;
+        }
+        if (direction == "down") {
+            coordinate.y = currentWorld.zoneSize - 1;
+            obj.id = coordinate.x + "_" + coordinate.y;
+            obj.x = 0;
+            obj.y = -1;
+            obj.tileIndex = coordinate.x;
+        }
+        if (direction == "left") {
+            coordinate.x = 0;
+            obj.id = coordinate.x + "_" + coordinate.y;
+            obj.x = -1;
+            obj.y = 0;
+            obj.tileIndex = coordinate.y * region.zoneSize + region.zoneSize - 1;
+        }
+        if (direction == "right") {
+            coordinate.x = currentWorld.zoneSize - 1;
+            obj.id = coordinate.x + "_" + coordinate.y;
+            obj.x = 1;
+            obj.y = 0;
+            obj.tileIndex = coordinate.y * region.zoneSize;
+        }
+        return obj;
     }
 
     zoneContainer.addEventListener("mouseout", pathsRemove);
@@ -4678,6 +5414,9 @@ document.addEventListener("DOMContentLoaded", event => {
 
     function hideInventory(destroy = false) {
         inventoryActive = false;
+        if (!openedInventory) {
+            return;
+        }
         if (destroy && openedInventory.owner == "chest" && openedInventory.tile) {
             destroyChest(openedInventory.tile);
         }
@@ -4771,9 +5510,21 @@ document.addEventListener("DOMContentLoaded", event => {
         } else {
             invPrice.style.display = "none";
         }
+        let questButtons = [];
         for (let i = 0; i < inventory.contents.length; i++) {
             const content = inventory.contents[i];
-            inventoryGrid.append(inventoryItemButton(inventory, content));
+            const btn = inventoryItemButton(inventory, content);
+            if (btn.classList.contains("quest-item")) {
+                questButtons.push(btn);
+            } else {
+                inventoryGrid.append(btn);
+            }
+        }
+        if (questButtons.length > 0) {
+            for (let i = 0; i < questButtons.length; i++) {
+                const questButton = questButtons[i];
+                inventoryGrid.append(questButton);
+            }
         }
         buttonsUpdate();
         if (inventory.contents.length > 0) {
@@ -4786,6 +5537,9 @@ document.addEventListener("DOMContentLoaded", event => {
         const y = content.item.posY / 100 * 64;
         const button = document.createElement("BUTTON");
         button.classList.add("inventory__item");
+        if (content.item.isQuestItem) {
+            button.classList.add("quest-item");
+        }
         button.setAttribute("aria-label", "Inventory item");
         button.style.backgroundPosition = `-${x}px -${y}px`;
         buttonInnerContent(button, inventory, content);
@@ -4793,7 +5547,7 @@ document.addEventListener("DOMContentLoaded", event => {
         button.addEventListener("click", function() {
             clickInventoryButton(this, inventory, content);
         });
-        button.addEventListener("mouseover", function() {
+        button.addEventListener("mouseenter", function() {
             const rows = setInventoryHoverInfo(content.item);
             invPriceText.textContent = content.item.price;
             invInfo.content.innerHTML = rows;
@@ -4964,6 +5718,26 @@ document.addEventListener("DOMContentLoaded", event => {
 
     //#endregion MENU FUNCTIONS
 
+    //#region QUEST overview
+    function toggleQuestOverview() {
+        if (questOverviewActive) {
+            hideQuestOverview();
+        } else {
+            showQuestOverview();
+        }
+    }
+
+    function showQuestOverview() {
+        questOverviewActive = true;
+        questOverview.classList.remove("js-hidden");
+    }
+
+    function hideQuestOverview() {
+        questOverviewActive = false;
+        questOverview.classList.add("js-hidden");
+    }
+    //#endregion QUEST overview
+
     //#region GEM CRAFTING
     gemCraftingCreateRows();
 
@@ -5020,6 +5794,8 @@ document.addEventListener("DOMContentLoaded", event => {
     let gemTimer;
     let gemTimeout;
     let gemTimerActive = false;
+    let gemTimerCounter = 0;
+    let gemTimerFactor = 1;
     const gemTimerDuration = 25;
     const gemTimeoutDuration = 250;
 
@@ -5028,7 +5804,10 @@ document.addEventListener("DOMContentLoaded", event => {
         addRedGem();
         gemTimeout = setTimeout(() => {
             gemTimer = setInterval(() => {
-                addRedGem();
+                for (let i = 0; i < gemTimerFactor; i++) {
+                    addRedGem();
+                    gemTimerFactorIncrease();
+                }
             }, gemTimerDuration);
         }, gemTimeoutDuration);
     }
@@ -5038,7 +5817,10 @@ document.addEventListener("DOMContentLoaded", event => {
         removeRedGem();
         gemTimeout = setTimeout(() => {
             gemTimer = setInterval(() => {
-                removeRedGem();
+                for (let i = 0; i < gemTimerFactor; i++) {
+                    removeRedGem();
+                    gemTimerFactorIncrease();
+                }
             }, gemTimerDuration);
         }, gemTimeoutDuration);
     }
@@ -5048,7 +5830,10 @@ document.addEventListener("DOMContentLoaded", event => {
         addBlueGem();
         gemTimeout = setTimeout(() => {
             gemTimer = setInterval(() => {
-                addBlueGem();
+                for (let i = 0; i < gemTimerFactor; i++) {
+                    addBlueGem();
+                    gemTimerFactorIncrease();
+                }
             }, gemTimerDuration);
         }, gemTimeoutDuration);
     }
@@ -5058,7 +5843,10 @@ document.addEventListener("DOMContentLoaded", event => {
         removeBlueGem();
         gemTimeout = setTimeout(() => {
             gemTimer = setInterval(() => {
-                removeBlueGem();
+                for (let i = 0; i < gemTimerFactor; i++) {
+                    removeBlueGem();
+                    gemTimerFactorIncrease();
+                }
             }, gemTimerDuration);
         }, gemTimeoutDuration);
     }
@@ -5068,7 +5856,10 @@ document.addEventListener("DOMContentLoaded", event => {
         addGreenGem();
         gemTimeout = setTimeout(() => {
             gemTimer = setInterval(() => {
-                addGreenGem();
+                for (let i = 0; i < gemTimerFactor; i++) {
+                    addGreenGem();
+                    gemTimerFactorIncrease();
+                }
             }, gemTimerDuration);
         }, gemTimeoutDuration);
     }
@@ -5078,7 +5869,10 @@ document.addEventListener("DOMContentLoaded", event => {
         removeGreenGem();
         gemTimeout = setTimeout(() => {
             gemTimer = setInterval(() => {
-                removeGreenGem();
+                for (let i = 0; i < gemTimerFactor; i++) {
+                    removeGreenGem();
+                    gemTimerFactorIncrease();
+                }
             }, gemTimerDuration);
         }, gemTimeoutDuration);
     }
@@ -5090,6 +5884,15 @@ document.addEventListener("DOMContentLoaded", event => {
         clearTimeout(gemTimeout);
         clearInterval(gemTimer);
         gemTimerActive = false;
+        gemTimerCounter = 0;
+        gemTimerFactor = 1;
+    }
+
+    function gemTimerFactorIncrease() {
+        gemTimerCounter++;
+        if (gemTimerCounter % 25 == 0) {
+            gemTimerFactor++;
+        }
     }
     //#endregion GEM TIMER
 
@@ -5115,8 +5918,7 @@ document.addEventListener("DOMContentLoaded", event => {
         } else {
             gemCraftingSpellSelected.damage = gemCraftingSpellSelected.baseDamage + gemCraftingSpellSelected.spellGem.redValue;
         }
-        uniqueIndex++;
-        player.addRedGem(new Item(collectables.redGems.type + uniqueIndex, collectables.redGems));
+        player.addRedGem(createItem(collectables.redGems));
         gemCraftingUpdate();
     }
 
@@ -5141,8 +5943,7 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         gemCraftingSpellSelected.spellGem.unlockBlue();
         gemCraftingSpellSelected.cost = gemCraftingSpellSelected.baseCost - gemCraftingSpellSelected.spellGem.blueValue;
-        uniqueIndex++;
-        player.addBlueGem(new Item(collectables.blueGems.type + uniqueIndex, collectables.blueGems));
+        player.addBlueGem(createItem(collectables.blueGems));
         gemCraftingUpdate();
     }
 
@@ -5167,8 +5968,7 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         gemCraftingSpellSelected.spellGem.unlockGreen();
         gemCraftingSpellSelected.cooldown = gemCraftingSpellSelected.baseCooldown - gemCraftingSpellSelected.spellGem.greenValue;
-        uniqueIndex++;
-        player.addGreenGem(new Item(collectables.greenGems.type + uniqueIndex, collectables.greenGems));
+        player.addGreenGem(createItem(collectables.greenGems));
         gemCraftingUpdate();
     }
 
@@ -5308,8 +6108,23 @@ document.addEventListener("DOMContentLoaded", event => {
         region = new Region(currentWorld, background, zoneContainer, TILE_SIZE);
         miniMap = new MiniMap(region, miniMapContainer, miniMapZoom);
         playerName = playerName == "" ? "Player 1" : playerName;
-        const sfxArr = ["VOICE_Girl_4yo_Hurt_Long_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_04_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_05_mono.ogg"];
-        player = new Player(playerName, "player", playerAnimTime.move, playerAnimTime.attack, new Attribute(playerStats.health, true), new Attribute(playerStats.strength, false), new Attribute(playerStats.armor, false), ui, null, actions, playerAP, sfxArr, new Inventory("player"), null, gameOver);
+        const hurtVoices = ["VOICE_Girl_4yo_Hurt_Long_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_01_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_04_mono.ogg", "VOICE_Girl_4yo_Hurt_Short_05_mono.ogg"];
+        player = new Player(
+            playerName,
+            "player",
+            playerAnimTime.move,
+            playerAnimTime.attack,
+            new Health(playerStats.health),
+            new Attribute(playerStats.strength, false),
+            new Attribute(playerStats.armor, false),
+            ui,
+            null,
+            actions,
+            playerAP,
+            hurtVoices,
+            new Inventory("player"),
+            null,
+            gameOver);
         const weaponItemButton = player.setWeaponItem(new Item("start-sword", collectables.woodenSword));
         weaponItemButton.primaryElement.addEventListener("click", function() {
             if (!player.weaponItem.button.primaryElement.classList.contains("disabled")) {
@@ -5321,6 +6136,18 @@ document.addEventListener("DOMContentLoaded", event => {
                 player.setSecondaryWeapon();
             }
         });
+        if (CHEATS_ON && CHEAT_SPELL_DAMAGE > 0) {
+            for (let i = 0; i < Object.keys(spell).length; i++) {
+                const key = Object.keys(spell)[i];
+                spell[key].cost = 1;
+                spell[key].cooldown = 1;
+                if (spell[key].damage == 0) {
+                    spell[key].armor = CHEAT_SPELL_DAMAGE;
+                } else {
+                    spell[key].damage = CHEAT_SPELL_DAMAGE;
+                }
+            }
+        }
         for (let i = 0; i < Object.keys(spell).length; i++) {
             const key = Object.keys(spell)[i];
             const slot = player.setSlot(new Slot("slot-" + (i + 3), spell[key]));
@@ -5354,23 +6181,8 @@ document.addEventListener("DOMContentLoaded", event => {
         //Manual placement of dungeon
         // const tileObj = currentZone.getRandomTile();
         // placeDungeon(currentWorld.placeGateways()[0], currentZone, tileObj);
-        if (cheatsOn) {
-            player.addCoins(cheatMoney);
-            for (let i = 0; i < cheatRedGem; i++) {
-                uniqueIndex++;
-                const item = new Item("gem-" + uniqueIndex, collectables.redGems);
-                player.addRedGem(item);
-            }
-            for (let i = 0; i < cheatBlueGem; i++) {
-                uniqueIndex++;
-                const item = new Item("gem-" + uniqueIndex, collectables.blueGems);
-                player.addBlueGem(item);
-            }
-            for (let i = 0; i < cheatGreenGem; i++) {
-                uniqueIndex++;
-                const item = new Item("gem-" + uniqueIndex, collectables.greenGems);
-                player.addGreenGem(item);
-            }
+        if (CHEATS_ON) {
+            player.addCoins(CHEAT_MONEY);
         }
 
         //Pathfinding algorithm test
@@ -5508,38 +6320,30 @@ document.addEventListener("DOMContentLoaded", event => {
             placeEnemies(zoneEnemyCount(region.enemyPercentage));
         }
 
+        const bossType = enemyBossType.fireElemental;
+        if (currentWorld == worlds[bossType.world]) {
+            const bossZone = region.getZone(bossType.zoneID);
+            const bossTileObj = bossZone.getCenterTile();
+            placeEnemyBoss(bossTileObj, bossType);
+        }
+
         //QUEST MANAGERS
-        const managers = quest.managers(quest.main);
+        const managers = quest.managers();
         for (let i = 0; i < managers.length; i++) {
             const managerObj = managers[i];
             if (managerObj.world == currentWorld && !managerObj.hasMerchant) {
                 const zone = region.getZone(managerObj.zoneID);
                 const tileObj = zone.getRandomTile(true);
-                const merchant = createMerchant(managerObj.manager.spritePos);
+                const merchant = createMerchant(managerObj.name, managerObj.spritePos);
                 merchant.addManager(managerObj.manager);
                 placeMerchant(zone, tileObj, merchant);
                 managerObj.hasMerchant = true;
+                const minimapTile = miniMap.getTile(zone.id);
                 currentWorld.questObjectives.push({
                     merchant: merchant,
                     zoneID: zone.id,
                     tileObj: tileObj,
-                });
-            }
-        }
-        const managers2 = quest.managers(quest.test);
-        for (let i = 0; i < managers2.length; i++) {
-            const managerObj = managers2[i];
-            if (managerObj.world == currentWorld && !managerObj.hasMerchant) {
-                const zone = region.getZone(managerObj.zoneID);
-                const tileObj = zone.getRandomTile(true);
-                const merchant = createMerchant(managerObj.manager.spritePos);
-                merchant.addManager(managerObj.manager);
-                placeMerchant(zone, tileObj, merchant);
-                managerObj.hasMerchant = true;
-                currentWorld.questObjectives.push({
-                    merchant: merchant,
-                    zoneID: zone.id,
-                    tileObj: tileObj,
+                    tooltip: new MiniTooltip(minimapTile, managerObj.name, managerObj.title),
                 });
             }
         }
@@ -5547,25 +6351,42 @@ document.addEventListener("DOMContentLoaded", event => {
 
 
         //INSERT ENEMIES MANUALLY FOR TESTING PURPOSES
-        if (cheatsOn && enemiesAtStart > 0) {
-            for (let i = 0; i < enemiesAtStart; i++) {
+        if (CHEATS_ON && ENEMIES_AT_START > 0) {
+            for (let i = 0; i < ENEMIES_AT_START; i++) {
                 const zone = region.getZone("0_0");
                 // const tileObj2 = zone.getTileObj("2_2");
                 // placeEnemy(tileObj2, enemyType.dummy);
                 const tileObj = zone.getRandomTile(true);
                 placeEnemy(tileObj, enemyType.dummy);
             }
-
         }
 
+        //INSERT COLLECTABLES MANUALLY FOR TESTING PURPOSES
+        if (CHEATS_ON && CHEAT_COLLECTABLES && cheatCollectables.length > 0) {
+            if (currentWorld == worlds.home) {
+                for (let i = 0; i < cheatCollectables.length; i++) {
+                    const collectableObj = cheatCollectables[i];
+                    const collectable = collectables[cheatCollectables[i].key];
+                    for (let amount = 0; amount < collectableObj.amount; amount++) {
+                        const item = createItem(collectable);
+                        if (collectableObj.inventory) {
+                            player.inventory.addItem(item);
+                        } else {
+                            const tileObj = region.getZone("0_0").getRandomTile();
+                            tileObj.placeObject(item, "item", true);
+                        }
+                    }
+                }
+            }
+        }
         //INSERT KEY MANUALLY FOR TESTING PURPOSES
-        if (cheatsOn && cheatKey) {
+        if (CHEATS_ON && CHEAT_KEY) {
             const tileObj = region.getZone("0_0").getRandomTile();
             const key = new Item("cheat-key", collectables.keys);
             tileObj.placeObject(key, "item", true);
         }
         //INSERT WEAPON MANUALLY FOR TESTING PURPOSES
-        if (cheatsOn && cheatWeapon) {
+        if (CHEATS_ON && CHEAT_WEAPON) {
             const tileObj1 = region.getZone("0_0").getRandomTile();
             const weapon1 = new Item("cheat-weapon-1", collectables.ironSword);
             tileObj1.placeObject(weapon1, "item", true);
@@ -5595,7 +6416,8 @@ document.addEventListener("DOMContentLoaded", event => {
                     if (rnd < 20) {
                         if (currentWorld.obstacles.length > 0) {
                             const rnd = randomInteger(0, currentWorld.obstacles.length);
-                            tileObj.setType(currentWorld.obstacles[rnd], "obstacle", true);
+                            tileObj.setType(currentWorld.obstacles[rnd].type, "obstacle", true);
+                            tileObj.addHealthObj(new Health(currentWorld.obstacles[rnd].health), currentWorld.obstacles[rnd].resource);
                         }
                     }
                 }
@@ -5618,6 +6440,7 @@ document.addEventListener("DOMContentLoaded", event => {
         for (let i = 0; i < currentZone.tiles.length; i++) {
             const tileObj = currentZone.tiles[i];
             const tileObjHTML = tileObj.createHTML();
+            tileObj.createHealthHTML();
             region.element.append(tileObjHTML);
             if (tileObj.object != null) {
                 if (tileObj.type == "enemy") {
@@ -5639,13 +6462,16 @@ document.addEventListener("DOMContentLoaded", event => {
 
             }
             tileObjHTML.addEventListener("click", function() {
+                if (player.inBattle && !playersTurn) {
+                    return;
+                }
                 if (player.currentTile == currentZone.getTileObj(this.id)) {
                     toggleMenu();
                     return;
                 }
                 moveAlongPath(this.id);
             });
-            tileObjHTML.addEventListener("mouseover", function() {
+            tileObjHTML.addEventListener("mouseenter", function() {
                 visualizePath(this.id);
             });
         }
@@ -5657,9 +6483,6 @@ document.addEventListener("DOMContentLoaded", event => {
         setEdgeButton(zoneTransitionDown, currentZone.edgeButtons.down);
         setEdgeButton(zoneTransitionLeft, currentZone.edgeButtons.left);
         setEdgeButton(zoneTransitionRight, currentZone.edgeButtons.right);
-        if (player.quests.length > 0) {
-            console.log(player.quests)
-        }
     }
 
     function setQuestState(merchant) {
@@ -5703,7 +6526,7 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         let destinationTile = currentZone.getTileObj(tileId);
         if (player.activeSlot != null) {
-            if (destinationTile.type == "enemy" || !player.spellIsRanged) {
+            if (destinationTile.type == "enemy" || !player.spellIsRanged || player.spellTargetEmpty) {
                 player.fireSlotSpell(destinationTile);
             } else {
                 player.setPrimaryWeapon();
@@ -5817,6 +6640,7 @@ document.addEventListener("DOMContentLoaded", event => {
         battleInProgress = false;
         playersTurn = true;
         player.inBattle = false;
+        playerIsMoving = false;
         for (let i = 0; i < battleQueue.length; i++) {
             const character = battleQueue[i];
             character.removeCard();
@@ -5824,14 +6648,17 @@ document.addEventListener("DOMContentLoaded", event => {
         battleQueue = [];
         player.actionPointHTMLRemove();
         player.resetAllSlots();
+        player.removeStatusEffect();
         music.crossFade(music.calm);
         background.classList.remove("battle");
+        openQuest.classList.remove("js-hidden");
     }
 
     function combatEvent() {
         battleInProgress = true;
         playersTurn = false;
         background.classList.add("battle");
+        openQuest.classList.add("js-hidden");
         battleQueue.push(player);
         shuffleArray(battleQueue);
         for (let i = 0; i < battleQueue.length; i++) {
@@ -5850,8 +6677,21 @@ document.addEventListener("DOMContentLoaded", event => {
         enemiesInZone--;
         if (enemiesInZone <= 0) {
             enemiesInZone = 0;
-            calmEvent();
+            playerIsMoving = true;
+            setTimeout(() => {
+                calmEvent();
+            }, 1000);
         }
+    }
+
+    function enemyDrop(enemy) {
+        const tileObj = enemy.currentTile;
+        const collectable = collectables.coins;
+        const item = createItem(collectable);
+        setTimeout(() => {
+            tileObj.placeObject(item, "item", true);
+            tileObj.placeHTML(tileObj.object.createHTML());
+        }, 400);
     }
 
     function updateBattleQueue() {
@@ -5900,7 +6740,18 @@ document.addEventListener("DOMContentLoaded", event => {
                         turnDelay = 1000;
                     }
                     setTimeout(() => {
-                        enemyTurn(currentCharacter);
+                        let spellPause = false;
+                        if (currentCharacter.spellFire) {
+                            currentCharacter.spellFire(player.currentTile);
+                            spellPause = true;
+                        }
+                        if (spellPause) {
+                            setTimeout(() => {
+                                enemyTurn(currentCharacter);
+                            }, 300);
+                        } else {
+                            enemyTurn(currentCharacter);
+                        }
                     }, turnDelay);
                 }
                 updateDaytime();
@@ -5937,8 +6788,8 @@ document.addEventListener("DOMContentLoaded", event => {
         if (destinationTileObj == player.currentTile) {
             enemyObj.setAttackTime();
             halfWayMove(enemyObj.element, enemyObj.attackTime, direction, function() {
-                effect.explosion.createHTML(destinationTileObj);
-                effect.explosion.soundEffect("THUD_Bright_03_mono.mp3");
+                effect.simple.createHTML(destinationTileObj, "explosion", 700);
+                effect.simple.soundEffect("THUD_Bright_03_mono.mp3");
                 destinationTileObj.object.takeDamage(enemyObj.strength.value);
                 enemyObj.specialAttack();
             }, function() {
@@ -5976,7 +6827,7 @@ document.addEventListener("DOMContentLoaded", event => {
 
     function miniMapHTML(id, biom) {
         let activeClass = "fog-of-war";
-        if (cheatsOn && cheatFogOfWar) {
+        if (CHEATS_ON && CHEAT_FOG_OF_WAR) {
             activeClass = "";
         }
         if (id == "0_0") {
@@ -5992,13 +6843,13 @@ document.addEventListener("DOMContentLoaded", event => {
         for (let i = 0; i < region.zones.length; i++) {
             const zone = region.zones[i];
             if (zone.id == id) {
+                let miniMapSection = document.getElementById("minimap_" + id)
                 if (setActive) {
-                    let miniMapSection = document.getElementById("minimap_" + id)
                     miniMapSection.classList.remove("fog-of-war");
                     miniMapSection.classList.add("active");
                     currentZone.explore();
                 } else {
-                    document.getElementById("minimap_" + id).classList.remove("active");
+                    miniMapSection.classList.remove("active");
                 }
             }
         }
@@ -6044,29 +6895,32 @@ document.addEventListener("DOMContentLoaded", event => {
         }
     }
 
-    function createMerchant(spritePos) {
-        let filteredCollectables = getInventoryCollectables();
+    function createMerchant(name, spritePos) {
+        let filteredCollectables = getCollectables();
         let items = [];
         for (let collectableObjIndex = 0; collectableObjIndex < filteredCollectables.length; collectableObjIndex++) {
             const collectable = filteredCollectables[collectableObjIndex];
             const itemCount = randomInteger(collectable.merchantCountMin, collectable.merchantCountMax + 1);
             for (let count = 0; count < itemCount; count++) {
-                uniqueIndex++;
-                items.push(new Item(collectable.type + "-" + uniqueIndex, collectable));
+                items.push(createItem(collectable));
             }
         }
-        const merchant = new Merchant(spritePos, new Inventory("merchant"));
-        fillChest(merchant, items);
+        const merchant = new Merchant(name, spritePos, new Inventory("merchant"));
+        fillInventory(merchant.inventory, items);
         return merchant;
     }
 
-    function getInventoryCollectables() {
+    function getCollectables(inventoryItem = true) {
         let inventoryCollectables = [];
         const collectableObjs = Object.keys(collectables);
         for (let keyIndex = 0; keyIndex < collectableObjs.length; keyIndex++) {
             const key = collectableObjs[keyIndex];
             const collectable = collectables[key];
-            if (collectable.inventoryItem) {
+            if (inventoryItem) {
+                if (collectable.inventoryItem) {
+                    inventoryCollectables.push(collectable);
+                }
+            } else {
                 inventoryCollectables.push(collectable);
             }
         }
@@ -6120,14 +6974,43 @@ document.addEventListener("DOMContentLoaded", event => {
                     const collectableObj = collObjs[collectableObjIndex];
                     if (rnd < collectableObj.spawnPropability) {
                         collectable = collectableObj.collectable;
-                        uniqueIndex++;
-                        items.push(new Item(collectable.type + "-" + uniqueIndex, collectable));
+                        items.push(createItem(collectable));
                         break;
                     }
                 }
             }
-            fillChest(chest, items);
+            fillInventory(chest.inventory, items);
         }
+    }
+
+    function getRandomCollectable(inventoryItem = true) {
+        let allCollectables = getCollectables(inventoryItem);
+        let total = 0;
+        let propabilities = [];
+        for (let i = 0; i < allCollectables.length; i++) {
+            const collectable = allCollectables[i];
+            total += collectable.spawnPropability;
+            propabilities.push({ total, collectable });
+        }
+        const rnd = randomInteger(0, total);
+        for (let i = 0; i < propabilities.length; i++) {
+            const propability = propabilities[i];
+            if (rnd < propability.total) {
+                return propability.collectable;
+            }
+        }
+        return null;
+    }
+
+    function createRandomItem(inventoryItem = true) {
+        const collectable = getRandomCollectable(inventoryItem);
+        return createItem(collectable);
+    }
+
+    function createItem(collectable) {
+        uniqueIndex++;
+        let newItem = new Item(collectable.type + "-" + uniqueIndex, collectable);
+        return newItem;
     }
 
     function placeMerchant(zone, tileObj, merchant) {
@@ -6141,16 +7024,16 @@ document.addEventListener("DOMContentLoaded", event => {
         tileObj.placeObject(chest, "chest", true);
     }
 
-    function fillChest(chest, items) {
+    function fillInventory(inventory, items) {
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
-            chest.inventory.addItem(item);
+            inventory.addItem(item);
         }
     }
 
     function destroyChest(tileObj) {
         tileObj.setEmpty();
-        effect.explosion.createHTML(tileObj);
+        effect.simple.createHTML(tileObj, "explosion", 700);
         effect.floating.createHTML(tileObj, "Empty");
     }
 
@@ -6168,25 +7051,26 @@ document.addEventListener("DOMContentLoaded", event => {
     }
 
     function placeEnemy(tileObj, type) {
-        if (type == null) {
-            console.log("Array is empty!");
-            return;
-        }
-        const enemy = new Enemy(type.name, "enemy", type.moveTime, type.attackTime, new Attribute(type.life, true), new Attribute(type.strength, false), tileObj.id, actions, type.actionPoints, type.sfxs, new Inventory("enemy"), type, type.enemyDamage, type.enemyDeath);
+        const enemy = new Enemy(type.name, "enemy", type.moveTime, type.attackTime, new Health(type.life), new Attribute(type.strength, false), tileObj.id, actions, type.actionPoints, type.sfxs, new Inventory("enemy"), type, type.enemyDamage, type.enemyDeath);
         tileObj.setEmpty();
         tileObj.placeObject(enemy, "enemy", true);
+        type.totalCount++;
+    }
+
+    function placeEnemyBoss(tileObj, type) {
+        const enemyBoss = new EnemyBoss(type.name, "enemy", type.moveTime, type.attackTime, new Health(type.life), new Attribute(type.strength, false), tileObj.id, actions, type.actionPoints, type.sfxs, new Inventory("enemy"), type, enemySpell.fireball, type.enemyDamage, type.enemyDeath);
+        tileObj.setEmpty();
+        tileObj.placeObject(enemyBoss, "enemy", true);
         type.totalCount++;
     }
 
     function placeCollectables(collectable) {
         collectable.totalStackAmount = 0;
         const collStacks = Math.round(worlds.zoneCount(currentWorld) * collectable.spawnPerZone * COLLECTABLE_SPAWN_FACTOR);
-        console.log(collectable.name + " - " + collStacks);
         for (let i = 0; i < collStacks; i++) {
             const zone = region.getRandomZone();
             const tileObj = zone.getRandomTile();
-            uniqueIndex++;
-            const item = new Item(collectable.type + "-" + uniqueIndex, collectable);
+            const item = createItem(collectable);
             tileObj.placeObject(item, "item", true);
             collectable.totalStackAmount += item.amount;
         }
@@ -6244,7 +7128,8 @@ document.addEventListener("DOMContentLoaded", event => {
         if (effectTimeouts.length > 0) {
             for (let i = 0; i < effectTimeouts.length; i++) {
                 const effectTimeout = effectTimeouts[i];
-                clearTimeout(effectTimeout);
+                clearTimeout(effectTimeout.timeout);
+                effectTimeout.callback();
             }
         }
     }
@@ -6345,6 +7230,27 @@ document.addEventListener("DOMContentLoaded", event => {
         }
         let destinationTileObj = currentZone.getTileObj(coordinate.x + "_" + coordinate.y);
         if (destinationTileObj.type == "obstacle") {
+            player.setInteractTime();
+            halfWayMove(player.element, player.moveTime, direction, function() {
+                let collectAmount = roundDecimal(player.strength.value / 4, 0);
+                const health = destinationTileObj.takeDamage(player.strength.value);
+                if (health) {
+                    let collectable = collectables[destinationTileObj.healthType];
+                    if (destinationTileObj.name == "rock" && randomBool(8)) {
+                        collectable = collectables.iron;
+                        collectAmount = roundDecimal(player.strength.value / 12, 0);
+                    }
+                    if (collectAmount < 1) {
+                        collectAmount = 1;
+                    }
+                    for (let i = 0; i < collectAmount; i++) {
+                        const item = createItem(collectable);
+                        item.onCollect(true);
+                    }
+                }
+            }, function() {
+                playerIsMoving = false;
+            });
             return "obstacle";
         }
         playerIsMoving = true;
@@ -6407,32 +7313,36 @@ document.addEventListener("DOMContentLoaded", event => {
                                 }
                             }
                             if (newQuest) {
+                                player.addQuest(newQuest)
+                                if (!player.updateQuestRow(newQuest.chainID)) {
+                                    const newRow = new QuestRow(questOverviewParent, newQuest.objective.dialog.begin.title);
+                                    player.addQuestRow(newRow, newQuest.chainID);
+                                }
                                 if (playerQuest && playerQuest.objective.state == "complete") {
                                     player.removeQuest(playerQuest);
                                 }
-                                player.addQuest(newQuest);
                                 const detail = newQuest.objective.detail;
                                 if (detail.getReward) {
                                     const collectableTypes = detail.getReward();
                                     for (let i = 0; i < collectableTypes.length; i++) {
-                                        const collectable = collectables[collectableTypes[i]];
-                                        uniqueIndex++;
-                                        const item = new Item(collectable.type + uniqueIndex, collectable);
-                                        item.onCollect(false);
+                                        for (let amount = 0; amount < collectableTypes[i].amount; amount++) {
+                                            const collectable = collectables[collectableTypes[i].type];
+                                            const item = createItem(collectable);
+                                            item.onCollect(false);
+                                        }
                                     }
                                 }
                                 if (detail.getQuestItem) {
                                     const collectable = collectables[detail.getQuestItem()];
-                                    uniqueIndex++;
-                                    const item = new Item(collectable.type + uniqueIndex, collectable);
-                                    item.isQuestItem = true;
+                                    const item = createItem(collectable);
                                     player.inventory.addQuestItem(item);
                                     newQuest.setItem(item);
                                 }
                                 if (detail.questChainEnd) {
                                     const chainID = detail.questChainEnd();
-                                    worlds.updateManagers(currentWorld, chainID);
+                                    worlds.removeManagers(currentWorld, chainID);
                                     player.removeQuests(chainID);
+                                    player.lastQuestRow(chainID);
                                 }
                             }
                             setQuestState(merchant);
@@ -6480,14 +7390,7 @@ document.addEventListener("DOMContentLoaded", event => {
                 player.collect(destinationTileObj.object);
                 destinationTileObj.removeObject(destinationTileObj.object.element);
             }
-            const prevTileObj = player.currentTile;
-            player.tileId = destinationTileObj.id;
-            destinationTileObj.placeObject(player, "player", true);
-            destinationTileObj.element.append(player.element);
-            prevTileObj.object = null;
-            prevTileObj.type = "empty";
-            prevTileObj.occupied = false;
-            prevTileObj.setElementClassType();
+            playerToTile(destinationTileObj);
         }, function() {
             playerIsMoving = false;
             player.setSlotStates();
@@ -6498,6 +7401,35 @@ document.addEventListener("DOMContentLoaded", event => {
             }
         });
         return "new tile";
+    }
+
+    function itemCollectAnimation(item, targetElement, onAnimDone) {
+        const effectTimeout = {
+            timeout: setTimeout(() => {
+                const spriteCoordinates = {
+                    x: item.posX / 100,
+                    y: item.posY / 100,
+                }
+                effect.zoomTo.createHTML(player.currentTile, targetElement, item.type, spriteCoordinates, function() {
+                    onAnimDone();
+                });
+            }, 20),
+            callback() {
+                onAnimDone();
+            }
+        }
+        effectTimeouts.push(effectTimeout);
+    }
+
+    function playerToTile(destinationTileObj) {
+        const prevTileObj = player.currentTile;
+        player.tileId = destinationTileObj.id;
+        destinationTileObj.placeObject(player, "player", true);
+        destinationTileObj.element.append(player.element);
+        prevTileObj.object = null;
+        prevTileObj.type = "empty";
+        prevTileObj.occupied = false;
+        prevTileObj.setElementClassType();
     }
 
     function fullMove(element, animationTime, direction, beforeDestinationReach, destinationReached) {
@@ -6643,6 +7575,11 @@ document.addEventListener("DOMContentLoaded", event => {
         return firstLetter + theRest;
     }
 
+    function toFileName(str) {
+        str = str.replace(/\s+/g, '-').toLowerCase();
+        return str;
+    }
+
     function lerp(from, to, t) {
         const range = to - from;
         const current = range * t + from;
@@ -6652,6 +7589,24 @@ document.addEventListener("DOMContentLoaded", event => {
     function roundDecimal(value, decimals) {
         const factor = Math.pow(10, decimals);
         return Math.round(value * factor) / factor;
+    }
+
+    function cssMoveVars(element, sourceRect, targetRect) {
+        const x = targetRect.left - sourceRect.left;
+        const y = targetRect.top - sourceRect.top;
+        element.style.cssText += `--move-x:${x}px;--move-y:${y}px;`;
+        const distance = Math.sqrt(x * x + y * y);
+        return distance;
+    }
+
+    function cssMoveVarsFixed(element, sourceRect, targetRect) {
+        const x = targetRect.left - sourceRect.left;
+        const y = targetRect.top - sourceRect.top;
+        element.style.top = `${sourceRect.top}px`;
+        element.style.left = `${sourceRect.left}px`;
+        element.style.cssText += `--move-x:${x}px;--move-y:${y}px;`;
+        const distance = Math.sqrt(x * x + y * y);
+        return distance;
     }
 
     //#endregion REUSABLE FUNCTIONS
