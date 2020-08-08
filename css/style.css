@@ -41,7 +41,7 @@ svg {
 .game {
     height: 100vh;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
 }
 
 .game>.biom {
@@ -102,7 +102,7 @@ svg {
     position: relative;
     display: flex;
     align-items: flex-end;
-    justify-content: space-between;
+    justify-content: flex-end;
     padding: 1rem 0 0;
 }
 
@@ -234,15 +234,8 @@ button {
 }
 
 .transparent-background {
-    transition: opacity 800ms, visibility 800ms;
-    /* transition: background-color 800ms; */
+    transition: opacity 300ms, visibility 300ms;
 }
-
-
-/* .transparent-background.js-hidden {
-    background-color: rgba(0, 0, 0, 0);
-    transition: background-color 800ms;
-} */
 
 .overflow-hidden {
     overflow: hidden;
@@ -393,8 +386,9 @@ button {
 /* #region GAME */
 
 .main-game {
+    position: relative;
     display: grid;
-    grid-template-columns: 360px auto 360px;
+    grid-template-columns: 1fr auto 1fr;
     justify-items: start;
     gap: 1rem;
 }
@@ -410,6 +404,7 @@ button {
 /* #region UI */
 
 .ui {
+    position: relative;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -486,21 +481,19 @@ button {
 /* #region INFO CENTER */
 
 .info-field {
-    padding: 0.5rem;
+    position: absolute;
+    top: 100%;
+    left: 0;
     background-image: none;
 }
 
 .info-center {
     width: 100%;
-    min-height: 40px;
-    max-height: 100px;
     display: flex;
-    flex-direction: column;
-    overflow: auto;
 }
 
 .info-center__message {
-    margin-top: 0.5rem;
+    margin: 0.25rem;
     padding: 0.5rem;
     background-color: antiquewhite;
     border-radius: 0.25rem;
@@ -714,16 +707,10 @@ button {
 }
 
 .zone-transition.left {
-    /* height: 100%;
-    top: 0;
-    right: calc(100% - var(--zone-button-offset)); */
     left: var(--zone-button-offset);
 }
 
 .zone-transition.right {
-    /* height: 100%;
-    top: 0;
-    left: calc(100% - var(--zone-button-offset)); */
     right: var(--zone-button-offset);
 }
 
@@ -743,6 +730,7 @@ button {
     font-size: 2rem;
     color: gold;
     text-shadow: 0 0 5px black;
+    pointer-events: none;
 }
 
 .zone__tile:not(.zone__empty).path {
@@ -1199,10 +1187,25 @@ button {
 
 .quest-overview {
     height: 70vh;
-    width: 400px;
+    width: 500px;
     display: grid;
-    grid-template-rows: 50px 1fr;
+    grid-template-rows: 40px 1fr 240px;
     box-shadow: 5px 5px 20px black;
+    gap: 10px;
+}
+
+.quest-overview__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.quest-overview__button {
+    height: 100%;
+    min-width: 180px;
+    padding: 0 0.5rem;
+    border-radius: 5px;
+    transition: all 300ms;
 }
 
 .quest-overview__scroll {
@@ -1215,10 +1218,23 @@ button {
     display: flex;
     justify-content: space-between;
     border-bottom: 1px dashed gray;
+    cursor: pointer;
+}
+
+.quest-overview__row.js-display-none {
+    display: none;
+}
+
+.quest-overview__row.js-active {
+    background-color: rgba(0, 128, 0, 0.25);
+}
+
+.quest-overview__row.js-active {
+    background-color: rgba(136, 255, 0, 0.25);
 }
 
 .quest-overview__row:hover {
-    background-color: hsla(39, 100%, 50%, 0.25);
+    background-color: rgba(255, 166, 0, 0.25);
 }
 
 .quest-overview__row-title {
@@ -1239,6 +1255,10 @@ button {
 
 .quest-overview__row-status {
     text-shadow: 0 0 1px black;
+}
+
+.quest-overview__spacing {
+    padding: 0.5rem;
 }
 
 
@@ -1539,7 +1559,6 @@ button {
 
 .gem-crafting__title {
     font-size: 2rem;
-    text-align: center;
 }
 
 .gem-crafting__content {
@@ -1956,7 +1975,7 @@ button {
 .actions {
     min-height: 100px;
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 425px auto;
     visibility: hidden;
 }
 
@@ -1965,22 +1984,61 @@ button {
     align-items: center;
 }
 
+.actions__buttons {
+    display: flex;
+    align-items: center;
+}
+
+.actions-spacing {
+    justify-content: space-between;
+}
+
 .actions.js-active {
     visibility: visible;
+}
+
+.actions__execute {
+    position: absolute;
+    top: -175%;
+    width: 90px;
+    border: 4px double gold;
+    border-radius: 4px;
+    background-color: white;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25);
+    padding: 0.75rem;
+    display: none;
+    justify-content: space-evenly;
+    align-items: center;
+    transition: all 1000ms;
+}
+
+.actions__execute svg {
+    width: 32px;
+    height: 32px;
+    fill: gold;
+    transition: all 1000ms;
+}
+
+.js-active>.actions__execute.js-active {
+    display: flex;
+}
+
+.actions__execute:hover {
+    border: 4px double green;
+    background-color: greenyellow;
+}
+
+.actions__execute:hover svg {
+    fill: green;
 }
 
 .actions__ap {
     display: flex;
     align-items: center;
-    padding: 0.5rem 0;
+    padding: 0.25rem;
+    flex-wrap: wrap;
+    width: 300px;
 }
-
-
-/* .actions__info {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-} */
 
 .ap-image {
     width: 96px;
@@ -2016,6 +2074,7 @@ button {
     justify-content: center;
     align-items: center;
     margin-left: 0.25rem;
+    margin-bottom: 0.25rem;
     background-image: url(../images/paper-background.png);
 }
 
@@ -2373,6 +2432,7 @@ button {
 
 .effect.spell.ranged {
     animation-name: ranged;
+    animation-fill-mode: forwards;
 }
 
 .effect.spell.self {
