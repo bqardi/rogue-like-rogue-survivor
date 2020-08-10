@@ -14,12 +14,25 @@ UPDATE: Chests added with their own inventory and collecting the items inside th
 - Armor (adds to your armor/shield) UPDATE: Now added to inventory.
 - Weapons (adds to your strength) UPDATE: Now added to inventory.
 - Keys (Intended to open up for Dungeons (see below), but other usecases can be added) UPDATE: Now added to inventory.
+- NEW: Gems (red, blue and green) used for spell upgrades
+- NEW: Pouch that contains random loot (like chests, but carriably in inventory)
+- NEW: Wood (collected from trees only)
+- NEW: Stone (collected from rocks only)
+- NEW: Iron (collected from rocks only)
+- NEW: Wood (can't be collected yet)
 - More to come...
 
 #### Player
+CURRENTLY:
+- Add spells to learn (for many things, such as shoot an enemy with a fireball or heal the player or maybe even teleportation skills. (limited only by imagination) (DONE)
+SPELLS:
+- Fireball (Damages targets with fire damage and sets burning status (damage over time) on targets)
+- Ice Nova (Damages targets surrounding you. TODO: set freeze status on targets)
+- Dome Shield (Create a magic shield that protects against all types of damage)
+- Teleport (teleports you to a tile of your choice)
+
 TODO (?):
 - Add bow and arrows (to shoot enemies from a distance)
-- Add spells to learn (for many things, such as shoot an enemy with a fireball or heal the player or maybe even teleportation skills. (limited only by imagination)
 - Collecting specific keys for specific doors/dungeon entrances (currently any key will open any dungeon). This is a definite maybe, since I would also have to change the UI for this to work
 
 #### Enemies
@@ -27,6 +40,9 @@ CURRENTLY:
 - Skeletons (fast and weak)
 - Orcs (slow but strong)
 - Goblins (fast, weak and steals money)
+
+BOSS:
+- NEW Fire elemental (very strong. Shoots FIREBALLS and heals from FIRE, but takes increased damage from ICE)
 
 TODO:
 - Bosses (stronger and faster than normal enemy units, and have special skills)
@@ -78,7 +94,7 @@ CURRENTLY:
 TODO:
 - Choose the starting character based on some swiftness or speed parameter. Random if same value is shared between multiple characters
 - Possibility for evading attacks
-- Overall creating a story so the game has a purpose :smiley:
+- Overall creating a story so the game has a purpose :smiley: (I now have a small story in mind, it's not much, but can grow as the game development progresses. The main story is something like, starting the game with a boss fight, and the boss WILL defeat you and steal some vital item of yours (don't know what exactly yet), and then he takes of and the main goal of the game would be to hunt him down and kill him and get your item back. But while searching for him you must make your character stronger, so you can actually defeat him, when you find him).
 
 #### Other things
 CURRENTLY:
@@ -86,12 +102,15 @@ CURRENTLY:
 - The player can choose what to use/wear/drop/destroy/etc. from the inventory. (currently, only use and wear are implemented).
 - Daytime cycle (making the environment darker at nighttime)
 - Torches (to light up the area around the player when in dark areas, such as at night or inside a dungeon)
+- Double inventory or two inventories displayed at the same time. This is necessary for the ability to trade with a merchant, so the player can transfer items between the two inventories (buy/sell). (DONE, changes between inventories with a button)
+- Merchants added so you can buy/sell loot. Merchants can also hold/give quests.
+- An advanced quest system created, with quest chains, multiple dialog sequences (show next dialog sequence with the next button)
+- Quest overview window to track your quests (now with a sorting function, to sort between ALL / NOT COMPLETED / COMPLETED)
+- Crafting feature(?). Also a very big MAYBE! Ability to collect wood from trees / stone from mining rocks (and possibly a small chance to collect gems of sorts) / collecting different items to use for crafting weapons and armor (and maybe other things like tools/chests for storage/traps maybe/glass to store health potions) (So, currently you can only gather resources (wood, stone, iron), but the plan is to create a simple crafting system so crafting weapons/tools/player chests/stations for more advanced crafting/etc. are possible)
 
 TODO (?):
-- Double inventory or two inventories displayed at the same time. This is necessary for the ability to trade with a merchant, so the player can transfer items between the two inventories (buy/sell).
 - Maybe even creating switches in dungeons to switch on light
 - Adding NPC's to interact with (quest-givers/merchants/???)
 - Survival feature(?). This is a very big MAYBE, since this is a major feature to implement and most likely I won't be implementing it, but for future reference I've added it and maybe I will implement...
-- Crafting feature(?). Also a very big MAYBE! Ability to collect wood from trees / stone from mining rocks (and possibly a small chance to collect gems of sorts) / collecting different items to use for crafting weapons and armor (and maybe other things like tools/chests for storage/traps maybe/glass to store health potions)
 
 I'm dreaming big here, but the things I am listing in this readme is, only meant as a brainstorming sheet, that I can come back to and maybe implement if I want to (some, of course, are required)
