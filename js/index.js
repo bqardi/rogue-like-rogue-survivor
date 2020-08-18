@@ -12,12 +12,12 @@ document.addEventListener("DOMContentLoaded", event => {
 
     //#region CHEATS
 
-    const CHEATS_ON = false;
+    const CHEATS_ON = true;
     const CHEAT_KEY = false;
     const CHEAT_WEAPON = false;
     const CHEAT_FOG_OF_WAR = true;
     const ENEMIES_AT_START = 0;
-    const CHEAT_SPELL_DAMAGE = 0; //Set to 0 (zero) to deactivate
+    const CHEAT_SPELL_DAMAGE = 20; //Set to 0 (zero) to deactivate
     const CHEAT_MONEY = 9999;
 
     const CHEAT_COLLECTABLES = true;
@@ -7098,6 +7098,13 @@ document.addEventListener("DOMContentLoaded", event => {
     function enemyTurn(enemyObj) {
         updatePathfindingGrid();
         const moveDirection = shortestPathDirection(enemyObj.currentTile, player.currentTile);
+        if (!moveDirection) {
+            setTimeout(() => {
+                nextTurn();
+                effect.floating.createHTML(enemyObj.currentTile, "?!?");
+            }, 800);
+            return;
+        }
         const destinationTileObj = adjacentTile(enemyObj.currentTile, moveDirection);
         setTimeout(() => {
             enemyMove(enemyObj, moveDirection, destinationTileObj);
